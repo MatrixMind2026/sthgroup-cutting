@@ -59,7 +59,8 @@
       {
         "provider": "github",
         "owner": "MatrixMind2026",
-        "repo": "sthgroup-cutting"
+        "repo": "sthgroup-cutting",
+        "releaseType": "release"
       }
     ]
   }

@@ -128,5 +128,36 @@
       parts + maps + '</body></html>';
   }
 
-  window.Doc = { esc: esc, money: money, qtyFmt: qtyFmt, dateRu: dateRu, sheetMapSvg: sheetMapSvg, partNumbers: partNumbers, buildDocHtml: buildDocHtml };
+
+  var DOC_CSS = '*{box-sizing:border-box}body{font-family:"Segoe UI",Arial,sans-serif;font-size:12.5px;color:#1d1f23;margin:0}' +
+    '.head{display:flex;align-items:center;gap:14px;border-bottom:3px solid #F26B1D;padding-bottom:10px;margin-bottom:14px}' +
+    '.brand{font-size:26px;font-weight:700;color:#23262B}.brand b{color:#F26B1D}.sub{color:#555;font-size:11.5px;margin-top:2px}' +
+    'h1{font-size:19px;margin:0 0 4px}.meta{color:#555;margin-bottom:10px}.box{border:1px solid #d9d5cb;border-radius:6px;padding:8px 10px;margin:8px 0;line-height:1.5}' +
+    'table.t{border-collapse:collapse;width:100%;margin-top:8px}table.t th{background:#23262B;color:#fff;font-weight:600;padding:6px 7px;text-align:left;font-size:11.5px}' +
+    'table.t td{border-bottom:1px solid #d9d5cb;padding:6px 7px}.r{text-align:right;white-space:nowrap}.c{text-align:center}' +
+    'table.tot{margin:10px 0 0 auto;border-collapse:collapse}table.tot td{padding:4px 8px}table.tot tr.big td{font-weight:700;font-size:15px;border-top:2px solid #23262B}' +
+    '.note{color:#555;margin-top:12px}.sign{margin-top:28px}';
+
+  /** Смета заказа: позиции из базы материалов, только цены продажи. */
+  function buildEstimateHtml(order, items, client, settings) {
+    var co = settings.company || {};
+    var rows = items.filter(function (x) { return x.name; }).map(function (x, i) {
+      var sum = (Number(String(x.qty).replace(',', '.')) || 0) * (Number(String(x.priceSell).replace(',', '.')) || 0);
+      x._sum = sum;
+      return '<tr><td class="c">' + (i + 1) + '</td><td>' + esc(x.name) + '</td><td>' + esc(x.article || '') + '</td><td class="c">' + esc(x.unit || '') + '</td><td class="r">' + qtyFmt(x.qty) + '</td><td class="r">' + money(x.priceSell) + '</td><td class="r">' + money(sum) + '</td></tr>';
+    }).join('');
+    var total = items.reduce(function (a, x) { return a + (x._sum || 0); }, 0);
+    var contacts = [co.phone, co.email, co.address].filter(Boolean).map(esc).join(' · ');
+    var clientBlock = client ? '<div class="box"><b>Заказчик:</b> ' + esc(client.company || client.name) + (client.company && client.name ? ', ' + esc(client.name) : '') + (client.phone ? '<br>Тел.: ' + esc(client.phone) : '') + '</div>' : '';
+    return '<!doctype html><html lang="ru"><head><meta charset="utf-8"><title>Смета № ' + esc(order.number) + '</title><style>' + DOC_CSS + '</style></head><body>' +
+      '<div class="head">' + MARK + '<div><div class="brand">STH<b>Group</b></div><div class="sub">' + esc(co.name && co.name !== 'STHGroup' ? co.name : 'Производство мебели · распил и ЧПУ') + '</div>' + (contacts ? '<div class="sub">' + contacts + '</div>' : '') + '</div></div>' +
+      '<h1>Смета № ' + esc(order.number) + '</h1><div class="meta">от ' + dateRu(order.docDate || new Date().toISOString()) + (order.title ? ' · ' + esc(order.title) : '') + '</div>' + clientBlock +
+      '<table class="t"><thead><tr><th class="c">№</th><th>Наименование</th><th>Артикул</th><th class="c">Ед.</th><th class="r">Кол-во</th><th class="r">Цена, ₽</th><th class="r">Сумма, ₽</th></tr></thead><tbody>' + rows + '</tbody></table>' +
+      '<table class="tot"><tr class="big"><td class="r">Итого:</td><td class="r">' + money(total) + ' ₽</td></tr></table>' +
+      (settings.docNote ? '<p class="note">' + esc(settings.docNote).replace(/\n/g, '<br>') + '</p>' : '') +
+      (co.executor ? '<div class="sign">Исполнитель: ' + esc(co.executor) + ' ____________________</div>' : '') +
+      '</body></html>';
+  }
+
+  window.Doc = { buildEstimateHtml: buildEstimateHtml, esc: esc, money: money, qtyFmt: qtyFmt, dateRu: dateRu, sheetMapSvg: sheetMapSvg, partNumbers: partNumbers, buildDocHtml: buildDocHtml };
 })();

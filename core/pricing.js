@@ -173,6 +173,17 @@
       lines.push({ group: 'extra', title: x.title, qty: q, unit: x.unit || 'шт.', price: p, sum: round2(q * p) });
     }
 
+    // 5. Смета из базы материалов (если включена в итог заказа)
+    const est = order.estimate;
+    if (est && est.inTotal) {
+      for (const x of est.items || []) {
+        const q = num(x.qty), p = num(x.priceSell);
+        if (!x.name || !q) continue;
+        lines.push({ group: 'estimate', title: x.name + (x.article ? ' (арт. ' + x.article + ')' : ''), qty: q, unit: x.unit || 'шт.', price: p, sum: round2(q * p) });
+      }
+      if (order.ownMaterial || order.ownEdge) warnings.push('Смета включена в итог, а в заказе стоит «Материал/кромка наши»: проверьте, нет ли двойного учёта.');
+    }
+
     const subtotal = round2(lines.reduce(function (a, l) { return a + l.sum; }, 0));
     const discountPct = Math.min(100, Math.max(0, num(order.discountPct)));
     const discount = round2(subtotal * discountPct / 100);

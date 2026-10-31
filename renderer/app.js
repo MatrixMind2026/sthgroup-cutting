@@ -1,14 +1,14 @@
 /* Интерфейс программы расчёта коммерческого распила. */
 (function () {
   'use strict';
-  var P = Core.pricing, IMP = Core.importers, D = Doc;
+  var P = Core.pricing, IMP = Core.importers, MB = Core.materialbase, D = Doc, SM;
   var esc = D.esc, money = D.money;
 
   var STATUSES = [['calc', 'Расчёт'], ['work', 'В работе'], ['done', 'Готов'], ['issued', 'Выдан'], ['cancel', 'Отменён']];
   var statusName = function (k) { var s = STATUSES.find(function (x) { return x[0] === k; }); return s ? s[1] : k; };
 
   var state = {
-    db: null, base: { materials: [], edges: [], hardware: [] }, matInfo: {},
+    db: null, mb: Core.materialbase.emptyBase(false), base: { materials: [], edges: [], hardware: [] }, matInfo: {}, baseDirty: false,
     view: 'orders', orderId: null, tab: 'parts', search: '', statusFilter: '',
     docOpts: { includeParts: true, includeMaps: false }, quotes: {}
   };
@@ -65,6 +65,7 @@
   function closeModal() { $('#modal-root').innerHTML = ''; }
   function openModal(cfg) {
     var fields = (cfg.fields || []).map(function (f) {
+      if (f.type === 'info') return '<div class="info' + (f.full === false ? '' : ' full') + '">' + f.html + '</div>';
       var inner;
       if (f.type === 'select') {
         inner = '<select name="' + f.k + '">' + f.options.map(function (o) {
@@ -72,12 +73,14 @@
         }).join('') + '</select>';
       } else if (f.type === 'textarea') {
         inner = '<textarea name="' + f.k + '" rows="3">' + esc(f.value || '') + '</textarea>';
+      } else if (f.type === 'checkbox') {
+        return '<label class="chk' + (f.full === false ? '' : ' full') + '"><input name="' + f.k + '" type="checkbox"' + (f.value ? ' checked' : '') + '> ' + esc(f.label) + '</label>';
       } else {
         inner = '<input name="' + f.k + '" type="' + (f.type || 'text') + '" value="' + esc(f.value === undefined ? '' : f.value) + '"' + (f.type === 'number' ? ' step="any"' : '') + '>';
       }
-      return '<label class="f">' + esc(f.label) + inner + '</label>';
+      return '<label class="f' + (f.full || f.type === 'textarea' ? ' full' : '') + (f.miss ? ' miss' : '') + '">' + esc(f.label) + inner + '</label>';
     }).join('');
-    $('#modal-root').innerHTML = '<div class="modal-bg"><form class="modal" id="modal-form"><h3>' + esc(cfg.title) + '</h3>' +
+    $('#modal-root').innerHTML = '<div class="modal-bg"><form class="modal' + (cfg.wide ? ' wide' : '') + '" id="modal-form"><h3>' + esc(cfg.title) + '</h3>' +
       (cfg.text ? '<p>' + cfg.text + '</p>' : '') +
       '<div class="fields">' + fields + '</div><div class="row" style="margin-top:16px;justify-content:flex-end">' +
       (cfg.extra || '') +
@@ -85,11 +88,15 @@
       (cfg.noSubmit ? '' : '<button type="submit" class="btn ' + (cfg.danger ? '' : 'primary') + '">' + esc(cfg.submitLabel || 'Сохранить') + '</button>') +
       '</div></form></div>';
     var form = $('#modal-form');
-    var first = form.querySelector('input,select,textarea'); if (first) first.focus();
+    var first = form.querySelector('input:not([type=checkbox]),select,textarea'); if (first) first.focus();
     form.addEventListener('submit', function (ev) {
       ev.preventDefault();
       var vals = {};
-      (cfg.fields || []).forEach(function (f) { vals[f.k] = form.elements[f.k].value; });
+      (cfg.fields || []).forEach(function (f) {
+        if (f.type === 'info') return;
+        var el = form.elements[f.k];
+        vals[f.k] = f.type === 'checkbox' ? el.checked : el.value;
+      });
       var r = cfg.onSubmit ? cfg.onSubmit(vals) : null;
       if (r !== false) closeModal();
     });
@@ -268,8 +275,8 @@
     if (!o) { state.view = 'orders'; return viewOrders(); }
     var q = recalc(o);
     var clients = '<option value="">— клиент не выбран —</option>' + state.db.clients.map(function (c) { return '<option value="' + c.id + '"' + (c.id === o.clientId ? ' selected' : '') + '>' + esc(clientLabel(c)) + '</option>'; }).join('');
-    var tabs = [['parts', 'Детали'], ['calc', 'Расчёт'], ['cut', 'Раскрой'], ['pay', 'Оплаты и файлы']];
-    var body = state.tab === 'parts' ? tabParts(o) : state.tab === 'calc' ? tabCalc(o, q) : state.tab === 'cut' ? tabCut(o, q) : tabPay(o, q);
+    var tabs = [['parts', 'Детали'], ['calc', 'Расчёт'], ['est', 'Смета'], ['cut', 'Раскрой'], ['pay', 'Оплаты и файлы']];
+    var body = state.tab === 'parts' ? tabParts(o) : state.tab === 'calc' ? tabCalc(o, q) : state.tab === 'est' ? SM.estimateTab(o) : state.tab === 'cut' ? tabCut(o, q) : tabPay(o, q);
     return '<div class="row sp"><div class="row"><button class="btn ghost sm" data-act="back">← Заказы</button><h1 style="margin:0">Заказ ' + esc(o.number) + '</h1></div><div class="row"><button class="btn ghost sm" data-act="dup-order">Копия</button><button class="btn danger sm" data-act="del-order">Удалить</button></div></div>' +
       '<div class="row" style="margin-top:12px"><label class="f grow" style="min-width:220px">Название<input data-s="order" data-f="title" value="' + esc(o.title || '') + '"></label>' +
       '<label class="f" style="min-width:230px">Клиент<select data-s="order" data-f="clientId">' + clients + '</select></label>' +
@@ -338,20 +345,6 @@
     });
   }
 
-  // ---------- материалы ----------
-  function viewMaterials() {
-    var b = state.base, mi = state.matInfo;
-    var mats = b.materials.map(function (m) { return '<tr><td><b>' + esc(m.name) + '</b><div class="small muted">' + esc(m.id) + '</div></td><td class="num">' + esc(m.thickness || '') + '</td><td class="num">' + esc(m.sheetW) + '×' + esc(m.sheetH) + '</td><td class="num">' + money(m.servicePerM2) + '</td><td class="num">' + money(m.salePerSheet) + '</td></tr>'; }).join('');
-    var edges = b.edges.map(function (e) { return '<tr><td><b>' + esc(e.name) + '</b><div class="small muted">' + esc(e.id) + '</div></td><td class="num">' + money(e.servicePerM) + '</td><td class="num">' + money(e.salePerM) + '</td></tr>'; }).join('');
-    var hw = (b.hardware || []).map(function (h) { return '<tr><td>' + esc(h.name) + '</td><td>' + esc(h.unit || '') + '</td><td class="num">' + money(h.salePrice) + '</td></tr>'; }).join('');
-    return '<div class="row sp"><h1>База материалов</h1><div class="row"><button class="btn ghost" data-act="mat-reload">Перечитать файл</button><button class="btn ghost" data-act="mat-choose">Выбрать другой файл…</button><button class="btn" data-act="mat-show">Показать файл</button></div></div>' +
-      (mi.error ? '<div class="warns bad">' + esc(mi.error) + '</div>' : '') +
-      '<p class="muted">Файл: <code>' + esc(mi.path || '') + '</code>. Он ведётся отдельно: откройте его в блокноте, измените цены или добавьте материалы и нажмите «Перечитать файл». Программа файл не меняет.</p>' +
-      '<h2>Плитные материалы</h2><div class="tbl-wrap"><table><thead><tr><th>Материал</th><th class="num">Толщина</th><th class="num">Лист, мм</th><th class="num">Распил за м², ₽</th><th class="num">Лист для продажи, ₽</th></tr></thead><tbody>' + (mats || '<tr><td colspan="5" class="empty">Пусто</td></tr>') + '</tbody></table></div>' +
-      '<h2>Кромка</h2><div class="tbl-wrap"><table><thead><tr><th>Кромка</th><th class="num">Кромление за м.п., ₽</th><th class="num">Продажа за м.п., ₽</th></tr></thead><tbody>' + (edges || '<tr><td colspan="3" class="empty">Пусто</td></tr>') + '</tbody></table></div>' +
-      '<h2>Фурнитура</h2><div class="tbl-wrap"><table><thead><tr><th>Позиция</th><th>Ед.</th><th class="num">Цена, ₽</th></tr></thead><tbody>' + (hw || '<tr><td colspan="3" class="empty">Пусто</td></tr>') + '</tbody></table></div>';
-  }
-
   // ---------- настройки ----------
   function inp(path, label, val, type) {
     return '<label class="f">' + label + '<input data-s="setting" data-path="' + path + '" data-type="' + (type || 'text') + '" value="' + esc(val === undefined ? '' : val) + '"' + (type === 'num' ? ' inputmode="decimal"' : '') + '></label>';
@@ -385,7 +378,7 @@
     else if (state.view === 'order') html = viewOrder();
     else if (state.view === 'clients') html = viewClients();
     else if (state.view === 'offcuts') html = viewOffcuts();
-    else if (state.view === 'materials') html = viewMaterials();
+    else if (state.view === 'materials') html = SM.view();
     else html = viewSettings();
     $('#view').innerHTML = html;
   }
@@ -428,6 +421,8 @@
     } else if (s === 'extra') {
       var xi = +t.closest('tr').dataset.xi;
       if (o && o.extraLines[xi]) { o.extraLines[xi][t.dataset.f] = val; afterOrderChange(o); }
+    } else if (s === 'est') {
+      if (o) SM.onEstEdit(t, o);
     } else if (s === 'docopt') {
       state.docOpts[t.dataset.f] = val;
     } else if (s === 'setting') {
@@ -437,8 +432,9 @@
       scheduleSave();
     }
   }
-  document.addEventListener('input', onEdit);
+  document.addEventListener('input', function (ev) { if (SM.onInput(ev)) return; onEdit(ev); });
   document.addEventListener('change', function (ev) {
+    if (SM.onInput(ev)) return;
     onEdit(ev);
     var t = ev.target;
     if (t.id === 'statusFilter') { state.statusFilter = t.value; render(); }
@@ -502,6 +498,11 @@
     if (state.tab === 'pay') render();
   }
 
+  SM = SmetaUI.create({
+    state: state, esc: esc, money: money, openModal: openModal, closeModal: closeModal, confirmBox: confirmBox, toast: toast,
+    render: render, getOrder: getOrder, getClient: getClient, afterOrderChange: afterOrderChange, touch: touch, recalc: recalc, saveBase: saveBase
+  });
+
   var actions = {
     'modal-cancel': function () { closeModal(); },
     'new-order': function () { newOrderModal(); },
@@ -562,17 +563,13 @@
       scheduleSave(); render();
     },
     'del-offcut': function (el) { state.db.offcuts = state.db.offcuts.filter(function (x) { return x.id !== el.dataset.id; }); scheduleSave(); render(); },
-    'mat-reload': async function () { await loadBase(); render(); toast(state.matInfo.error ? 'Файл прочитан с ошибкой' : 'База материалов перечитана'); },
-    'mat-choose': async function () {
-      var r = await window.api.chooseMaterials(); if (!r) return;
-      state.db.settings.materialsPath = r.path; scheduleSave(); applyBase(r); render();
-    },
     'mat-show': function () { window.api.showInFolder(state.matInfo.path); },
     'open-data': function () { window.api.openDataDir(); }
   };
+  Object.assign(actions, SM.actions);
   document.addEventListener('click', function (ev) {
     var nav = ev.target.closest('#nav button');
-    if (nav) { state.view = nav.dataset.view; render(); return; }
+    if (nav) { state.view = nav.dataset.view; if (state.baseDirty && state.view !== 'materials') { state.baseDirty = false; state.db.orders.forEach(function (o) { recalc(o); }); } render(); return; }
     var el = ev.target.closest('[data-act]');
     if (!el) return;
     var fn = actions[el.dataset.act];
@@ -580,16 +577,32 @@
   });
 
   // ---------- запуск ----------
-  function applyBase(r) {
-    state.matInfo = { path: r.path, error: r.ok ? '' : r.error };
-    var d = r.data || {};
-    state.base = { materials: d.materials || [], edges: d.edges || [], hardware: d.hardware || [] };
+  // ---------- база материалов («Смета») ----------
+  var mbTimer = null;
+  function rebuildLegacy() {
+    state.base = MB.toLegacy(state.mb);
     window.__base = state.base;
-    state.db.orders.forEach(function (o) { recalc(o); });
+  }
+  function saveBase() {
+    rebuildLegacy(); state.baseDirty = true;
+    clearTimeout(mbTimer);
+    mbTimer = setTimeout(function () {
+      window.api.saveSmeta(state.mb).then(function (r) { if (r && !r.ok) toast('Не удалось сохранить базу материалов: ' + r.error, true); });
+    }, 500);
   }
   async function loadBase() {
-    var r = await window.api.loadMaterials(state.db.settings.materialsPath || '');
-    applyBase(r);
+    var r = await window.api.loadSmeta();
+    state.matInfo = { path: r.path, error: r.error || '' };
+    if (r.data && Array.isArray(r.data.groups) && Array.isArray(r.data.materials)) state.mb = r.data;
+    else {
+      // первый запуск: переносим прежнюю базу materials.json в «Смету»
+      var lr = await window.api.loadMaterials(state.db.settings.materialsPath || '');
+      state.mb = MB.fromLegacy(lr.data);
+      if (!lr.ok && !state.matInfo.error) state.matInfo.error = lr.error;
+      await window.api.saveSmeta(state.mb);
+    }
+    rebuildLegacy();
+    state.db.orders.forEach(function (o) { recalc(o); });
   }
 
   async function init() {

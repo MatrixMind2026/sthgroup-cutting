@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, shell, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell, Menu, net } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
@@ -9,6 +9,7 @@ let win = null;
 const userDir = () => app.getPath('userData');
 const dbPath = () => path.join(userDir(), 'database.json');
 const defaultMaterialsPath = () => path.join(userDir(), 'materials.json');
+const smetaPath = () => path.join(userDir(), 'smeta-base.json');
 
 function writeAtomic(file, text) {
   fs.mkdirSync(path.dirname(file), { recursive: true });
@@ -112,6 +113,92 @@ ipcMain.handle('db:save', (_e, db) => {
     }
     return { ok: true };
   } catch (e) { return { ok: false, error: e.message }; }
+});
+
+
+// ---------- «Смета»: база материалов ----------
+function decodeBuffer(buf, hint) {
+  let enc = hint || '';
+  if (!enc) {
+    if (buf[0] === 0xEF && buf[1] === 0xBB && buf[2] === 0xBF) enc = 'utf-8';
+    else if (buf[0] === 0xFF && buf[1] === 0xFE) enc = 'utf-16le';
+    else {
+      const head = Buffer.from(buf.subarray(0, 300)).toString('latin1');
+      const m = head.match(/encoding\s*=\s*["']([\w-]+)["']/i);
+      if (m) enc = m[1];
+    }
+  }
+  if (!enc) { try { return new TextDecoder('utf-8', { fatal: true }).decode(buf); } catch (_) { enc = 'windows-1251'; } }
+  try { return new TextDecoder(enc).decode(buf); } catch (_) { return new TextDecoder('utf-8').decode(buf); }
+}
+
+ipcMain.handle('smeta:load', () => {
+  const f = smetaPath();
+  try {
+    if (!fs.existsSync(f)) return { path: f, data: null };
+    return { path: f, data: JSON.parse(fs.readFileSync(f, 'utf8')) };
+  } catch (e) {
+    try { fs.copyFileSync(f, f + '.broken-' + Date.now()); } catch (_) {}
+    return { path: f, data: null, error: 'Файл базы «Смета» был повреждён, копия сохранена рядом. Взята база из materials.json.' };
+  }
+});
+
+ipcMain.handle('smeta:save', (_e, data) => {
+  try {
+    writeAtomic(smetaPath(), JSON.stringify(data));
+    const day = new Date().toISOString().slice(0, 10);
+    const bdir = path.join(userDir(), 'backups');
+    const bfile = path.join(bdir, 'smeta-' + day + '.json');
+    if (!fs.existsSync(bfile)) {
+      fs.mkdirSync(bdir, { recursive: true });
+      fs.copyFileSync(smetaPath(), bfile);
+      const files = fs.readdirSync(bdir).filter(f => f.startsWith('smeta-')).sort();
+      files.slice(0, Math.max(0, files.length - 30)).forEach(f => { try { fs.unlinkSync(path.join(bdir, f)); } catch (_) {} });
+    }
+    return { ok: true };
+  } catch (e) { return { ok: false, error: e.message }; }
+});
+
+ipcMain.handle('smeta:pick', async () => {
+  const r = await dialog.showOpenDialog(win, { title: 'Файл с материалами или ценами', properties: ['openFile'],
+    filters: [{ name: 'XML и CSV', extensions: ['xml', 'csv', 'txt', 'tsv'] }, { name: 'Все файлы', extensions: ['*'] }] });
+  if (r.canceled || !r.filePaths.length) return null;
+  const p = r.filePaths[0];
+  try {
+    const buf = fs.readFileSync(p);
+    if (buf.length > 60 * 1024 * 1024) return { error: 'Файл больше 60 МБ' };
+    return { path: p, name: path.basename(p), text: decodeBuffer(buf) };
+  } catch (e) { return { error: 'Не удалось прочитать файл: ' + e.message }; }
+});
+
+ipcMain.handle('smeta:export', async (_e, o) => {
+  const ext = o.ext === 'csv' ? 'csv' : 'xml';
+  const r = await dialog.showSaveDialog(win, { title: 'Экспорт базы материалов', defaultPath: path.join(app.getPath('documents'), o.name + '.' + ext),
+    filters: [{ name: ext.toUpperCase(), extensions: [ext] }] });
+  if (r.canceled || !r.filePath) return null;
+  try { fs.writeFileSync(r.filePath, o.content, 'utf8'); return { path: r.filePath }; }
+  catch (e) { return { error: e.message }; }
+});
+
+ipcMain.handle('link:fetch', async (_e, url) => {
+  try {
+    const u = new URL(String(url).trim());
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return { ok: false, error: 'Нужна ссылка http или https' };
+    if (/^(localhost|127\.|10\.|192\.168\.|169\.254\.|0\.0\.0\.0|\[)/i.test(u.hostname) || /^172\.(1[6-9]|2\d|3[01])\./.test(u.hostname)) return { ok: false, error: 'Локальные адреса не открываются' };
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), 20000);
+    const res = await net.fetch(u.toString(), { signal: ctl.signal, redirect: 'follow', headers: {
+      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
+      'Accept': 'text/html,application/xhtml+xml', 'Accept-Language': 'ru-RU,ru;q=0.9' } });
+    const buf = Buffer.from(await res.arrayBuffer());
+    clearTimeout(timer);
+    if (!res.ok) return { ok: false, error: 'Сайт ответил кодом ' + res.status + (res.status === 403 || res.status === 401 ? ' (доступ закрыт для программ)' : '') };
+    let cs = ((res.headers.get('content-type') || '').match(/charset=([\w-]+)/i) || [])[1] || '';
+    if (!cs) { const m = buf.subarray(0, 4096).toString('latin1').match(/<meta[^>]+charset\s*=\s*["']?([\w-]+)/i); cs = m ? m[1] : ''; }
+    return { ok: true, html: decodeBuffer(buf.subarray(0, 4 * 1024 * 1024), cs || 'utf-8'), url: res.url || u.toString() };
+  } catch (e) {
+    return { ok: false, error: e.name === 'AbortError' ? 'Сайт не ответил за 20 секунд' : 'Не удалось открыть страницу: ' + e.message };
+  }
 });
 
 ipcMain.handle('materials:load', (_e, customPath) => loadMaterials(customPath));

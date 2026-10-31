@@ -83,3 +83,30 @@ tr.click:hover td { background: #faf6f0; }
 .savestate { font-size: 12px; color: var(--muted); }
 .empty { padding: 40px; text-align: center; color: var(--muted); }
 .kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px 14px; }
+
+/* ---- Смета ---- */
+.modal.wide { width: 760px; }
+.modal.wide .fields { grid-template-columns: 1fr 1fr; gap: 10px 14px; }
+.modal .fields .full { grid-column: 1 / -1; }
+label.f.miss input, label.f.miss textarea, label.f.miss select { background: #fff6cf; border-color: #e0b84a; }
+.modal .info { font-size: 13px; }
+table.mini { width: 100%; margin-top: 6px; font-size: 12px; }
+table.mini th, table.mini td { padding: 3px 6px; }
+.sm-layout { display: grid; grid-template-columns: 290px 1fr; gap: 16px; align-items: start; margin-top: 12px; }
+.sm-tree { position: sticky; top: 0; max-height: calc(100vh - 120px); overflow: auto; }
+.tr-item { display: flex; align-items: center; gap: 4px; padding: 5px 6px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.tr-item:hover { background: #f1eee7; }
+.tr-item.sel { background: #fde5d3; font-weight: 600; }
+.tr-item .tg { width: 16px; text-align: center; color: var(--muted); flex-shrink: 0; }
+.tr-item .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-item .cnt { color: var(--muted); font-size: 11px; }
+.bulk { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; background: #fff0e0; border: 1px solid #f0d2b0; border-radius: 8px; padding: 6px 10px; margin-bottom: 8px; }
+tr.nostock td { opacity: .6; }
+td.click { cursor: pointer; }
+td.click:hover b { color: var(--orange-d); }
+.pick-list { max-height: 52vh; overflow: auto; margin-top: 8px; border: 1px solid var(--line); border-radius: 8px; }
+.pick { display: grid; grid-template-columns: 1fr auto auto; gap: 12px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line); }
+.dups { max-height: 46vh; overflow: auto; margin-top: 8px; }
+.dup { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin-bottom: 6px; font-size: 13px; }
+#est-totals dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; max-width: 420px; }
+#est-totals dt { color: var(--muted); } #est-totals dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }

@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <title>STHGroup, иконка</title>
+  <defs>
+    <mask id="hole" maskUnits="userSpaceOnUse" x="0" y="0" width="72" height="72">
+      <rect x="0" y="0" width="72" height="72" fill="#fff"/>
+      <circle cx="19" cy="36" r="4.5" fill="#000"/>
+    </mask>
+  </defs>
+  <rect x="0" y="0" width="256" height="256" rx="56" fill="#23262B"/>
+  <g transform="translate(48.8,48.8) scale(2.2)">
+    <rect x="0" y="0" width="38" height="72" rx="3" fill="#F3F1EC" mask="url(#hole)"/>
+    <rect x="41" y="0" width="31" height="40" rx="3" fill="#F26B1D"/>
+    <rect x="41" y="43" width="31" height="29" rx="3" fill="#9AA0A6"/>
+  </g>
+</svg>

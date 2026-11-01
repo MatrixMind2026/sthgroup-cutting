@@ -79,6 +79,17 @@ t('toOrder создаёт недостающие материалы и не ду
   assert.ok(r2.items.length >= 3); // лист, кромка, фурнитура
 });
 
+t('сцена для 3D: у каждой детали замкнутый контур, матрица и связь со строкой заказа', () => {
+  const parsed = B3D.parse(sample());
+  const sc = parsed.scene;
+  assert.strictEqual(sc.panels.length, parsed.parts.reduce((a, p) => a + p.qty, 0));
+  sc.panels.forEach((p) => { assert.ok(p.loops.length >= 1 && p.loops[0].length >= 6); assert.strictEqual(p.M.length, 12); assert.ok(p.T > 0); });
+  assert.strictEqual(sc.hardware.length, 2);
+  const mb = MB.fromLegacy({}); const r = B3D.toOrder(parsed, mb, MB);
+  const ids = new Set(r.parts.map((p) => p.id));
+  assert.ok(r.model && r.model.panels.every((p) => ids.has(p.partId)));
+});
+
 t('не-b3d файл отклоняется', () => {
   assert.throws(() => B3D.parse(Buffer.from('hello world, not b3d')), /b3d/);
 });

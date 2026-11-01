@@ -122,3 +122,23 @@ td.click:hover b { color: var(--orange-d); }
 .modal input, .modal select, .modal textarea { box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; }
 .modal input[type=checkbox] { width: auto; }
 @media (max-width: 1100px) { .sm-layout { grid-template-columns: 1fr; } .sm-tree { position: static; max-height: 260px; } }
+
+/* ---- модель 3D ---- */
+.mview { display: grid; grid-template-columns: 250px 1fr 270px; gap: 14px; margin-top: 4px; height: calc(100vh - 230px); min-height: 420px; }
+.mtree { overflow: auto; padding: 10px; }
+.mtree details { margin-bottom: 6px; }
+.mtree summary { cursor: pointer; font-weight: 600; font-size: 13px; padding: 3px 0; }
+.mtree-row { display: flex; gap: 6px; align-items: center; padding: 3px 6px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+.mtree-row:hover { background: rgba(0,0,0,.05); }
+.mtree-row.on { background: #fde3d0; }
+.mtree-row.hid { opacity: .45; }
+.mtree-row .icon { padding: 0 2px; font-size: 11px; }
+.mcenter { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.mtools { flex-wrap: wrap; gap: 6px; }
+.m3d { flex: 1; min-height: 300px; border-radius: 10px; overflow: hidden; border: 1px solid var(--line, #ddd); background: #f3f1ec; }
+.m3d canvas { display: block; }
+.mprops { overflow: auto; }
+.mprops td { padding: 3px 4px; vertical-align: top; font-size: 13px; }
+tr.flash td { animation: flash 1.6s; }
+@keyframes flash { from { background: #fde3d0; } to { background: transparent; } }
+@media (max-width: 1100px) { .mview { grid-template-columns: 200px 1fr; } .mprops { grid-column: 1 / -1; max-height: 240px; } .mview { height: auto; } .m3d { height: 460px; } }

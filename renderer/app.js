@@ -221,6 +221,71 @@
       '<button class="btn primary" data-act="make-doc" data-kind="quote">КП в PDF</button><button class="btn" data-act="make-doc" data-kind="invoice">Счёт в PDF</button></div></div>';
   }
 
+  // ---------- модель 3D ----------
+  function modelPanels(o) {
+    var out = [];
+    (o.models || []).forEach(function (md, mi) { (md.panels || []).forEach(function (p, pi) { if (p.loops && p.loops.length) out.push({ mi: mi, pi: pi, p: p }); }); });
+    return out;
+  }
+  function tabModel(o) {
+    var list = modelPanels(o);
+    if (!list.length) return '<div class="card empty">Модели нет. На вкладке «Детали» нажмите «Импорт» и выберите файл .b3d — здесь появится 3D-вид.' +
+      ((o.files || []).some(function (f) { return /\.b3d$/i.test(f.name || ''); }) ? '<br><span class="small muted">Модель этого заказа загружена до версии 0.6.1 — загрузите .b3d ещё раз, чтобы увидеть 3D.</span></div>' : '</div>');
+    var byMat = {}, order = [];
+    list.forEach(function (x, i) { var k = x.p.mat || '— без материала —'; if (!byMat[k]) { byMat[k] = []; order.push(k); } byMat[k].push(i); });
+    var sel = state.modelSel === undefined ? -1 : state.modelSel;
+    var tree = order.map(function (k) {
+      var open = state.modelOpen && state.modelOpen[k] === false ? '' : ' open';
+      return '<details' + open + ' data-mat="' + esc(k) + '"><summary>' + esc(k) + ' <span class="muted small">' + byMat[k].length + '</span></summary>' +
+        byMat[k].map(function (i) {
+          var p = list[i].p, hid = window.Model3D && Model3D.isHidden(i);
+          return '<div class="mtree-row' + (i === sel ? ' on' : '') + (hid ? ' hid' : '') + '" data-act="mdl-sel" data-i="' + i + '"><button class="icon" data-act="mdl-hide" data-i="' + i + '" title="Скрыть/показать">' + (hid ? '◌' : '●') + '</button>' + esc(p.name || 'Деталь') + '</div>';
+        }).join('') + '</details>';
+    }).join('');
+    var hwN = (o.models || []).reduce(function (a, m) { return a + (m.hardware || []).length; }, 0);
+    var ex = window.Model3D ? Model3D.getExplode() : 0;
+    return '<div class="mview">' +
+      '<div class="mtree card">' + (o.models.length > 1 ? '<div class="muted small" style="margin-bottom:6px">Моделей: ' + o.models.length + '</div>' : '') + tree + '</div>' +
+      '<div class="mcenter"><div class="mtools row">' +
+        '<button class="btn ghost sm" data-act="mdl-view" data-v="iso">Изометрия</button><button class="btn ghost sm" data-act="mdl-view" data-v="front">Спереди</button><button class="btn ghost sm" data-act="mdl-view" data-v="top">Сверху</button><button class="btn ghost sm" data-act="mdl-view" data-v="side">Сбоку</button>' +
+        '<label class="small row" style="gap:6px">Разнести <input type="range" id="mdlExplode" min="0" max="100" value="' + Math.round(ex * 100) + '" style="width:110px"></label>' +
+        '<label class="chk small"><input type="checkbox" id="mdlXray"' + (window.Model3D && Model3D.getXray() ? ' checked' : '') + '> Прозрачность</label>' +
+        (hwN ? '<label class="chk small"><input type="checkbox" id="mdlHw"' + (window.Model3D && Model3D.getHardware() ? ' checked' : '') + '> Фурнитура (' + hwN + ')</label>' : '') +
+        '<button class="btn ghost sm" data-act="mdl-showall">Показать все</button></div>' +
+        '<div id="m3d" class="m3d"></div><div class="muted small">Левая кнопка — вращать, правая или Shift — сдвигать, колесо — масштаб, щелчок — выбрать деталь.</div></div>' +
+      '<div class="mprops card" id="mprops">' + modelProps(o, sel) + '</div></div>';
+  }
+  function modelProps(o, i) {
+    var list = modelPanels(o), x = list[i];
+    if (!x) return '<div class="muted small">Выберите деталь в списке слева или щёлкните по ней в 3D.</div>';
+    var p = x.p, part = (o.parts || []).find(function (q) { return q.id === p.partId; });
+    var en = function (id) { if (!id) return '—'; var e = (state.base.edges || []).find(function (z) { return z.id === id; }); return e ? e.name : id; };
+    var rows = [['Деталь', p.name || '—'], ['Материал', p.mat || '—']];
+    if (part) {
+      rows.push(['Размер', part.l + ' × ' + part.w + ' × ' + (p.T || '') + ' мм'], ['В заказе, шт.', part.qty]);
+      rows.push(['Кромка длина 1', en(part.edges && part.edges.l1)], ['Кромка длина 2', en(part.edges && part.edges.l2)], ['Кромка ширина 1', en(part.edges && part.edges.w1)], ['Кромка ширина 2', en(part.edges && part.edges.w2)]);
+      rows.push(['Отверстия в пласть', (P.num(part.holesFaceBlind) + P.num(part.holesFaceThrough)) || 0], ['Отверстия в торец', P.num(part.holesEdge) || 0], ['Фрезеровка, м', P.num(part.millM) || 0]);
+    } else rows.push(['Толщина', (p.T || '') + ' мм'], ['', '<span class="muted small">Строка детали удалена из заказа</span>']);
+    if (p.loops.length > 1) rows.push(['Вырезы', p.loops.length - 1]);
+    return '<h3 style="margin-top:0">Свойства</h3><table class="mini"><tbody>' + rows.map(function (r) { return '<tr><td class="muted">' + esc(r[0]) + '</td><td>' + (String(r[1]).indexOf('<span') === 0 ? r[1] : esc(r[1])) + '</td></tr>'; }).join('') + '</tbody></table>' +
+      '<div class="row" style="margin-top:10px"><button class="btn ghost sm" data-act="mdl-focus" data-i="' + i + '">Приблизить</button>' + (part ? '<button class="btn ghost sm" data-act="mdl-topart" data-pid="' + esc(part.id) + '">К строке детали</button>' : '') + '</div>';
+  }
+  function mountModel() {
+    var o = getOrder(state.orderId), el = document.getElementById('m3d');
+    if (!o || !el || !window.Model3D) return;
+    var key = (o.models || []).map(function (m) { return m.id; }).join('|') + ':' + o.id;
+    Model3D.mount(el, o.models || [], key, function (i) { modelSelect(o, i, false); });
+    if (state.modelSel >= 0) Model3D.select(state.modelSel);
+  }
+  function modelSelect(o, i, fromTree) {
+    state.modelSel = i;
+    if (fromTree) Model3D.select(i);
+    document.querySelectorAll('.mtree-row').forEach(function (r) { r.classList.toggle('on', +r.dataset.i === i); });
+    var pr = document.getElementById('mprops'); if (pr) pr.innerHTML = modelProps(o, i);
+    var row = document.querySelector('.mtree-row[data-i="' + i + '"]');
+    if (row && !fromTree) { var d = row.closest('details'); if (d) d.open = true; row.scrollIntoView({ block: 'nearest' }); }
+  }
+
   function tabCut(o, q) {
     if (!q.cutting.length) return (q.warnings.length ? '<div class="warns bad">' + q.warnings.map(esc).join('<br>') + '</div>' : '') + '<div class="card empty">Нет деталей для раскроя.</div>';
     var no = D.partNumbers(o);
@@ -276,15 +341,15 @@
     if (!o) { state.view = 'orders'; return viewOrders(); }
     var q = recalc(o);
     var clients = '<option value="">— клиент не выбран —</option>' + state.db.clients.map(function (c) { return '<option value="' + c.id + '"' + (c.id === o.clientId ? ' selected' : '') + '>' + esc(clientLabel(c)) + '</option>'; }).join('');
-    var tabs = [['parts', 'Детали'], ['calc', 'Расчёт'], ['est', 'Смета'], ['cut', 'Раскрой'], ['pay', 'Оплаты и файлы']];
-    var body = state.tab === 'parts' ? tabParts(o) : state.tab === 'calc' ? tabCalc(o, q) : state.tab === 'est' ? SM.estimateTab(o) : state.tab === 'cut' ? tabCut(o, q) : tabPay(o, q);
+    var tabs = [['parts', 'Детали'], ['model', 'Модель'], ['calc', 'Расчёт'], ['est', 'Смета'], ['cut', 'Раскрой'], ['pay', 'Оплаты и файлы']];
+    var body = state.tab === 'parts' ? tabParts(o) : state.tab === 'model' ? tabModel(o) : state.tab === 'calc' ? tabCalc(o, q) : state.tab === 'est' ? SM.estimateTab(o) : state.tab === 'cut' ? tabCut(o, q) : tabPay(o, q);
     return '<div class="row sp"><div class="row"><button class="btn ghost sm" data-act="back">← Заказы</button><h1 style="margin:0">Заказ ' + esc(o.number) + '</h1></div><div class="row"><button class="btn ghost sm" data-act="dup-order">Копия</button><button class="btn danger sm" data-act="del-order">Удалить</button></div></div>' +
       '<div class="row" style="margin-top:12px"><label class="f grow" style="min-width:220px">Название<input data-s="order" data-f="title" value="' + esc(o.title || '') + '"></label>' +
       '<label class="f" style="min-width:230px">Клиент<select data-s="order" data-f="clientId">' + clients + '</select></label>' +
       '<button class="btn ghost sm" style="margin-top:16px" data-act="new-client-order">+ Новый клиент</button>' +
       '<label class="f">Статус<select data-s="order" data-f="status">' + STATUSES.map(function (s) { return '<option value="' + s[0] + '"' + (o.status === s[0] ? ' selected' : '') + '>' + s[1] + '</option>'; }).join('') + '</select></label></div>' +
       '<div class="tabs">' + tabs.map(function (t) { return '<button data-act="tab" data-tab="' + t[0] + '" class="' + (state.tab === t[0] ? 'active' : '') + '">' + t[1] + '</button>'; }).join('') + '</div>' +
-      '<div class="layout"><div>' + body + '</div><div id="summary">' + summaryHtml(o, q) + '</div></div>';
+      (state.tab === 'model' ? body : '<div class="layout"><div>' + body + '</div><div id="summary">' + summaryHtml(o, q) + '</div></div>');
   }
 
   // ---------- клиенты ----------
@@ -424,6 +489,7 @@
     else if (state.view === 'materials') html = SM.view();
     else html = viewSettings();
     $('#view').innerHTML = html;
+    if (state.view === 'order' && state.tab === 'model') mountModel();
   }
 
   function afterOrderChange(o, opts) {
@@ -483,8 +549,11 @@
     onEdit(ev);
     var t = ev.target;
     if (t.id === 'statusFilter') { state.statusFilter = t.value; render(); }
+    if (t.id === 'mdlXray') Model3D.setXray(t.checked);
+    if (t.id === 'mdlHw') Model3D.setHardware(t.checked);
   });
   document.addEventListener('input', function (ev) {
+    if (ev.target.id === 'mdlExplode') { Model3D.setExplode(+ev.target.value / 100); return; }
     if (ev.target.id === 'search') {
       state.search = ev.target.value;
       var pos = ev.target.selectionStart;
@@ -536,6 +605,7 @@
     var res = B3D.toOrder(r.parsed, state.mb, MB);
     saveBase();
     res.parts.forEach(function (p) { o.parts.push(p); });
+    if (res.model) { res.model.file = r.path; o.models = (o.models || []).filter(function (m) { return m.file !== r.path; }); o.models.push(res.model); state.modelSel = -1; }
     if (!o.estimate) o.estimate = { inTotal: false, items: [] };
     if (!o.estimate.items) o.estimate.items = [];
     res.items.forEach(function (x) { o.estimate.items.push(x); });
@@ -572,7 +642,13 @@
     'new-order': function () { newOrderModal(); },
     'open-order': function (el) { state.orderId = el.dataset.id; state.view = 'order'; state.tab = 'parts'; render(); },
     'back': function () { state.view = 'orders'; render(); },
-    'tab': function (el) { state.tab = el.dataset.tab; render(); },
+    'tab': function (el) { state.tab = el.dataset.tab; state.modelSel = -1; render(); },
+    'mdl-sel': function (el, ev) { if (ev && ev.target.closest('[data-act="mdl-hide"]')) return; modelSelect(getOrder(state.orderId), +el.dataset.i, true); },
+    'mdl-hide': function (el) { var i = +el.dataset.i, h = !Model3D.isHidden(i); Model3D.hide(i, h); var r = el.closest('.mtree-row'); r.classList.toggle('hid', h); el.textContent = h ? '◌' : '●'; },
+    'mdl-showall': function () { Model3D.showAll(); document.querySelectorAll('.mtree-row').forEach(function (r) { r.classList.remove('hid'); var b = r.querySelector('button'); if (b) b.textContent = '●'; }); },
+    'mdl-view': function (el) { Model3D.view(el.dataset.v); },
+    'mdl-focus': function (el) { Model3D.focus(+el.dataset.i); },
+    'mdl-topart': function (el) { state.tab = 'parts'; render(); var r = document.querySelector('tr[data-pid="' + el.dataset.pid + '"]'); if (r) { r.scrollIntoView({ block: 'center' }); r.classList.add('flash'); } },
     'add-part': function () {
       var o = getOrder(state.orderId), last = o.parts[o.parts.length - 1];
       o.parts.push({ id: uid('p'), name: '', materialId: last ? last.materialId : ((state.base.materials[0] || {}).id || ''), l: '', w: '', qty: 1, grain: false, edges: {}, holesFaceBlind: '', holesFaceThrough: '', holesEdge: '', millM: '' });
@@ -714,6 +790,6 @@
     if (state.matInfo.error) toast(state.matInfo.error, true);
     render();
   }
-  window.__app = { state: state, render: render, actions: actions }; // для отладки и проверок
+  window.__app = { state: state, render: render, actions: actions, importB3d: importB3d }; // для отладки и проверок
   init();
 })();

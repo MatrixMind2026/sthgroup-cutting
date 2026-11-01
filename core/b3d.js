@@ -118,6 +118,35 @@
     return segs;
   }
   function rnd(x) { return Math.round(x * 10) / 10; }
+  /** Собирает отрезки контура в замкнутые петли по совпадению концов (порядок и направление отрезков в файле произвольные). */
+  function chainLoops(segs, r1) {
+    const used = new Array(segs.length).fill(false), loops = [], tol = 0.05;
+    const near = function (ax, ay, bx, by) { return Math.abs(ax - bx) < tol && Math.abs(ay - by) < tol; };
+    for (let i = 0; i < segs.length; i++) {
+      if (used[i]) continue;
+      used[i] = true;
+      const sx = segs[i].x1, sy = segs[i].y1; let ex = segs[i].x2, ey = segs[i].y2;
+      const pts = [r1(sx), r1(sy), r1(ex), r1(ey)];
+      for (let guard = 0; guard < segs.length && !near(ex, ey, sx, sy); guard++) {
+        let found = -1, rev = false;
+        for (let j = 0; j < segs.length; j++) {
+          if (used[j]) continue;
+          if (near(segs[j].x1, segs[j].y1, ex, ey)) { found = j; break; }
+          if (near(segs[j].x2, segs[j].y2, ex, ey)) { found = j; rev = true; break; }
+        }
+        if (found < 0) break;
+        used[found] = true;
+        ex = rev ? segs[found].x1 : segs[found].x2; ey = rev ? segs[found].y1 : segs[found].y2;
+        pts.push(r1(ex), r1(ey));
+      }
+      if (near(ex, ey, sx, sy)) pts.splice(pts.length - 2, 2);
+      if (pts.length >= 6) loops.push(pts);
+    }
+    // внешняя петля — с наибольшей площадью, первой
+    const area = function (l) { let a = 0; for (let k = 0; k < l.length; k += 2) { const n = (k + 2) % l.length; a += l[k] * l[n + 1] - l[n] * l[k + 1]; } return Math.abs(a / 2); };
+    loops.sort(function (a, b) { return area(b) - area(a); });
+    return loops;
+  }
   function clean(s) { return String(s || '').replace(/\r/g, ' ').replace(/\s+/g, ' ').trim(); }
 
   /** Разбор модели. Возвращает { name, parts[], hardware[], warnings[] }. */
@@ -219,6 +248,7 @@
       if (!part.material) warnings.push('У детали «' + part.name + '» не указан материал');
       const key = JSON.stringify([part.name, part.matRaw, part.l, part.w, part.grain, edges, part.holesFaceBlind, part.holesFaceThrough, part.holesEdge, part.millM]);
       if (rows.has(key)) rows.get(key).qty++; else rows.set(key, part);
+      p.key = key;
     });
 
     // фурнитура: верхний уровень (вложенные в сборки петель/направляющих не считаем отдельно)
@@ -233,7 +263,30 @@
       cur.qty++; hw.set(nm, cur);
     });
 
+    // сцена для 3D-просмотра: контуры (петли), толщина, матрица в мире; фурнитура — точками
+    const keys = Array.from(rows.keys());
+    const r1 = function (v) { return Math.round(v * 10) / 10; }, r6 = function (v) { return Math.round(v * 1e6) / 1e6; };
+    const scene = {
+      panels: panels.map(function (p) {
+        const loops = chainLoops(p.segs, r1);
+        const W = p.W;
+        return {
+          name: clean(val(p.o, 'Name', '')), mat: clean(String(val(p.o, 'Mat', '')).split('\r')[0]), T: p.T,
+          M: [W.R[0][0], W.R[0][1], W.R[0][2], W.R[1][0], W.R[1][1], W.R[1][2], W.R[2][0], W.R[2][1], W.R[2][2]].map(r6).concat(W.t.map(r1)),
+          loops: loops.filter(function (l) { return l.length >= 6; }), row: keys.indexOf(p.key)
+        };
+      }),
+      hardware: []
+    };
+    objs.forEach(function (it) {
+      const t = val(it.o, 'Type', 0);
+      if ([3001, 4001, 4004].indexOf(t) < 0 || it.anc.indexOf(4001) >= 0 || it.anc.indexOf(4004) >= 0) return;
+      const nm = clean(String(val(it.o, 'Name', '')).split('\r')[0]); if (!nm || SKIP.test(nm)) return;
+      scene.hardware.push({ name: nm, p: it.W.t.map(r1) });
+    });
+
     return {
+      scene: scene,
       name: name, parts: Array.from(rows.values()), hardware: Array.from(hw.values()), warnings: warnings,
       stats: { panels: panels.length, holes: holesTotal, holesMissed: holesMiss }
     };
@@ -314,7 +367,13 @@
       const m = ensure(mb, MB, ix, 'hardware', h.name, h.code, { unit: 'шт', note: 'Создано при загрузке .b3d' }, created);
       const it = MB.estimateItemFromMaterial(mb, m, h.qty); it.source = 'b3d'; items.push(it);
     });
-    return { name: parsed.name, parts: parts, items: items, created: Array.from(new Set(created)), warnings: warnings };
+    let model = null;
+    if (parsed.scene) {
+      model = { id: MB.uid('mdl'), name: parsed.name || '', panels: parsed.scene.panels.map(function (sp) {
+        const o = Object.assign({}, sp); o.partId = parts[sp.row] ? parts[sp.row].id : ''; delete o.row; return o;
+      }), hardware: parsed.scene.hardware };
+    }
+    return { name: parsed.name, parts: parts, items: items, created: Array.from(new Set(created)), warnings: warnings, model: model };
   }
   function num(x) { const n = Number(x); return isFinite(n) ? n : 0; }
 

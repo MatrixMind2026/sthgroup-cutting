@@ -1,6 +1,6 @@
 {
   "name": "sthgroup-cutting",
-  "version": "0.6.0",
+  "version": "0.6.1",
   "description": "Расчёт коммерческого распила для заказчиков (STHGroup)",
   "main": "main.js",
   "private": true,

@@ -483,8 +483,19 @@
    * Повторяющиеся артикулы не склеиваются: в Базисе они бывают у разных позиций.
    */
   function importBazis(b, text, opts) {
+    text = String(text).replace(/^\uFEFF/, '');
+    const recs = [], blockRe = /<Material>([\s\S]*?)<\/Material>/g, tagRe = /<([A-Za-z_0-9]+)(?:\/>|>([^<]*)<\/\1>)/g;
+    let bm;
+    while ((bm = blockRe.exec(text))) {
+      const f = {}; let tm; tagRe.lastIndex = 0;
+      while ((tm = tagRe.exec(bm[1]))) f[tm[1]] = tm[2] === undefined ? '' : decodeEntities(tm[2]);
+      recs.push(f);
+    }
+    return importBazisRecords(b, recs, opts);
+  }
+  /** recs — записи с тегами Базиса (из XML или из файла FDB); opts.groups — пути групп, которые нужно создать даже пустыми. */
+  function importBazisRecords(b, recs, opts) {
     opts = opts || {};
-    text = String(text).replace(/^﻿/, '');
     if (opts.replace) { b.groups = []; b.materials = []; }
     const gcache = new Map();
     b.groups.forEach(function (g) { gcache.set((g.parentId || '') + '\u0001' + g.name, g); });
@@ -505,16 +516,12 @@
     if (!opts.replace) b.materials.forEach(function (m) { seen.add(groupPathStr(b, m.groupId) + '\u0001' + m.name + '\u0001' + m.article); });
     const res = { added: 0, skipped: 0, groups: 0 };
     const g0 = b.groups.length;
-    const blockRe = /<Material>([\s\S]*?)<\/Material>/g, tagRe = /<([A-Za-z_0-9]+)(?:\/>|>([^<]*)<\/\1>)/g;
-    let bm, n = 0;
-    while ((bm = blockRe.exec(text))) {
-      const f = {}; let tm; tagRe.lastIndex = 0;
-      const body = bm[1];
-      while ((tm = tagRe.exec(body))) f[tm[1]] = tm[2] === undefined ? '' : decodeEntities(tm[2]);
+    let n = 0;
+    recs.forEach(function (f) {
       const path = f.Group_Name || '';
       if (!opts.replace) {
         const key = path + '\u0001' + (f.Name || '') + '\u0001' + (f.Article || '');
-        if (seen.has(key)) { res.skipped++; continue; }
+        if (seen.has(key)) { res.skipped++; return; }
         seen.add(key);
       }
       const extra = {};
@@ -531,7 +538,8 @@
         history: [], extra: extra, updated: ''
       });
       res.added++;
-    }
+    });
+    (opts.groups || []).forEach(function (p) { groupFor(p); });
     res.groups = b.groups.length - g0;
     return res;
   }
@@ -594,7 +602,7 @@
     emptyBase: emptyBase, newMaterial: newMaterial,
     groupById: groupById, children: children, groupPath: groupPath, groupType: groupType, descendantIds: descendantIds,
     addGroup: addGroup, moveGroup: moveGroup, deleteGroup: deleteGroup, ensureGroupPath: ensureGroupPath, guessTypeByName: guessTypeByName,
-    isBazisXml: isBazisXml, importBazis: importBazis, toXml: toBazisXml, toBazisXml: toBazisXml, sheetPrice: sheetPrice,
+    isBazisXml: isBazisXml, importBazis: importBazis, importBazisRecords: importBazisRecords, toXml: toBazisXml, toBazisXml: toBazisXml, sheetPrice: sheetPrice,
     copyMaterial: copyMaterial, moveMaterials: moveMaterials, deleteMaterials: deleteMaterials, kindOf: kindOf,
     markupRule: markupRule, applyMarkup: applyMarkup, sellPrice: sellPrice, recordPrice: recordPrice, repriceGroup: repriceGroup,
     search: search, findDuplicates: findDuplicates, fromLegacy: fromLegacy, toLegacy: toLegacy,

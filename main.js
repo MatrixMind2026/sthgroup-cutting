@@ -171,6 +171,19 @@ ipcMain.handle('smeta:pick', async () => {
   } catch (e) { return { error: 'Не удалось прочитать файл: ' + e.message }; }
 });
 
+ipcMain.handle('fdb:read', async () => {
+  const r = await dialog.showOpenDialog(win, { title: 'База Базис-Мебельщика (NK_BAZE.FDB)', properties: ['openFile'],
+    filters: [{ name: 'База Firebird', extensions: ['fdb', 'gdb'] }, { name: 'Все файлы', extensions: ['*'] }] });
+  if (r.canceled || !r.filePaths.length) return null;
+  const p = r.filePaths[0];
+  try {
+    const st = fs.statSync(p);
+    if (st.size > 1024 * 1024 * 1024) return { error: 'Файл больше 1 ГБ' };
+    const res = require('./core/fdb.js').readMaterials(fs.readFileSync(p));
+    return { path: p, name: path.basename(p), records: res.records, groups: res.groups };
+  } catch (e) { return { error: 'Не удалось прочитать базу: ' + e.message }; }
+});
+
 ipcMain.handle('smeta:export', async (_e, o) => {
   const ext = o.ext === 'csv' ? 'csv' : 'xml';
   const r = await dialog.showSaveDialog(win, { title: 'Экспорт базы материалов', defaultPath: path.join(app.getPath('documents'), o.name + '.' + ext),

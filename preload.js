@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('api', {
   saveSmeta: call('smeta:save'),
   pickSmeta: call('smeta:pick'),
   exportSmeta: call('smeta:export'),
+  pickFdb: call('fdb:read'),
   fetchLink: call('link:fetch'),
   openDataDir: call('shell:openDataDir'),
   openPath: call('shell:openPath'),

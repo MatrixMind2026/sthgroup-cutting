@@ -102,6 +102,7 @@
       return '<div class="row sp"><h1>Смета: база материалов</h1><div class="row">' +
         '<button class="btn primary" data-act="sm-from-link">Добавить по ссылке</button>' +
         '<button class="btn" data-act="sm-new">+ Материал</button>' +
+        '<button class="btn ghost" data-act="sm-fdb">Открыть .FDB Базиса…</button>' +
         '<button class="btn ghost" data-act="sm-import">Импорт XML/CSV…</button>' +
         '<button class="btn ghost" data-act="sm-prices">Цены из файла…</button>' +
         '<button class="btn ghost" data-act="sm-export">Экспорт…</button>' +
@@ -276,6 +277,21 @@
         return null;
       }
       return { name: r.name, recs: recs };
+    }
+    async function fdbFlow() {
+      var r = await window.api.pickFdb();
+      if (!r) return;
+      if (r.error) { kit.toast(r.error, true); return; }
+      openModal2({
+        title: 'База из файла Базиса (.FDB)', submitLabel: 'Загрузить',
+        text: 'Файл «' + esc(r.name) + '»: ' + r.records.length + ' позиций, групп: ' + r.groups.length + '. Читается напрямую, Базис и Firebird не нужны. Файл не изменяется.',
+        fields: [{ k: 'mode', label: 'Как загрузить', type: 'select', options: [['replace', 'заменить всю базу (рекомендуется)'], ['add', 'добавить к имеющейся']], value: B().materials.length ? 'replace' : 'add' }],
+        onSubmit: function (v) {
+          var res = MB.importBazisRecords(B(), r.records, { replace: v.mode === 'replace', groups: r.groups });
+          S().groupId = ''; S().sel = {}; save(); kit.render();
+          kit.toast('Загружено: ' + res.added + ' позиций, групп: ' + res.groups + (res.skipped ? ', пропущено повторов: ' + res.skipped : ''));
+        }
+      });
     }
     async function importFlow(pricesOnly) {
       var f = await pickRecords(); if (!f) return;
@@ -491,6 +507,7 @@
       'sm-card-link': cardRefreshFromLink,
       'sm-more': function () { S().limit = (S().limit || LIMIT) + 500; kit.render(); },
       'sm-import': function () { importFlow(false); },
+      'sm-fdb': fdbFlow,
       'sm-prices': function () { importFlow(true); },
       'sm-export': exportFlow,
       'sm-dups': dupsFlow,

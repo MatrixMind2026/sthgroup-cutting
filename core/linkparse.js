@@ -59,8 +59,9 @@
   }
 
   function findArticle(text) {
-    const m = text.match(/(?:Артикул|Арт\.|Артикул производителя|Код товара|SKU)\s*[:№#]?\s*([A-Za-zА-Яа-я0-9][A-Za-zА-Яа-я0-9\-_./]{1,30})/i);
-    return m ? m[1].replace(/[.,;]+$/, '') : '';
+    const m = text.match(/(?:Артикул|Арт\.|Артикул производителя|Код товара|SKU)\s*[:№#]?\s*([A-Za-zА-Яа-я0-9][A-Za-zА-Яа-я0-9\-_./]{1,30})((?:\s(?=[A-Z0-9\-_./]*[A-Z])[A-Z0-9][A-Z0-9\-_./]{0,12}){0,3})/);
+    if (!m) { const m2 = text.match(/(?:Артикул|Арт\.|Артикул производителя|Код товара|SKU)\s*[:№#]?\s*([A-Za-zА-Яа-я0-9][A-Za-zА-Яа-я0-9\-_./]{1,30})/i); return m2 ? m2[1].replace(/[.,;]+$/, '') : ''; }
+    return (m[1] + m[2]).replace(/[.,;]+$/, '');
   }
   function findPrice(text) {
     // «1 234 ₽», «1234,50 руб.», «Цена: 1 234»
@@ -82,6 +83,25 @@
       const t = String(name).match(/(?:^|[\s,;])(\d{1,2}(?:[.,]\d+)?)\s*мм/i);
       if (t) f.thickness = toNum(t[1]);
     }
+  }
+
+  /** Наличие, остаток на складе, дата актуальности и характеристики — по тексту страницы (строки, разбитые по блокам). */
+  function extras(lines, f) {
+    const all = lines.join('\n');
+    if (/нет в наличии|под заказ|сообщить о поступлении|временно отсутствует/i.test(all) && !/(^|\n)\s*в наличии/i.test(all)) f.inStock = false;
+    else if (/(^|\n)\s*в наличии/i.test(all)) f.inStock = true;
+    const up = all.match(/Актуально на\s*(\d{1,2}\.\d{1,2}\.\d{4}(?:\s+\d{1,2}:\d{2}(?::\d{2})?)?)/i);
+    const st = all.match(/(Санкт-Петербург|Москва|Склад[^:\n]{0,20})\s*:\s*(\d+(?:[.,]\d+)?)\s*(упак|шт|уп|м|кг|компл)[а-я.]*/i);
+    const parts = [];
+    if (st) parts.push('Остаток ' + st[1] + ': ' + st[2] + ' ' + st[3]);
+    if (up) parts.push('актуально на ' + up[1]);
+    if (parts.length) f.stockNote = parts.join(', ');
+    const ch = [];
+    lines.forEach(function (ln) {
+      const m = ln.match(/^([А-ЯЁA-Z][^:]{2,45}?)\s*(?:\.{3,}|:)\s*([^\s].{0,45})$/);
+      if (m && !/^(цена|артикул|в наличии|актуально|доставка|наличие|санкт|москва|склад)/i.test(m[1]) && ch.length < 14) ch.push(m[1].trim() + ': ' + m[2].trim());
+    });
+    if (ch.length >= 2) f.characteristics = ch.join('; ');
   }
 
   function finish(f, url) {
@@ -118,6 +138,7 @@
     if (!f.name) { const h = body.match(/<h1[^>]*>([\s\S]*?)<\/h1>/i); if (h) f.name = clean(h[1]); }
     if (!f.name) { const t = body.match(/<title[^>]*>([\s\S]*?)<\/title>/i); if (t) f.name = clean(t[1]).split(/\s[|—–-]\s/)[0]; }
     const text = clean(body);
+    extras(body.replace(/<\/(?:div|li|p|tr|dt|dd|h\d|td|th|section|button|a)>|<br\s*\/?>/gi, '\n').split('\n').map(clean).filter(Boolean), f);
     if (!f.article) f.article = findArticle(text);
     if (!f.priceBuy) {
       const pc = body.match(/class\s*=\s*["'][^"']*price[^"']*["'][^>]*>([\s\S]{0,200}?)<\/(?:div|span|p|b|strong)/i);
@@ -138,6 +159,7 @@
     f.article = findArticle(text);
     f.priceBuy = findPrice(String(text));
     f.supplier = hostName(url);
+    extras(lines, f);
     sizesFromName(f.name || '', f);
     Object.keys(f).forEach(function (k) { if (f[k] === '' || f[k] === 0 || f[k] === undefined) delete f[k]; });
     return finish(f, url);

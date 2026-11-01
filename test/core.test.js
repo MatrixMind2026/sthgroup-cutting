@@ -1,5 +1,5 @@
 const assert = require('assert');
-const nesting = require('../core/nesting');
+const nesting = require('../core/cutter');
 const pricing = require('../core/pricing');
 const importers = require('../core/importers');
 
@@ -164,6 +164,41 @@ t('импорт .bmk (JSON): находит список деталей', () => 
 t('импорт .bmk: мусор не ломает программу', () => {
   assert.strictEqual(importers.parseBmkText('не json', base).parts.length, 0);
   assert.strictEqual(importers.parseBmkObject({ a: [1, 2, 3] }, base).parts.length, 0);
+});
+
+t('цена за лист: распил+кромка+присадка одной строкой, цена материала > группы > общей', () => {
+  const b2 = { materials: [Object.assign({}, base.materials[0], { groupChain: ['gA', 'gRoot'] })], edges: base.edges };
+  const mk = (sheet) => pricing.calcOrder(order, b2, { pricing: { minOrder: 0, sheet: Object.assign({ mode: 'sheet' }, sheet) } });
+  let q = mk({ price: 1000 });
+  const sheets = q.cutting[0].sheets;
+  const l = q.lines.find(x => x.group === 'cut');
+  assert.strictEqual(l.unit, 'лист'); assert.strictEqual(l.sum, sheets * 1000);
+  assert.ok(!q.lines.some(x => x.title.startsWith('Кромление')) && !q.lines.some(x => x.title.startsWith('Присадка')));
+  assert.strictEqual(mk({ price: 1000, groupPrices: { gRoot: 1200 } }).lines.find(x => x.group === 'cut').price, 1200);
+  assert.strictEqual(mk({ price: 1000, groupPrices: { gRoot: 1200, gA: 1300 } }).lines.find(x => x.group === 'cut').price, 1300);
+  assert.strictEqual(mk({ price: 1000, groupPrices: { gA: 1300 }, prices: { ldsp16w: 900 } }).lines.find(x => x.group === 'cut').price, 900);
+});
+
+t('цена за лист: доплата за кромку и отверстия сверх нормы', () => {
+  const q = pricing.calcOrder(order, base, { pricing: { minOrder: 0, sheet: { mode: 'sheet', price: 1000, edgeNorm: 1, holesNorm: 2, edgeExtra: 30, holesExtra: 5 } } });
+  const sheets = q.cutting[0].sheets, em = Object.values(pricing.edgeMeters(order)).reduce((a, x) => a + x, 0);
+  const e = q.lines.find(x => x.title.startsWith('Кромка сверх'));
+  assert.ok(e && Math.abs(e.qty - pricing.round2(em - sheets)) < 0.02);
+  const h = q.lines.find(x => x.title.startsWith('Присадка сверх'));
+  assert.ok(h && h.qty === 24 - sheets * 2);
+  const big = pricing.calcOrder(order, base, { pricing: { minOrder: 0, sheet: { mode: 'sheet', price: 1000, edgeNorm: 1000, holesNorm: 1000, edgeExtra: 30, holesExtra: 5 } } });
+  assert.ok(!big.lines.some(x => /сверх/.test(x.title)));
+});
+
+t('цена за лист: нет цены -> считаем по площади и предупреждаем', () => {
+  const q = pricing.calcOrder(order, base, { pricing: { minOrder: 0 } });
+  assert.strictEqual(q.lines.find(x => x.group === 'cut').unit, 'м²');
+  assert.ok(q.warnings.some(w => /Не задана цена за лист/.test(w)));
+});
+
+t('цена за лист: режим «по площади» работает как раньше', () => {
+  const q = pricing.calcOrder(order, base, { pricing: { minOrder: 0, sheet: { mode: 'area', price: 1000 } } });
+  assert.strictEqual(q.lines.find(x => x.group === 'cut').unit, 'м²');
 });
 
 console.log('\nПройдено тестов: ' + passed);

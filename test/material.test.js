@@ -45,7 +45,7 @@ t('перенос из старого materials.json и обратно в фор
     edges: [{ id: 'e1', name: 'ABS', servicePerM: 20, salePerM: 15 }], hardware: [{ id: 'h1', name: 'Конфирмат', unit: 'шт.', salePrice: 3 }]
   };
   const b = MB.fromLegacy(legacy); const back = MB.toLegacy(b);
-  assert.deepStrictEqual(back.materials[0], { id: 'l16', name: 'ЛДСП 16', thickness: 16, sheetW: 2800, sheetH: 2070, servicePerM2: 350, salePerSheet: 2400, grain: false });
+  assert.ok(back.materials[0].groupChain.length >= 1); delete back.materials[0].groupChain; assert.deepStrictEqual(back.materials[0], { id: 'l16', name: 'ЛДСП 16', thickness: 16, sheetW: 2800, sheetH: 2070, servicePerM2: 350, salePerSheet: 2400, grain: false });
   assert.strictEqual(back.edges[0].servicePerM, 20); assert.strictEqual(back.edges[0].salePerM, 15);
   assert.strictEqual(back.hardware[0].salePrice, 3);
   const q = pricing.calcOrder({ parts: [{ id: 'p', name: 'A', materialId: 'l16', l: 800, w: 500, qty: 2 }] }, back, {});

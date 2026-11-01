@@ -235,7 +235,13 @@
         el.closest('label').classList.remove('miss');
       }
       put('priceBuy', f.priceBuy); put('name', f.name, true); put('article', f.article, true); put('supplier', f.supplier, true);
-      kit.toast(f.priceBuy ? 'Цена обновлена: ' + money(f.priceBuy) + ' ₽. Нажмите «Сохранить»' : 'Цену найти не удалось, остальное проверьте');
+      if (f.inStock !== undefined && form.elements.inStock) form.elements.inStock.checked = f.inStock;
+      var extra = [f.stockNote, f.characteristics].filter(Boolean).join('. ');
+      if (extra && form.elements.note && !/^\s*$/.test(extra)) {
+        var cur = String(form.elements.note.value || '').replace(/\n?\[сайт\][^\n]*/g, '').trim();
+        form.elements.note.value = (cur ? cur + '\n' : '') + '[сайт] ' + extra;
+      }
+      kit.toast(f.priceBuy ? 'Обновлено: цена ' + money(f.priceBuy) + ' ₽' + (f.inStock === false ? ', нет в наличии' : '') + '. Нажмите «Сохранить»' : 'Цену найти не удалось: скорее всего, ссылка ведёт на список товаров, а не на карточку одного товара. Остальное проверьте', !f.priceBuy);
     }
 
     // ---------- группы ----------

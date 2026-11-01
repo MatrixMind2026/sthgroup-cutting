@@ -230,7 +230,9 @@
     b.materials.forEach(function (m) {
       const k = kindOf(b, m);
       if (k === 'sheet') {
-        out.materials.push({ id: m.id, name: m.name, thickness: num(m.thickness), sheetW: num(m.sheetW), sheetH: num(m.sheetH),
+        const chain = []; let gg = groupById(b, m.groupId), guard = 0;
+        while (gg && guard++ < 50) { chain.push(gg.id); gg = gg.parentId ? groupById(b, gg.parentId) : null; }
+        out.materials.push({ groupChain: chain, id: m.id, name: m.name, thickness: num(m.thickness), sheetW: num(m.sheetW), sheetH: num(m.sheetH),
           servicePerM2: num(m.servicePrice), salePerSheet: sheetPrice(b, m), grain: !!m.grain });
       } else if (k === 'edge') {
         out.edges.push({ id: m.id, name: m.name, servicePerM: num(m.servicePrice), salePerM: sellPrice(b, m) });

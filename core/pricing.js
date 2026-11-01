@@ -1,8 +1,8 @@
 /* Расчёт заказа на коммерческий распил: раскрой, площади, присадка, фрезеровка, кромка, цена. */
 (function (root, factory) {
-  if (typeof module === 'object' && module.exports) module.exports = factory(require('./nesting'));
-  else { root.Core = root.Core || {}; root.Core.pricing = factory(root.Core.nesting); }
-})(typeof self !== 'undefined' ? self : this, function (nesting) {
+  if (typeof module === 'object' && module.exports) module.exports = factory(require('./cutter'));
+  else { root.Core = root.Core || {}; root.Core.pricing = factory(root.Core.cutter); }
+})(typeof self !== 'undefined' ? self : this, function (cutter) {
 
   const EDGE_SIDES = ['l1', 'l2', 'w1', 'w2']; // l — стороны по длине, w — по ширине
 
@@ -11,6 +11,18 @@
       areaBasis: 'parts',     // 'parts' — по площади деталей, 'sheets' — по площади листов
       minOrder: 1000,
       kerf: 4, trim: 10, minOffcut: 300,
+      cutQuality: 1, cutCorner: 'ul',
+      // Цена «за лист»: распил + кромка + присадка одним числом на лист материала
+      sheet: {
+        mode: 'sheet',        // 'sheet' — цена за лист, 'area' — по площади (м²)
+        price: 0,             // цена по умолчанию, ₽ за лист
+        edgeNorm: 0,          // кромки в цене листа, м.п. на лист (0 — без ограничения)
+        holesNorm: 0,         // отверстий в цене листа, шт. на лист (0 — без ограничения)
+        edgeExtra: 0,         // доплата за м.п. кромки сверх нормы, ₽
+        holesExtra: 0,        // доплата за отверстие сверх нормы, ₽
+        prices: {},           // { id материала: цена листа }
+        groupPrices: {}       // { id группы: цена листа } — для всех материалов группы
+      },
       cnc: {
         enabled: { holes: true, mill: true, perPart: false, time: false },
         holeFaceBlind: 10, holeFaceThrough: 15, holeEdge: 12,
@@ -18,6 +30,17 @@
         machineHourRate: 3000, secPerHole: 6, secPerMillM: 30, secPerPart: 20
       }
     };
+  }
+
+  /** Цена листа: материал → ближайшая группа вверх по дереву → общая. */
+  function sheetPriceFor(m, sh) {
+    const own = num((sh.prices || {})[m.id]);
+    if (own > 0) return { price: own, source: 'material' };
+    for (const gid of m.groupChain || []) {
+      const g = num((sh.groupPrices || {})[gid]);
+      if (g > 0) return { price: g, source: 'group' };
+    }
+    return { price: num(sh.price), source: 'default' };
   }
 
   function round2(x) { return Math.round((x + Number.EPSILON) * 100) / 100; }
@@ -55,7 +78,7 @@
       const parts = groups[mid].map(function (p) {
         return { id: p.id, name: p.name, l: num(p.l), w: num(p.w), qty: num(p.qty), canRotate: !p.grain };
       });
-      const r = nesting.packMaterial(parts, { w: sw, h: sh }, { kerf: pr.kerf, trim: pr.trim, minOffcut: pr.minOffcut });
+      const r = cutter.packMaterial(parts, { w: sw, h: sh }, { kerf: pr.kerf, trim: pr.trim, minOffcut: pr.minOffcut, quality: pr.cutQuality, corner: pr.cutCorner });
       const partsArea = parts.reduce(function (a, p) { return a + p.l * p.w * p.qty; }, 0) / 1e6;
       if (r.unplaced.length) {
         warnings.push('«' + m.name + '»: ' + r.unplaced.length + ' дет. не помещаются на лист ' + sw + '×' + sh);
@@ -102,15 +125,40 @@
     const pr = Object.assign(defaultPricing(), (settings && settings.pricing) || {});
     pr.cnc = Object.assign(defaultPricing().cnc, pr.cnc || {});
     pr.cnc.enabled = Object.assign(defaultPricing().cnc.enabled, (pr.cnc && pr.cnc.enabled) || {});
+    pr.sheet = Object.assign(defaultPricing().sheet, pr.sheet || {});
     const basis = order.areaBasis || pr.areaBasis;
+    let perSheet = (order.priceMode || pr.sheet.mode) === 'sheet';
     const lines = [];
     const warnings = [];
 
     const cut = cutOrder(order, base, pr);
     warnings.push.apply(warnings, cut.warnings);
 
-    // 1. Распил по площади
+    // 1. Распил: за лист (с кромкой и присадкой внутри) или по площади
+    if (perSheet) {
+      const missing = cut.materials.filter(function (c) { return !(sheetPriceFor(c.material, pr.sheet).price > 0); });
+      if (missing.length) {
+        perSheet = false;
+        warnings.push('Не задана цена за лист (Настройки → Расчёт) для: ' + missing.map(function (c) { return c.material.name; }).join(', ') + '. Заказ посчитан по площади.');
+      }
+    }
+    const sheetsTotal = cut.materials.reduce(function (a, c) { return a + c.sheets; }, 0);
     for (const c of cut.materials) {
+      if (perSheet) {
+        const sp = sheetPriceFor(c.material, pr.sheet);
+        {
+          lines.push({
+            group: 'cut', title: 'Распил, кромка, присадка: ' + c.material.name + (sp.source === 'default' ? '' : ' (цена ' + (sp.source === 'material' ? 'материала' : 'группы') + ')'),
+            qty: c.sheets, unit: 'лист', price: sp.price, sum: round2(c.sheets * sp.price)
+          });
+          if (order.ownMaterial) {
+            const sale = num(c.material.salePerSheet);
+            lines.push({ group: 'material', title: 'Материал (наш): ' + c.material.name, qty: c.sheets, unit: 'лист', price: sale, sum: round2(c.sheets * sale) });
+            if (!sale) warnings.push('У материала «' + c.material.name + '» не указана цена листа для продажи');
+          }
+          continue;
+        }
+      }
       const area = basis === 'sheets' ? c.sheetsArea : c.partsArea;
       const rate = num(c.material.servicePerM2);
       lines.push({
@@ -134,7 +182,7 @@
       const e = findEdge(base, id);
       if (!e) { warnings.push('Кромки «' + id + '» нет в базе материалов'); continue; }
       const m = round2(em[id]);
-      lines.push({
+      if (!perSheet) lines.push({
         group: 'edge', title: 'Кромление: ' + e.name, qty: m, unit: 'м.п.',
         price: num(e.servicePerM), sum: round2(m * num(e.servicePerM))
       });
@@ -149,7 +197,20 @@
     // 3. ЧПУ: присадка и фрезеровка
     const t = cncTotals(order);
     const cn = pr.cnc, en = cn.enabled;
-    if (en.holes) {
+    if (perSheet) {
+      // кромка и отверстия уже в цене листа; сверх нормы — доплата
+      const sh = pr.sheet, totalEdge = round2(Object.keys(em).reduce(function (a, k) { return a + em[k]; }, 0));
+      if (num(sh.edgeNorm) > 0 && sheetsTotal) {
+        const over = round2(totalEdge - sheetsTotal * num(sh.edgeNorm));
+        if (over > 0) lines.push({ group: 'edge', title: 'Кромка сверх нормы (' + sh.edgeNorm + ' м.п. на лист)', qty: over, unit: 'м.п.', price: num(sh.edgeExtra), sum: round2(over * num(sh.edgeExtra)) });
+      }
+      const holes = t.faceBlind + t.faceThrough + t.edge;
+      if (num(sh.holesNorm) > 0 && sheetsTotal) {
+        const over = holes - Math.round(sheetsTotal * num(sh.holesNorm));
+        if (over > 0) lines.push({ group: 'cnc', title: 'Присадка сверх нормы (' + sh.holesNorm + ' отв. на лист)', qty: over, unit: 'шт.', price: num(sh.holesExtra), sum: round2(over * num(sh.holesExtra)) });
+      }
+    }
+    if (en.holes && !perSheet) {
       if (t.faceBlind) lines.push({ group: 'cnc', title: 'Присадка: глухие отверстия в пласть', qty: t.faceBlind, unit: 'шт.', price: num(cn.holeFaceBlind), sum: round2(t.faceBlind * num(cn.holeFaceBlind)) });
       if (t.faceThrough) lines.push({ group: 'cnc', title: 'Присадка: сквозные отверстия', qty: t.faceThrough, unit: 'шт.', price: num(cn.holeFaceThrough), sum: round2(t.faceThrough * num(cn.holeFaceThrough)) });
       if (t.edge) lines.push({ group: 'cnc', title: 'Присадка: отверстия в торец', qty: t.edge, unit: 'шт.', price: num(cn.holeEdge), sum: round2(t.edge * num(cn.holeEdge)) });
@@ -206,5 +267,5 @@
     };
   }
 
-  return { calcOrder: calcOrder, defaultPricing: defaultPricing, edgeMeters: edgeMeters, partIsCnc: partIsCnc, round2: round2, num: num, EDGE_SIDES: EDGE_SIDES };
+  return { calcOrder: calcOrder, sheetPriceFor: sheetPriceFor, defaultPricing: defaultPricing, edgeMeters: edgeMeters, partIsCnc: partIsCnc, round2: round2, num: num, EDGE_SIDES: EDGE_SIDES };
 });

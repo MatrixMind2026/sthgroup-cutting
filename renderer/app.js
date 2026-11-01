@@ -352,6 +352,47 @@
   function chk(path, label, val) {
     return '<label class="chk"><input type="checkbox" data-s="setting" data-path="' + path + '" data-type="bool"' + (val ? ' checked' : '') + '> ' + label + '</label>';
   }
+
+  // ---------- настройки: цена за лист ----------
+  function sheetGroupRows(sh) {
+    var mb = state.mb, rows = '';
+    function walk(pid, depth) {
+      MB.children(mb, pid).sort(function (a, b) { return String(a.name).localeCompare(String(b.name), 'ru'); }).forEach(function (g) {
+        if (MB.groupType(mb, g.id) !== 'sheet') return;
+        var has = (sh.groupPrices || {})[g.id];
+        rows += '<tr><td style="padding-left:' + (8 + depth * 16) + 'px">' + esc(g.name) + '</td><td class="num"><input class="cell" inputmode="decimal" placeholder="как у верхней" data-s="setting" data-type="num" data-path="pricing.sheet.groupPrices.' + g.id + '" value="' + esc(has === undefined || has === 0 ? '' : has) + '"></td></tr>';
+        walk(g.id, depth + 1);
+      });
+    }
+    walk('', 0);
+    return rows;
+  }
+  function sheetMatRows(sh) {
+    var q = String(state.shQ || '').trim().toLowerCase(), prices = sh.prices || {}, rows = '', n = 0;
+    var sheets = state.mb.materials.filter(function (m) { return MB.groupType(state.mb, m.groupId) === 'sheet'; });
+    var list = sheets.filter(function (m) { return prices[m.id] > 0 && (!q || (m.name + ' ' + m.article).toLowerCase().indexOf(q) >= 0); });
+    var more = q ? sheets.filter(function (m) { return !(prices[m.id] > 0) && (m.name + ' ' + m.article).toLowerCase().indexOf(q) >= 0; }).slice(0, 30) : [];
+    list.concat(more).forEach(function (m) {
+      n++;
+      rows += '<tr><td>' + esc(m.name) + '<div class="muted small">' + esc(m.article || '') + '</div></td><td class="num"><input class="cell" inputmode="decimal" data-s="setting" data-type="num" data-path="pricing.sheet.prices.' + m.id + '" value="' + esc(prices[m.id] > 0 ? prices[m.id] : '') + '" placeholder="цена листа"></td></tr>';
+    });
+    return rows || '<tr><td colspan="2" class="muted small">' + (q ? 'Ничего не найдено среди листовых материалов.' : 'Отдельных цен нет. Найдите материал поиском, чтобы задать ему свою цену.') + '</td></tr>';
+  }
+  function viewSheetPricing(pr) {
+    var sh = pr.sheet;
+    return '<h2>Расчёт: цена за лист</h2><div class="card">' +
+      '<p class="muted small" style="margin-top:0">Распил, кромление и присадка считаются одной ценой за лист материала. Норма кромки и отверстий — сколько входит в цену листа; сверх нормы — доплата.</p>' +
+      '<div class="kv"><label class="f">Как считать<select data-s="setting" data-path="pricing.sheet.mode" data-type="text"><option value="sheet"' + (sh.mode === 'sheet' ? ' selected' : '') + '>за лист (распил+кромка+присадка)</option><option value="area"' + (sh.mode === 'area' ? ' selected' : '') + '>по площади, кромка и присадка отдельно</option></select></label>' +
+      inp('pricing.sheet.price', 'Цена листа по умолчанию, ₽', sh.price, 'num') +
+      inp('pricing.sheet.edgeNorm', 'Кромка в цене листа, м.п. (0 — без ограничения)', sh.edgeNorm, 'num') +
+      inp('pricing.sheet.holesNorm', 'Присадка в цене листа, отв. (0 — без ограничения)', sh.holesNorm, 'num') +
+      inp('pricing.sheet.edgeExtra', 'Доплата за м.п. кромки сверх нормы, ₽', sh.edgeExtra, 'num') +
+      inp('pricing.sheet.holesExtra', 'Доплата за отверстие сверх нормы, ₽', sh.holesExtra, 'num') + '</div>' +
+      '<div class="grid2" style="margin-top:14px"><div><h3>Цена по группам материалов</h3><div class="tbl-wrap" style="max-height:320px"><table><thead><tr><th>Группа</th><th class="num">₽ за лист</th></tr></thead><tbody>' + (sheetGroupRows(sh) || '<tr><td colspan="2" class="muted small">В базе нет листовых групп.</td></tr>') + '</tbody></table></div></div>' +
+      '<div><h3>Отдельные материалы</h3><input id="shQ" placeholder="Найти материал по названию или артикулу" value="' + esc(state.shQ || '') + '" style="width:100%;margin-bottom:6px"><div class="tbl-wrap" style="max-height:290px"><table><thead><tr><th>Материал</th><th class="num">₽ за лист</th></tr></thead><tbody id="shRows">' + sheetMatRows(sh) + '</tbody></table></div></div></div>' +
+      '<p class="muted small">Порядок цены: материал → его группа (или группа выше) → цена по умолчанию.</p></div>';
+  }
+
   function viewSettings() {
     var s = state.db.settings, pr = s.pricing, cn = pr.cnc, co = s.company;
     return '<h1>Настройки</h1>' +
@@ -359,6 +400,7 @@
       '<label class="f" style="margin-top:10px">Реквизиты для оплаты (в счёте)<textarea data-s="setting" data-path="company.bank" data-type="text" rows="3">' + esc(co.bank) + '</textarea></label></div>' +
       '<h2>Документы</h2><div class="card"><div class="kv">' + inp('quotePrefix', 'Префикс номера', s.quotePrefix) + inp('nextNumber', 'Следующий номер', s.nextNumber, 'num') + inp('validDays', 'КП действует, дней', s.validDays, 'num') + '</div>' +
       '<label class="f" style="margin-top:10px">Текст внизу документов<textarea data-s="setting" data-path="docNote" data-type="text" rows="2">' + esc(s.docNote) + '</textarea></label></div>' +
+      viewSheetPricing(pr) +
       '<h2>Распил</h2><div class="card"><div class="kv"><label class="f">Считать по умолчанию<select data-s="setting" data-path="pricing.areaBasis" data-type="text"><option value="parts"' + (pr.areaBasis === 'parts' ? ' selected' : '') + '>по площади деталей</option><option value="sheets"' + (pr.areaBasis === 'sheets' ? ' selected' : '') + '>по площади листов</option></select></label>' +
       inp('pricing.minOrder', 'Минимальная сумма заказа, ₽', pr.minOrder, 'num') + inp('pricing.kerf', 'Пропил, мм', pr.kerf, 'num') + inp('pricing.trim', 'Обрезка кромки листа, мм', pr.trim, 'num') + inp('pricing.minOffcut', 'Деловой остаток от, мм', pr.minOffcut, 'num') + '</div></div>' +
       '<h2>ЧПУ: присадка и фрезеровка</h2><div class="card"><p class="muted small" style="margin-top:0">Отметьте, какие способы входят в цену. Можно включить несколько — суммы сложатся.</p><div class="row">' +
@@ -432,7 +474,9 @@
       scheduleSave();
     }
   }
-  document.addEventListener('input', function (ev) { if (SM.onInput(ev)) return; onEdit(ev); });
+  document.addEventListener('input', function (ev) {
+    if (ev.target && ev.target.id === 'shQ') { state.shQ = ev.target.value; var tb = document.getElementById('shRows'); if (tb) tb.innerHTML = sheetMatRows(state.db.settings.pricing.sheet); return; }
+    if (SM.onInput(ev)) return; onEdit(ev); });
   document.addEventListener('change', function (ev) {
     if (SM.onInput(ev)) return;
     onEdit(ev);
@@ -659,6 +703,7 @@
     db.settings = Object.assign({}, def.settings, db.settings || {});
     db.settings.company = Object.assign({}, def.settings.company, db.settings.company || {});
     db.settings.pricing = Object.assign({}, def.settings.pricing, db.settings.pricing || {});
+    db.settings.pricing.sheet = Object.assign({}, P.defaultPricing().sheet, db.settings.pricing.sheet || {});
     db.settings.pricing.cnc = Object.assign({}, def.settings.pricing.cnc, db.settings.pricing.cnc || {});
     db.settings.pricing.cnc.enabled = Object.assign({}, def.settings.pricing.cnc.enabled, db.settings.pricing.cnc.enabled || {});
     db.clients = db.clients || []; db.orders = db.orders || []; db.offcuts = db.offcuts || [];

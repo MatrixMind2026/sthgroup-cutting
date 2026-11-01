@@ -16,6 +16,7 @@ contextBridge.exposeInMainWorld('api', {
   exportSmeta: call('smeta:export'),
   pickFdb: call('fdb:read'),
   fetchLink: call('link:fetch'),
+  shopLogin: call('shop:login'),
   openDataDir: call('shell:openDataDir'),
   openPath: call('shell:openPath'),
   showInFolder: call('shell:showInFolder'),

@@ -105,6 +105,7 @@
         '<button class="btn ghost" data-act="sm-fdb">Открыть .FDB Базиса…</button>' +
         '<button class="btn ghost" data-act="sm-import">Импорт XML/CSV…</button>' +
         '<button class="btn ghost" data-act="sm-prices">Цены из файла…</button>' +
+        '<button class="btn ghost" data-act="sm-links-all">Обновить цены по ссылкам</button>' +
         '<button class="btn ghost" data-act="sm-export">Экспорт…</button>' +
         '<button class="btn ghost" data-act="sm-dups">Дубликаты</button></div></div>' +
         (mi.error ? '<div class="warns bad">' + esc(mi.error) + '</div>' : '') +
@@ -156,7 +157,7 @@
       openModal2({
         title: isNew ? 'Новый материал' : 'Материал', wide: true, submitLabel: 'Сохранить',
         extra: (isNew ? '' : '<button type="button" class="btn danger" data-act="sm-del-one" data-id="' + m.id + '" style="margin-right:auto">Удалить</button><button type="button" class="btn ghost" data-act="sm-copy-one" data-id="' + m.id + '">Копия</button>') +
-          '<button type="button" class="btn ghost" data-act="sm-card-link">Обновить по ссылке</button>',
+          '<button type="button" class="btn ghost" data-act="sm-card-login">Войти на сайт</button><button type="button" class="btn ghost" data-act="sm-card-link">Обновить по ссылке</button>',
         fields: fieldsForCard(m, miss),
         onSubmit: function (v) {
           if (!String(v.name).trim()) { kit.toast('Укажите наименование', true); return false; }
@@ -219,6 +220,40 @@
           finishLink(p, url, gid); return false;
         }
       });
+    }
+    async function cardLogin() {
+      var form = $('#modal-form'); var url = form && form.elements.url ? form.elements.url.value.trim() : '';
+      if (!url) { kit.toast('В карточке нет ссылки на сайт', true); return; }
+      kit.toast('Войдите на сайте в открывшемся окне и закройте его');
+      var r = await window.api.shopLogin(url);
+      if (r && !r.ok) kit.toast(r.error || 'Не удалось открыть окно', true);
+      else kit.toast('Окно закрыто. Нажмите «Обновить по ссылке»');
+    }
+    var linksBusy = false;
+    async function updateAllByLinks() {
+      if (linksBusy) return;
+      var list = B().materials.filter(function (m) { return /^https?:\/\//i.test(String(m.url || '').trim()); });
+      if (!list.length) { kit.toast('Ни у одного материала нет ссылки на товар', true); return; }
+      if (!confirm('Обновить цены у материалов со ссылкой: ' + list.length + ' шт.? Страницы читаются по очереди с паузой, это займёт около ' + Math.ceil(list.length * 4 / 60) + ' мин. Войдите на сайт заранее (кнопка «Войти на сайт» в карточке), чтобы получить свои цены.')) return;
+      linksBusy = true; var ok = 0, fail = 0, changed = 0;
+      for (var i = 0; i < list.length; i++) {
+        var m = list[i];
+        kit.toast('Обновляю ' + (i + 1) + ' из ' + list.length + ': ' + String(m.name).slice(0, 40));
+        var r = await window.api.fetchLink(m.url);
+        if (r && r.ok) {
+          var f = LP.parseProductHtml(r.html, m.url).fields;
+          if (f.priceBuy) {
+            ok++;
+            var oldBuy = MB.num(m.priceBuy), oldStock = m.inStock !== false;
+            m.priceBuy = f.priceBuy; if (f.inStock !== undefined) m.inStock = f.inStock;
+            m.updated = new Date().toISOString();
+            if (oldBuy !== f.priceBuy || oldStock !== (m.inStock !== false)) { changed++; MB.recordPrice(B(), m, 'по ссылке'); }
+          } else fail++;
+        } else fail++;
+        await new Promise(function (res) { setTimeout(res, 1500); });
+      }
+      linksBusy = false; save(); kit.render();
+      kit.toast('Готово: прочитано ' + ok + ', изменились цены или наличие у ' + changed + (fail ? ', не удалось: ' + fail : ''), !!fail && !ok);
     }
     async function cardRefreshFromLink() {
       var form = $('#modal-form'); if (!form || !form.elements.url) return;
@@ -511,6 +546,8 @@
       'sm-copy-one': function (el) { var c = MB.copyMaterial(B(), el.dataset.id); kit.closeModal(); save(); kit.render(); if (c) openCard(c, false); },
       'sm-from-link': startFromLink,
       'sm-card-link': cardRefreshFromLink,
+      'sm-card-login': cardLogin,
+      'sm-links-all': updateAllByLinks,
       'sm-more': function () { S().limit = (S().limit || LIMIT) + 500; kit.render(); },
       'sm-import': function () { importFlow(false); },
       'sm-fdb': fdbFlow,

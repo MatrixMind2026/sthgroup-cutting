@@ -193,25 +193,50 @@ ipcMain.handle('smeta:export', async (_e, o) => {
   catch (e) { return { error: e.message }; }
 });
 
-ipcMain.handle('link:fetch', async (_e, url) => {
+const SHOP_PARTITION = 'persist:shops'; // общий профиль для магазинов: вход сохраняется между запусками
+const SHOP_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+
+function checkShopUrl(url) {
+  const u = new URL(String(url).trim());
+  if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('Нужна ссылка http или https');
+  if (/^(localhost|127\.|10\.|192\.168\.|169\.254\.|0\.0\.0\.0|\[)/i.test(u.hostname) || /^172\.(1[6-9]|2\d|3[01])\./.test(u.hostname)) throw new Error('Локальные адреса не открываются');
+  return u;
+}
+
+// Окно входа: пользователь сам вводит логин и пароль на сайте, программа их не видит и не хранит.
+ipcMain.handle('shop:login', async (_e, url) => {
   try {
-    const u = new URL(String(url).trim());
-    if (u.protocol !== 'http:' && u.protocol !== 'https:') return { ok: false, error: 'Нужна ссылка http или https' };
-    if (/^(localhost|127\.|10\.|192\.168\.|169\.254\.|0\.0\.0\.0|\[)/i.test(u.hostname) || /^172\.(1[6-9]|2\d|3[01])\./.test(u.hostname)) return { ok: false, error: 'Локальные адреса не открываются' };
-    const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), 20000);
-    const res = await net.fetch(u.toString(), { signal: ctl.signal, redirect: 'follow', headers: {
-      'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
-      'Accept': 'text/html,application/xhtml+xml', 'Accept-Language': 'ru-RU,ru;q=0.9' } });
-    const buf = Buffer.from(await res.arrayBuffer());
-    clearTimeout(timer);
-    if (!res.ok) return { ok: false, error: 'Сайт ответил кодом ' + res.status + (res.status === 403 || res.status === 401 ? ' (доступ закрыт для программ)' : '') };
-    let cs = ((res.headers.get('content-type') || '').match(/charset=([\w-]+)/i) || [])[1] || '';
-    if (!cs) { const m = buf.subarray(0, 4096).toString('latin1').match(/<meta[^>]+charset\s*=\s*["']?([\w-]+)/i); cs = m ? m[1] : ''; }
-    return { ok: true, html: decodeBuffer(buf.subarray(0, 4 * 1024 * 1024), cs || 'utf-8'), url: res.url || u.toString() };
+    const u = checkShopUrl(url);
+    return await new Promise(function (resolve) {
+      const w = new BrowserWindow({ width: 1100, height: 800, parent: win || undefined, title: 'Вход на сайт: ' + u.hostname, autoHideMenuBar: true,
+        webPreferences: { partition: SHOP_PARTITION, contextIsolation: true, sandbox: true } });
+      w.webContents.setUserAgent(SHOP_UA);
+      w.webContents.setWindowOpenHandler(function (d) { w.loadURL(d.url); return { action: 'deny' }; });
+      w.on('closed', function () { resolve({ ok: true }); });
+      w.loadURL(u.origin + '/').catch(function () {});
+    });
+  } catch (e) { return { ok: false, error: e.message }; }
+});
+
+// Чтение страницы: в скрытом окне с тем же профилем (входом), чтобы видеть персональные цены и страницы на скриптах.
+ipcMain.handle('link:fetch', async (_e, url) => {
+  let w = null;
+  try {
+    const u = checkShopUrl(url);
+    w = new BrowserWindow({ show: false, width: 1280, height: 900, webPreferences: { partition: SHOP_PARTITION, contextIsolation: true, sandbox: true, backgroundThrottling: false } });
+    w.webContents.setUserAgent(SHOP_UA);
+    await Promise.race([
+      w.loadURL(u.toString()),
+      new Promise(function (_, rej) { setTimeout(function () { rej(new Error('Сайт не ответил за 25 секунд')); }, 25000); })
+    ]);
+    await new Promise(function (r) { setTimeout(r, 2500); }); // дать скриптам дорисовать цену
+    const html = await w.webContents.executeJavaScript('document.documentElement.outerHTML');
+    const finalUrl = w.webContents.getURL();
+    if (!html || html.length < 200) return { ok: false, error: 'Страница пустая' };
+    return { ok: true, html: html.slice(0, 4 * 1024 * 1024), url: finalUrl || u.toString() };
   } catch (e) {
-    return { ok: false, error: e.name === 'AbortError' ? 'Сайт не ответил за 20 секунд' : 'Не удалось открыть страницу: ' + e.message };
-  }
+    return { ok: false, error: /ERR_/.test(e.message) ? 'Не удалось открыть страницу: ' + e.message : e.message };
+  } finally { if (w && !w.isDestroyed()) w.destroy(); }
 });
 
 ipcMain.handle('materials:load', (_e, customPath) => loadMaterials(customPath));

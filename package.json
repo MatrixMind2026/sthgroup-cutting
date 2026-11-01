@@ -1,12 +1,12 @@
 {
   "name": "sthgroup-cutting",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Расчёт коммерческого распила для заказчиков (STHGroup)",
   "main": "main.js",
   "private": true,
   "scripts": {
     "start": "electron .",
-    "test": "node test/core.test.js && node test/material.test.js",
+    "test": "node test/core.test.js && node test/material.test.js && node test/b3d.test.js",
     "dist": "electron-builder --win nsis --publish never",
     "release": "electron-builder --win nsis --publish always"
   },

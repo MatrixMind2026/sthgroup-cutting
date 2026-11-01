@@ -216,14 +216,17 @@ ipcMain.handle('shell:showInFolder', (_e, p) => { if (p && fs.existsSync(p)) she
 ipcMain.handle('import:pick', async () => {
   const r = await dialog.showOpenDialog(win, {
     title: 'Список деталей или модель', properties: ['openFile'],
-    filters: [{ name: 'Модель .bmk или CSV из Excel', extensions: ['bmk', 'csv', 'txt', 'tsv'] }, { name: 'Все файлы', extensions: ['*'] }]
+    filters: [{ name: 'Модель Базис (.b3d), .bmk или CSV из Excel', extensions: ['b3d', 'bmk', 'csv', 'txt', 'tsv'] }, { name: 'Все файлы', extensions: ['*'] }]
   });
   if (r.canceled || !r.filePaths[0]) return null;
   const file = r.filePaths[0];
   const ext = path.extname(file).toLowerCase();
   const buf = fs.readFileSync(file);
   const out = { path: file, name: path.basename(file), ext: ext };
-  if (buf.length > 1 && buf[0] === 0x50 && buf[1] === 0x4b) { // PK — zip-архив
+  if (buf.length > 4 && buf.toString('latin1', 0, 4) === 'BZ85') { // .b3d Базис-Мебельщик
+    try { out.parsed = require('./core/b3d.js').parse(buf, require('zlib')); out.kind = 'b3d'; }
+    catch (e) { out.error = 'Не удалось прочитать модель .b3d: ' + e.message; }
+  } else if (buf.length > 1 && buf[0] === 0x50 && buf[1] === 0x4b) { // PK — zip-архив
     try {
       const AdmZip = require('adm-zip');
       const zip = new AdmZip(buf);

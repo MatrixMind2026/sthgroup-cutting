@@ -1,7 +1,7 @@
 /* Интерфейс программы расчёта коммерческого распила. */
 (function () {
   'use strict';
-  var P = Core.pricing, IMP = Core.importers, MB = Core.materialbase, D = Doc, SM;
+  var P = Core.pricing, IMP = Core.importers, B3D = Core.b3d, MB = Core.materialbase, D = Doc, SM;
   var esc = D.esc, money = D.money;
 
   var STATUSES = [['calc', 'Расчёт'], ['work', 'В работе'], ['done', 'Готов'], ['issued', 'Выдан'], ['cancel', 'Отменён']];
@@ -182,7 +182,7 @@
 
   function tabParts(o) {
     var rows = o.parts.map(partRow).join('');
-    return '<div class="row" style="margin-bottom:10px"><button class="btn" data-act="add-part">+ Деталь</button><button class="btn ghost" data-act="import">Загрузить .bmk или CSV…</button><button class="btn ghost" data-act="csv-template">Шаблон CSV</button><span class="grow"></span>' +
+    return '<div class="row" style="margin-bottom:10px"><button class="btn" data-act="add-part">+ Деталь</button><button class="btn ghost" data-act="import">Открыть модель .b3d, .bmk или CSV…</button><button class="btn ghost" data-act="csv-template">Шаблон CSV</button><span class="grow"></span>' +
       (o.parts.length ? '<button class="btn danger sm" data-act="clear-parts">Очистить список</button>' : '') + '</div>' +
       '<div class="tbl-wrap"><table class="parts"><thead><tr><th>№</th><th>Деталь</th><th>Материал</th><th class="num">Длина</th><th class="num">Ширина</th><th class="num">Шт.</th><th title="Не поворачивать">Текст.</th><th>Кромка L1</th><th>L2</th><th>W1</th><th>W2</th><th class="num" title="Глухие в пласть">Отв. гл.</th><th class="num" title="Сквозные">Отв. скв.</th><th class="num" title="В торец">Отв. торец</th><th class="num" title="Фрезеровка, погонных метров на деталь">Фрез., м</th><th></th></tr></thead><tbody id="parts-body">' +
       (rows || '') + '</tbody></table>' + (o.parts.length ? '' : '<div class="empty">Деталей нет. Добавьте вручную или загрузите файл.</div>') + '</div>' +
@@ -463,6 +463,7 @@
     var r = await window.api.pickImport();
     if (!r) return;
     if (r.error) { toast(r.error, true); return; }
+    if (r.kind === 'b3d') { importB3d(o, r); return; }
     var res;
     if (r.kind === 'zip') {
       res = { parts: [], warnings: ['В архиве .bmk нет JSON-файлов, формат не распознан.'] };
@@ -484,6 +485,24 @@
     if (res.warnings.length) {
       openModal({ title: res.parts.length ? 'Загружено с замечаниями' : 'Не удалось загрузить', text: res.warnings.map(esc).join('<br>'), fields: [], noSubmit: true, cancelLabel: 'Понятно' });
     }
+  }
+
+  function importB3d(o, r) {
+    var res = B3D.toOrder(r.parsed, state.mb, MB);
+    saveBase();
+    res.parts.forEach(function (p) { o.parts.push(p); });
+    if (!o.estimate) o.estimate = { inTotal: false, items: [] };
+    if (!o.estimate.items) o.estimate.items = [];
+    res.items.forEach(function (x) { o.estimate.items.push(x); });
+    if (!o.files.some(function (f) { return f.path === r.path; })) o.files.push({ path: r.path, name: r.name, added: nowIso() });
+    afterOrderChange(o); render();
+    var pcs = res.parts.reduce(function (s, p) { return s + p.qty; }, 0);
+    toast('Модель «' + (res.name || r.name) + '»: деталей ' + pcs + ' (' + res.parts.length + ' строк), фурнитуры ' + res.items.length + ' позиций');
+    var info = [];
+    if (res.created.length) info.push('Не нашёл в базе и добавил ' + res.created.length + ' позиций (материалы, кромка, фурнитура) — откройте «Смета» и заполните цены.');
+    info = info.concat(res.warnings);
+    info.push('Фурнитура попала во вкладку «Смета» заказа (не в общую сумму — включите там, когда проверите цены).');
+    openModal({ title: 'Модель загружена', text: info.map(esc).join('<br><br>'), fields: [], noSubmit: true, cancelLabel: 'Понятно' });
   }
 
   async function makeDoc(o, kind) {

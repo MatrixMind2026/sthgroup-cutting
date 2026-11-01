@@ -110,3 +110,15 @@ td.click:hover b { color: var(--orange-d); }
 .dup { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; margin-bottom: 6px; font-size: 13px; }
 #est-totals dl { margin: 0; display: grid; grid-template-columns: 1fr auto; gap: 4px 16px; max-width: 420px; }
 #est-totals dt { color: var(--muted); } #est-totals dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+
+/* ---- масштаб и адаптивность ---- */
+.zoom { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+.zoom button { background: #2d3138; color: #fff; border: 0; border-radius: 6px; padding: 3px 8px; cursor: pointer; font-size: 12px; }
+.zoom { flex-wrap: wrap; } .zoom span { font-size: 10px; color: #9aa0a8; min-width: 0; text-align: center; flex: 1; white-space: nowrap; }
+.modal { box-sizing: border-box; width: min(460px, 94vw); overflow-x: hidden; }
+.modal.wide { width: min(860px, 94vw); }
+.modal.wide .fields { grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); }
+.modal .fields > * { min-width: 0; }
+.modal input, .modal select, .modal textarea { box-sizing: border-box; width: 100%; min-width: 0; max-width: 100%; }
+.modal input[type=checkbox] { width: auto; }
+@media (max-width: 1100px) { .sm-layout { grid-template-columns: 1fr; } .sm-tree { position: static; max-height: 260px; } }

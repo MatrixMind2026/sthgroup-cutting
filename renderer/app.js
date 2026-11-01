@@ -595,6 +595,31 @@
     if (fn) { ev.stopPropagation(); fn(el); }
   });
 
+
+  // ---------- масштаб интерфейса: Ctrl +/−/0, Ctrl+колесо, кнопки внизу меню; по умолчанию подгоняется под ширину окна ----------
+  var zoomPref = null; // null = авто
+  try { var zs = localStorage.getItem('uiZoom'); if (zs && zs !== 'auto') zoomPref = Number(zs) || null; } catch (_) {}
+  function autoZoom() { return Math.max(1, Math.min(1.8, Math.round(window.innerWidth / 1500 * 20) / 20)); }
+  function applyZoom() {
+    var z = zoomPref || autoZoom();
+    if (window.api && window.api.setZoom) window.api.setZoom(z);
+    var el = document.getElementById('zoom-val'); if (el) el.textContent = Math.round(z * 100) + '%' + (zoomPref ? '' : ' авто');
+  }
+  function stepZoom(d) {
+    var cur = zoomPref || autoZoom(); zoomPref = d === 0 ? null : Math.max(0.6, Math.min(2.5, Math.round((cur + d) * 20) / 20));
+    try { localStorage.setItem('uiZoom', zoomPref ? String(zoomPref) : 'auto'); } catch (_) {}
+    applyZoom();
+  }
+  window.addEventListener('keydown', function (e) {
+    if (!(e.ctrlKey || e.metaKey)) return;
+    if (e.key === '=' || e.key === '+') { e.preventDefault(); stepZoom(0.1); }
+    else if (e.key === '-' || e.key === '_') { e.preventDefault(); stepZoom(-0.1); }
+    else if (e.key === '0') { e.preventDefault(); stepZoom(0); }
+  });
+  window.addEventListener('wheel', function (e) { if (e.ctrlKey) { e.preventDefault(); stepZoom(e.deltaY < 0 ? 0.1 : -0.1); } }, { passive: false });
+  window.addEventListener('resize', function () { if (!zoomPref) applyZoom(); });
+  document.addEventListener('click', function (e) { if (e.target.id === 'zm-') stepZoom(-0.1); else if (e.target.id === 'zp') stepZoom(0.1); });
+
   // ---------- запуск ----------
   // ---------- база материалов («Смета») ----------
   var mbTimer = null;
@@ -620,13 +645,14 @@
       if (!lr.ok && !state.matInfo.error) state.matInfo.error = lr.error;
       await window.api.saveSmeta(state.mb);
     }
+    if (MB.migrate(state.mb)) await window.api.saveSmeta(state.mb);
     rebuildLegacy();
     state.db.orders.forEach(function (o) { recalc(o); });
   }
 
   async function init() {
     var info = await window.api.appInfo();
-    document.title = info.name; $('#ver').textContent = 'v' + info.version;
+    document.title = info.name; $('#ver').textContent = 'v' + info.version; applyZoom();
     var res = await window.api.loadDb();
     var db = res.db || defaultDb();
     var def = defaultDb();

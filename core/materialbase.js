@@ -575,6 +575,18 @@
     return out.join('');
   }
 
+  /** Старые загрузки хранили «Коэф» в extra и наценку «как у группы» — приводим к модели Базиса. */
+  function migrate(b) {
+    let n = 0;
+    b.materials.forEach(function (m) {
+      const ex = m.extra;
+      if (ex && ex.Coef !== undefined && (!m.markup || !m.markup.mode || m.markup.mode === 'inherit')) {
+        m.markup = { mode: 'mul', value: num(ex.Coef) || 1 }; delete ex.Coef; n++;
+      }
+    });
+    return n;
+  }
+
   // ---------- смета заказа ----------
   function estimateItemFromMaterial(b, m, qty) {
     return {
@@ -602,7 +614,7 @@
     emptyBase: emptyBase, newMaterial: newMaterial,
     groupById: groupById, children: children, groupPath: groupPath, groupType: groupType, descendantIds: descendantIds,
     addGroup: addGroup, moveGroup: moveGroup, deleteGroup: deleteGroup, ensureGroupPath: ensureGroupPath, guessTypeByName: guessTypeByName,
-    isBazisXml: isBazisXml, importBazis: importBazis, importBazisRecords: importBazisRecords, toXml: toBazisXml, toBazisXml: toBazisXml, sheetPrice: sheetPrice,
+    migrate: migrate, isBazisXml: isBazisXml, importBazis: importBazis, importBazisRecords: importBazisRecords, toXml: toBazisXml, toBazisXml: toBazisXml, sheetPrice: sheetPrice,
     copyMaterial: copyMaterial, moveMaterials: moveMaterials, deleteMaterials: deleteMaterials, kindOf: kindOf,
     markupRule: markupRule, applyMarkup: applyMarkup, sellPrice: sellPrice, recordPrice: recordPrice, repriceGroup: repriceGroup,
     search: search, findDuplicates: findDuplicates, fromLegacy: fromLegacy, toLegacy: toLegacy,

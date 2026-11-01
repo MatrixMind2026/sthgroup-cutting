@@ -1,8 +1,10 @@
-const { contextBridge, ipcRenderer } = require('electron');
+const { contextBridge, ipcRenderer, webFrame } = require('electron');
 
 const call = (ch) => (...a) => ipcRenderer.invoke(ch, ...a);
 
 contextBridge.exposeInMainWorld('api', {
+  setZoom: (f) => { try { webFrame.setZoomFactor(Math.max(0.6, Math.min(2.5, f))); } catch (_) {} return webFrame.getZoomFactor(); },
+  getZoom: () => webFrame.getZoomFactor(),
   appInfo: call('app:info'),
   loadDb: call('db:load'),
   saveDb: call('db:save'),

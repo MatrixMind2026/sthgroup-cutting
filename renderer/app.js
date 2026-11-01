@@ -208,7 +208,8 @@
       return '<tr data-xi="' + i + '"><td><input data-s="extra" data-f="title" value="' + esc(x.title) + '" style="width:100%"></td><td><input class="n" data-s="extra" data-f="qty" value="' + esc(x.qty) + '" style="width:70px"></td><td><input data-s="extra" data-f="unit" value="' + esc(x.unit) + '" style="width:60px"></td><td><input class="n" data-s="extra" data-f="price" value="' + esc(x.price) + '" style="width:90px"></td><td><button class="icon" data-act="del-extra" data-i="' + i + '">✕</button></td></tr>';
     }).join('');
     return '<div class="card"><div class="kv">' +
-      '<label class="f">Считать распил<select data-s="order" data-f="areaBasis"><option value="">Как в настройках (' + def + ')</option><option value="parts"' + (o.areaBasis === 'parts' ? ' selected' : '') + '>По площади деталей</option><option value="sheets"' + (o.areaBasis === 'sheets' ? ' selected' : '') + '>По площади израсходованных листов</option></select></label>' +
+      '<label class="f">Как считать<select data-s="order" data-f="priceMode"><option value="">Как в настройках (' + (state.db.settings.pricing.sheet && state.db.settings.pricing.sheet.mode === 'area' ? 'по площади' : 'за лист') + ')</option><option value="sheet"' + (o.priceMode === 'sheet' ? ' selected' : '') + '>За лист (распил+кромка+присадка)</option><option value="area"' + (o.priceMode === 'area' ? ' selected' : '') + '>По площади, кромка и присадка отдельно</option></select></label>' +
+      '<label class="f">Площадь (если по площади)<select data-s="order" data-f="areaBasis"><option value="">Как в настройках (' + def + ')</option><option value="parts"' + (o.areaBasis === 'parts' ? ' selected' : '') + '>По площади деталей</option><option value="sheets"' + (o.areaBasis === 'sheets' ? ' selected' : '') + '>По площади израсходованных листов</option></select></label>' +
       '<label class="f">Скидка, %<input data-s="order" data-f="discountPct" value="' + esc(o.discountPct) + '" inputmode="decimal"></label>' +
       '<label class="chk" style="margin-top:18px"><input type="checkbox" data-s="order" data-f="ownMaterial"' + (o.ownMaterial ? ' checked' : '') + '> Материал наш (продаём листы)</label>' +
       '<label class="chk" style="margin-top:18px"><input type="checkbox" data-s="order" data-f="ownEdge"' + (o.ownEdge ? ' checked' : '') + '> Кромка наша (продаём кромку)</label></div></div>' +
@@ -360,7 +361,7 @@
       MB.children(mb, pid).sort(function (a, b) { return String(a.name).localeCompare(String(b.name), 'ru'); }).forEach(function (g) {
         if (MB.groupType(mb, g.id) !== 'sheet') return;
         var has = (sh.groupPrices || {})[g.id];
-        rows += '<tr><td style="padding-left:' + (8 + depth * 16) + 'px">' + esc(g.name) + '</td><td class="num"><input class="cell" inputmode="decimal" placeholder="как у верхней" data-s="setting" data-type="num" data-path="pricing.sheet.groupPrices.' + g.id + '" value="' + esc(has === undefined || has === 0 ? '' : has) + '"></td></tr>';
+        rows += '<tr><td style="padding-left:' + (8 + depth * 16) + 'px">' + esc(g.name) + '</td><td class="num"><input class="cell" style="width:120px" inputmode="decimal" placeholder="как выше" data-s="setting" data-type="num" data-path="pricing.sheet.groupPrices.' + g.id + '" value="' + esc(has === undefined || has === 0 ? '' : has) + '"></td></tr>';
         walk(g.id, depth + 1);
       });
     }
@@ -374,7 +375,7 @@
     var more = q ? sheets.filter(function (m) { return !(prices[m.id] > 0) && (m.name + ' ' + m.article).toLowerCase().indexOf(q) >= 0; }).slice(0, 30) : [];
     list.concat(more).forEach(function (m) {
       n++;
-      rows += '<tr><td>' + esc(m.name) + '<div class="muted small">' + esc(m.article || '') + '</div></td><td class="num"><input class="cell" inputmode="decimal" data-s="setting" data-type="num" data-path="pricing.sheet.prices.' + m.id + '" value="' + esc(prices[m.id] > 0 ? prices[m.id] : '') + '" placeholder="цена листа"></td></tr>';
+      rows += '<tr><td>' + esc(m.name) + '<div class="muted small">' + esc(m.article || '') + '</div></td><td class="num"><input class="cell" style="width:120px" inputmode="decimal" data-s="setting" data-type="num" data-path="pricing.sheet.prices.' + m.id + '" value="' + esc(prices[m.id] > 0 ? prices[m.id] : '') + '" placeholder="цена листа"></td></tr>';
     });
     return rows || '<tr><td colspan="2" class="muted small">' + (q ? 'Ничего не найдено среди листовых материалов.' : 'Отдельных цен нет. Найдите материал поиском, чтобы задать ему свою цену.') + '</td></tr>';
   }
@@ -388,7 +389,7 @@
       inp('pricing.sheet.holesNorm', 'Присадка в цене листа, отв. (0 — без ограничения)', sh.holesNorm, 'num') +
       inp('pricing.sheet.edgeExtra', 'Доплата за м.п. кромки сверх нормы, ₽', sh.edgeExtra, 'num') +
       inp('pricing.sheet.holesExtra', 'Доплата за отверстие сверх нормы, ₽', sh.holesExtra, 'num') + '</div>' +
-      '<div class="grid2" style="margin-top:14px"><div><h3>Цена по группам материалов</h3><div class="tbl-wrap" style="max-height:320px"><table><thead><tr><th>Группа</th><th class="num">₽ за лист</th></tr></thead><tbody>' + (sheetGroupRows(sh) || '<tr><td colspan="2" class="muted small">В базе нет листовых групп.</td></tr>') + '</tbody></table></div></div>' +
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-top:14px"><div><h3>Цена по группам материалов</h3><div class="tbl-wrap" style="max-height:320px"><table><thead><tr><th>Группа</th><th class="num">₽ за лист</th></tr></thead><tbody>' + (sheetGroupRows(sh) || '<tr><td colspan="2" class="muted small">В базе нет листовых групп.</td></tr>') + '</tbody></table></div></div>' +
       '<div><h3>Отдельные материалы</h3><input id="shQ" placeholder="Найти материал по названию или артикулу" value="' + esc(state.shQ || '') + '" style="width:100%;margin-bottom:6px"><div class="tbl-wrap" style="max-height:290px"><table><thead><tr><th>Материал</th><th class="num">₽ за лист</th></tr></thead><tbody id="shRows">' + sheetMatRows(sh) + '</tbody></table></div></div></div>' +
       '<p class="muted small">Порядок цены: материал → его группа (или группа выше) → цена по умолчанию.</p></div>';
   }

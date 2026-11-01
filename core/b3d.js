@@ -196,7 +196,7 @@
       }
       const butts = get(o, 'Butts');
       if (butts) butts.c.forEach(function (bt) {
-        const em = clean(val(bt, 'Mat', ''));
+        const em = String(val(bt, 'Mat', '')).trim();
         const el = val(bt, 'Elem', -1);
         if (!em) return;
         const sg = p.segs[el], sd = sg ? sideOf(sg) : '';
@@ -228,8 +228,8 @@
       const t = val(it.o, 'Type', 0);
       if ([3001, 4001, 4004, 2004].indexOf(t) < 0) return;
       if (it.anc.indexOf(4001) >= 0 || it.anc.indexOf(4004) >= 0) return;
-      const nm = clean(val(it.o, 'Name', '')); if (!nm || SKIP.test(nm)) return;
-      const cur = hw.get(nm) || { name: nm, qty: 0, kind: t === 2004 ? 'profile' : 'hardware' };
+      const rawName = String(val(it.o, 'Name', '')), nm = clean(rawName.split('\r')[0]); if (!nm || SKIP.test(nm)) return;
+      const cur = hw.get(nm) || { name: nm, code: clean(rawName.split('\r')[1] || ''), qty: 0, kind: t === 2004 ? 'profile' : 'hardware' };
       cur.qty++; hw.set(nm, cur);
     });
 
@@ -239,49 +239,84 @@
     };
   }
 
-  // ---- перенос в заказ: подбор материалов и кромки в базе, создание недостающих ----
+  // ---- перенос в заказ: подбор в базе по артикулу/названию, недостающее — в «08. Для разбора» ----
   function nm(s) { return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim(); }
-  function findIn(mb, MB, type, name, code) {
-    const n = nm(name), c = nm(code);
-    const list = mb.materials.filter(function (m) { return MB.kindOf(mb, m) === type; });
-    let m = list.find(function (x) { return nm(x.name) === n; });
-    if (!m && c) m = list.find(function (x) { return [x.name, x.article, x.code, x.syncId].some(function (f) { return nm(f).indexOf(c) >= 0; }); });
-    if (!m && n.length > 8) m = list.find(function (x) { const xn = nm(x.name); return xn && (xn.indexOf(n) >= 0 || n.indexOf(xn) >= 0); });
+  function makeIndex(mb, MB) {
+    const ix = { art: new Map(), name: new Map(), kind: new Map() };
+    mb.materials.forEach(function (m) {
+      const a = nm(m.article), n = nm(m.name), k = MB.kindOf(mb, m);
+      if (a && !ix.art.has(k + '|' + a)) ix.art.set(k + '|' + a, m);
+      if (a && !ix.art.has('*|' + a)) ix.art.set('*|' + a, m);
+      if (n && !ix.name.has(k + '|' + n)) ix.name.set(k + '|' + n, m);
+      if (n && !ix.name.has('*|' + n)) ix.name.set('*|' + n, m);
+    });
+    return ix;
+  }
+  function find(ix, type, name, code) {
+    const t = type || '*';
+    return (code && (ix.art.get(t + '|' + nm(code)) || ix.art.get('*|' + nm(code)))) || ix.name.get(t + '|' + nm(name)) || ix.name.get('*|' + nm(name)) ||
+      (name && ix.art.get(t + '|' + nm(name))) || null;
+  }
+  const LANDING = { sheet: 'Листовые', edge: 'Кромочные', hardware: 'Фурнитура' };
+  function landing(mb, MB, type) {
+    let root = mb.groups.find(function (g) { return !g.parentId && /для разбора/i.test(g.name); });
+    if (!root) root = MB.addGroup(mb, '', '08. Для разбора', 'other');
+    let g = mb.groups.find(function (x) { return x.parentId === root.id && x.name === LANDING[type]; });
+    if (!g) g = MB.addGroup(mb, root.id, LANDING[type], type);
+    return g;
+  }
+  function ensure(mb, MB, ix, type, name, code, extra, created) {
+    let m = find(ix, type, name, code); if (m) return m;
+    m = MB.newMaterial(landing(mb, MB, type).id, Object.assign({ name: name, article: code || '', inStock: true, markup: { mode: 'mul', value: 1 } }, extra || {}));
+    mb.materials.push(m); created.push(name);
+    const a = nm(m.article), n = nm(m.name);
+    if (a) { ix.art.set(type + '|' + a, m); ix.art.set('*|' + a, m); }
+    ix.name.set(type + '|' + n, m); ix.name.set('*|' + n, m);
     return m;
   }
-  function firstGroup(mb, MB, type) { return mb.groups.find(function (g) { return MB.groupType(mb, g.id) === type; }); }
-  function ensure(mb, MB, type, name, code, extra, created) {
-    let m = findIn(mb, MB, type, name, code); if (m) return m;
-    const g = firstGroup(mb, MB, type) || MB.addGroup(mb, '', { sheet: 'Листовые материалы', edge: 'Кромочные материалы', hardware: 'Фурнитура' }[type] || 'Прочее', type);
-    m = MB.newMaterial(g ? g.id : '', Object.assign({ name: name, code: code || '', inStock: true }, extra || {}));
-    mb.materials.push(m); created.push(name); return m;
-  }
 
-  /** parsed — результат parse(); mb — база «Сметы»; MB — Core.materialbase. Изменяет mb (добавляет недостающие позиции). */
+  /** parsed — результат parse(); mb — база «Сметы»; MB — Core.materialbase. Недостающие позиции добавляются в mb. */
   function toOrder(parsed, mb, MB) {
+    const ix = makeIndex(mb, MB);
     const created = [], parts = [], warnings = parsed.warnings.slice();
+    const area = new Map(), edgeM = new Map();
     parsed.parts.forEach(function (p) {
-      const mat = p.material ? ensure(mb, MB, 'sheet', p.material, p.matCode,
-        { thickness: p.thickness || '', unit: 'лист', grain: !!p.grain, note: 'Создано при загрузке .b3d — заполните цены и размер листа' }, created) : null;
+      const mat = p.material ? ensure(mb, MB, ix, 'sheet', p.material, p.matCode,
+        { thickness: p.thickness || '', unit: 'лист', note: 'Создано при загрузке .b3d' }, created) : null;
       const edges = {};
       ['l1', 'l2', 'w1', 'w2'].forEach(function (k) {
         const raw = p.edges[k];
         if (!raw) { edges[k] = ''; return; }
-        const code = (raw.match(/([A-Za-zА-Яа-я0-9]+\s?[A-Za-zА-Яа-я0-9]*-\d+[,.]?\d*[xх×]\d+)\s*$/) || [])[1] || p.matCode;
-        edges[k] = ensure(mb, MB, 'edge', raw, code, { unit: 'м.п.', note: 'Создано при загрузке .b3d — заполните цены' }, created).id;
+        const bits = raw.split('\r'), ename = clean(bits[0]), ecode = clean(bits[1] || '');
+        const em = ensure(mb, MB, ix, 'edge', ename, ecode, { unit: 'м.п.', note: 'Создано при загрузке .b3d' }, created);
+        edges[k] = em.id;
+        const len = (k === 'l1' || k === 'l2' ? p.l : p.w) * p.qty / 1000;
+        edgeM.set(em.id, (edgeM.get(em.id) || 0) + len);
       });
+      if (mat) area.set(mat.id, (area.get(mat.id) || 0) + p.l * p.w * p.qty / 1e6);
       parts.push({
         id: MB.uid('p'), name: p.name, materialId: mat ? mat.id : '', materialName: p.material, l: p.l, w: p.w, qty: p.qty, grain: p.grain,
         holesFaceBlind: p.holesFaceBlind, holesFaceThrough: p.holesFaceThrough, holesEdge: p.holesEdge, millM: p.millM, edges: edges
       });
     });
     const items = [];
+    const byId = function (id) { return mb.materials.find(function (x) { return x.id === id; }); };
+    area.forEach(function (a, id) {
+      const m = byId(id); let qty = Math.round(a * 100) / 100;
+      if (/^лист/i.test(m.unit || '') && num(m.sheetW) && num(m.sheetH)) qty = Math.ceil(a / (num(m.sheetW) * num(m.sheetH) / 1e6));
+      const it = MB.estimateItemFromMaterial(mb, m, qty);
+      it.auto = true; it.source = 'b3d'; items.push(it);
+    });
+    edgeM.forEach(function (mtr, id) {
+      const it = MB.estimateItemFromMaterial(mb, byId(id), Math.round(mtr * 100) / 100); it.auto = true; it.source = 'b3d'; items.push(it);
+    });
     parsed.hardware.forEach(function (h) {
-      const m = ensure(mb, MB, 'hardware', h.name, '', { unit: h.kind === 'profile' ? 'шт.' : 'шт.', note: 'Создано при загрузке .b3d — заполните цены' }, created);
-      items.push(MB.estimateItemFromMaterial(mb, m, h.qty));
+      const m = ensure(mb, MB, ix, 'hardware', h.name, h.code, { unit: 'шт', note: 'Создано при загрузке .b3d' }, created);
+      const it = MB.estimateItemFromMaterial(mb, m, h.qty); it.source = 'b3d'; items.push(it);
     });
     return { name: parsed.name, parts: parts, items: items, created: Array.from(new Set(created)), warnings: warnings };
   }
+  function num(x) { const n = Number(x); return isFinite(n) ? n : 0; }
 
   return { parse: parse, load: load, toOrder: toOrder };
 });

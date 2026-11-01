@@ -11,7 +11,8 @@
     function S() { return state.smeta; }
     function B() { return state.mb; }
     function $(sel) { return document.querySelector(sel); }
-    function byName(a, b) { return String(a.name).localeCompare(String(b.name), 'ru', { numeric: true }); }
+    var collator = new Intl.Collator('ru', { numeric: true });
+    function byName(a, b) { return collator.compare(String(a.name), String(b.name)); }
     function pr(v) { return v === '' || v === undefined || v === null ? '—' : money(v); }
     function save() { kit.saveBase(); }
     function groupLabel(g) { return MB.groupPath(B(), g.id).join(' / '); }
@@ -80,21 +81,22 @@
     function view() {
       var s = S(), b = B(), mi = state.matInfo || {};
       var counts = directCounts();
-      var list = visibleList(), shown = list.slice(0, LIMIT);
+      var list = visibleList(), shown = list.slice(0, S().limit || LIMIT);
       var g = s.groupId ? MB.groupById(b, s.groupId) : null;
       var allSel = shown.length && shown.every(function (m) { return s.sel[m.id]; });
       var rows = shown.map(function (m) {
-        var k = MB.kindOf(b, m), dims = '';
-        if (k === 'sheet' && (m.sheetW || m.sheetH)) dims = esc(m.sheetW) + '×' + esc(m.sheetH) + (m.thickness ? '×' + esc(m.thickness) : '');
-        else if (m.thickness) dims = 'т. ' + esc(m.thickness);
-        var mt = markupText(m);
+        var dims = [m.sheetW, m.sheetH, m.thickness].filter(function (x) { return x !== '' && x !== undefined && Number(x) !== 0; }).map(esc).join('×');
+        var rule = MB.markupRule(b, m), coef = rule.mode === 'mul' ? rule.value : '';
+        var sell = MB.sellPrice(b, m);
         return '<tr' + (m.inStock === false ? ' class="nostock"' : '') + '>' +
           '<td style="width:26px"><input type="checkbox" data-act="sm-sel" data-id="' + m.id + '"' + (s.sel[m.id] ? ' checked' : '') + '></td>' +
-          '<td class="click" data-act="sm-edit" data-id="' + m.id + '"><b>' + esc(m.name || '(без названия)') + '</b><div class="small muted">' + esc([m.article, m.code].filter(Boolean).join(' · ')) + (s.search || !s.groupId || !s.sub ? '' : '') + '</div></td>' +
+          '<td class="small">' + esc(m.article || '') + '</td>' +
+          '<td class="click" data-act="sm-edit" data-id="' + m.id + '"><b>' + esc(m.name || '(без названия)') + '</b>' + (s.search && !s.groupId ? '<div class="small muted">' + esc(MB.groupPath(b, m.groupId).slice(-2).join(' / ')) + '</div>' : '') + '</td>' +
           '<td>' + esc(m.unit || '') + '</td><td class="num">' + pr(m.priceBuy) + '</td>' +
-          '<td class="num"><b>' + pr(MB.sellPrice(b, m) || '') + '</b>' + (mt ? '<div class="small muted">' + esc(mt) + '</div>' : '') + '</td>' +
-          '<td class="num">' + pr(m.servicePrice) + '</td><td class="small">' + dims + '</td>' +
-          '<td class="small">' + esc(m.supplier || '') + '</td><td>' + (m.inStock === false ? '<span class="badge cancel">нет</span>' : '') + '</td></tr>';
+          '<td class="num small">' + (coef !== '' ? esc(coef) : esc(markupText(m))) + '</td>' +
+          '<td class="num"><b>' + pr(sell || '') + '</b></td>' +
+          '<td class="small">' + dims + '</td><td class="small">' + esc(m.classes || '') + '</td>' +
+          '<td>' + (m.inStock === false ? '<span class="badge cancel">нет</span>' : '') + '</td></tr>';
       }).join('');
       var head = g ? esc(groupLabel(g)) + ' <span class="muted small">(' + MB.GROUP_TYPES[MB.groupType(b, g.id)] + ')</span>' : 'Все материалы';
       return '<div class="row sp"><h1>Смета: база материалов</h1><div class="row">' +
@@ -111,11 +113,11 @@
         treeHtml('', 0, counts) +
         (g ? '<div class="row" style="margin-top:10px;gap:6px"><button class="btn ghost sm" data-act="sm-group-sub">+ Подгруппа</button><button class="btn ghost sm" data-act="sm-group-edit">Свойства…</button><button class="btn danger sm" data-act="sm-group-del">Удалить</button></div>' : '') + '</div>' +
         '<div><div class="row sp" style="margin-bottom:8px"><div class="row"><b>' + head + '</b></div>' +
-        '<div class="row"><input id="sm-search" placeholder="Поиск: название, артикул, поставщик" value="' + esc(s.search) + '" style="width:300px">' +
+        '<div class="row"><input id="sm-search" placeholder="Поиск: артикул, название, класс" value="' + esc(s.search) + '" style="width:300px">' +
         (g ? '<label class="chk small"><input type="checkbox" data-s="smsub"' + (s.sub ? ' checked' : '') + '> с подгруппами</label>' : '') + '</div></div>' +
         '<div id="sm-bulk">' + bulkHtml() + '</div>' +
-        (list.length ? '<div class="tbl-wrap"><table><thead><tr><th><input type="checkbox" data-act="sm-selall"' + (allSel ? ' checked' : '') + '></th><th>Наименование</th><th>Ед.</th><th class="num">Закупка, ₽</th><th class="num">Продажа, ₽</th><th class="num">Работа, ₽</th><th>Размер, мм</th><th>Поставщик</th><th>Нал.</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
-          (list.length > LIMIT ? '<p class="muted small">Показаны первые ' + LIMIT + ' из ' + list.length + '. Уточните поиск или выберите группу.</p>' : '')
+        (list.length ? '<div class="tbl-wrap"><table><thead><tr><th><input type="checkbox" data-act="sm-selall"' + (allSel ? ' checked' : '') + '></th><th>Артикул</th><th>Наименование</th><th>Ед.</th><th class="num">Цена, ₽</th><th class="num">Коэф.</th><th class="num">Продажа, ₽</th><th>Длина×Ширина×Толщ.</th><th>Класс</th><th>Нал.</th></tr></thead><tbody>' + rows + '</tbody></table></div>' +
+          (list.length > shown.length ? '<p class="muted small">Показано ' + shown.length + ' из ' + list.length + '. <button class="btn ghost sm" data-act="sm-more">Показать ещё 500</button> или уточните поиск / выберите группу.</p>' : '')
           : '<div class="card empty">Материалов нет. Добавьте по ссылке, вручную или импортируйте XML выгрузки Базиса.</div>') +
         '<p class="muted small">Файл базы: <code>' + esc(mi.path || '') + '</code> <a href="#" data-act="mat-show">показать</a>. Резервная копия — раз в день.</p></div></div>';
     }
@@ -267,6 +269,7 @@
       var r = await window.api.pickSmeta();
       if (!r) return null;
       if (r.error) { kit.toast(r.error, true); return null; }
+      if (/\.xml$/i.test(r.name) && MB.isBazisXml(r.text)) return { name: r.name, bazis: true, text: r.text };
       var recs = /\.xml$/i.test(r.name) ? MB.xmlRecords(r.text) : MB.parseTable(r.text);
       if (!recs.length) {
         openModal2({ title: 'Не удалось прочитать файл', text: 'В файле «' + esc(r.name) + '» не найден список материалов. Для XML нужен список одинаковых элементов с полями внутри, для CSV — первая строка с названиями колонок.', fields: [], noSubmit: true, cancelLabel: 'Понятно' });
@@ -276,6 +279,20 @@
     }
     async function importFlow(pricesOnly) {
       var f = await pickRecords(); if (!f) return;
+      if (f.bazis && !pricesOnly) {
+        var cnt = (f.text.match(/<Material>/g) || []).length;
+        openModal2({
+          title: 'База из Базис-Мебельщика', submitLabel: 'Загрузить',
+          text: 'Файл «' + esc(f.name) + '»: ' + cnt + ' позиций. Поля, группы и наценка (Коэф) переносятся как в Базисе; повторяющиеся артикулы не теряются.',
+          fields: [{ k: 'mode', label: 'Как загрузить', type: 'select', options: [['replace', 'заменить всю базу (рекомендуется)'], ['add', 'добавить к имеющейся']], value: B().materials.length ? 'replace' : 'add' }],
+          onSubmit: function (v) {
+            var t0 = Date.now(), res = MB.importBazis(B(), f.text, { replace: v.mode === 'replace' });
+            S().groupId = ''; S().sel = {}; save(); kit.render();
+            kit.toast('Загружено: ' + res.added + ' позиций, групп: ' + res.groups + (res.skipped ? ', пропущено повторов: ' + res.skipped : '') + ' (' + ((Date.now() - t0) / 1000).toFixed(1) + ' с)');
+          }
+        });
+        return;
+      }
       openModal2({
         title: pricesOnly ? 'Обновить цены из файла' : 'Импорт материалов', submitLabel: pricesOnly ? 'Обновить цены' : 'Импортировать',
         text: 'Файл «' + esc(f.name) + '»: записей ' + f.recs.length + '.',
@@ -472,6 +489,7 @@
       'sm-copy-one': function (el) { var c = MB.copyMaterial(B(), el.dataset.id); kit.closeModal(); save(); kit.render(); if (c) openCard(c, false); },
       'sm-from-link': startFromLink,
       'sm-card-link': cardRefreshFromLink,
+      'sm-more': function () { S().limit = (S().limit || LIMIT) + 500; kit.render(); },
       'sm-import': function () { importFlow(false); },
       'sm-prices': function () { importFlow(true); },
       'sm-export': exportFlow,
@@ -496,7 +514,7 @@
       var t = ev.target;
       if ((t.id === 'sm-search' || t.id === 'pick-search') && ev.type !== 'input') return true; // blur не перерисовывает список
       if (t.id === 'sm-search') {
-        S().search = t.value; var pos = t.selectionStart;
+        S().search = t.value; S().limit = 0; var pos = t.selectionStart;
         kit.render(); var el = $('#sm-search'); if (el) { el.focus(); el.setSelectionRange(pos, pos); }
         return true;
       }

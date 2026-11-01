@@ -180,7 +180,7 @@
       if (o.type && kindOf(b, m) !== o.type) return false;
       if (o.onlyInStock && m.inStock === false) return false;
       if (!t) return true;
-      return [m.name, m.article, m.code, m.supplier, m.note].some(function (s) { return String(s || '').toLowerCase().indexOf(t) >= 0; });
+      return [m.name, m.article, m.code, m.supplier, m.note, m.classes].some(function (s) { return String(s || '').toLowerCase().indexOf(t) >= 0; });
     });
   }
   function findDuplicates(b, by) {
@@ -219,13 +219,19 @@
     });
     return b;
   }
+  /** Цена листа: если материал в базе считается за м² (кв.м, м2) — умножаем на площадь листа. */
+  function sheetPrice(b, m) {
+    const p = sellPrice(b, m);
+    if (/^(кв\.?\s?м|м2|м²)/i.test(String(m.unit || '').trim())) return round2(p * num(m.sheetW) * num(m.sheetH) / 1e6);
+    return p;
+  }
   function toLegacy(b) {
     const out = { materials: [], edges: [], hardware: [] };
     b.materials.forEach(function (m) {
       const k = kindOf(b, m);
       if (k === 'sheet') {
         out.materials.push({ id: m.id, name: m.name, thickness: num(m.thickness), sheetW: num(m.sheetW), sheetH: num(m.sheetH),
-          servicePerM2: num(m.servicePrice), salePerSheet: sellPrice(b, m), grain: !!m.grain });
+          servicePerM2: num(m.servicePrice), salePerSheet: sheetPrice(b, m), grain: !!m.grain });
       } else if (k === 'edge') {
         out.edges.push({ id: m.id, name: m.name, servicePerM: num(m.servicePrice), salePerM: sellPrice(b, m) });
       } else {
@@ -440,7 +446,7 @@
       return r;
     });
   }
-  function toXml(b, mats) {
+  function toXmlOld(b, mats) {
     const rows = exportRows(b, mats);
     return '<?xml version="1.0" encoding="UTF-8"?>\n<NK_Base>\n' + rows.map(function (r) {
       return '  <Material>\n' + Object.keys(r).map(function (k) { return '    <' + k + '>' + encodeXml(r[k]) + '</' + k + '>'; }).join('\n') + '\n  </Material>';
@@ -451,6 +457,114 @@
     const cols = XML_TAGS.map(function (t) { return t[0]; });
     const q = function (v) { v = String(v === undefined || v === null ? '' : v); return /[;"\n]/.test(v) ? '"' + v.replace(/"/g, '""') + '"' : v; };
     return '﻿' + [cols.join(';')].concat(rows.map(function (r) { return cols.map(function (c) { return q(r[c]); }).join(';'); })).join('\r\n') + '\r\n';
+  }
+
+
+  // ---------- формат Базис-Мебельщика (NK_Base): 37 полей, группы строкой через «/» ----------
+  const BZ_TAGS = ['Article', 'Name', 'Group_Name', 'Unit_Measure', 'Price', 'Coef', 'Length', 'Width', 'Thickness', 'Sign', 'Overhang', 'Color', 'Texture',
+    'Class', 'IsTape', 'Sync_External', 'Weight', 'Comment', 'NoAvailable', 'Stretch', 'Retry', 'Mirror', 'Transparent', 'Shiness', 'Bright', 'DX', 'DY',
+    'OffsetX', 'OffsetY', 'Angle', 'Coef_Exc_Cutting', 'Round_Mode', 'Alt_Price', 'Name_FNP', 'Type_Group_Material', 'Color_RGB', 'Color_HEX'];
+  // поля, которые хранятся в materials[].extra (остальные — в «родных» полях материала); значения по умолчанию не пишем в базу
+  const BZ_EXTRA_DEFAULTS = { Overhang: '0', Color: '8369910', Texture: '', IsTape: 'N', Weight: '0', Stretch: '0', Retry: '0', Mirror: '0', Transparent: '0',
+    Shiness: '0', Bright: '0', DX: '0', DY: '0', OffsetX: '1000', OffsetY: '1000', Angle: '0', Coef_Exc_Cutting: '1', Round_Mode: '0', Alt_Price: '0',
+    Name_FNP: '', Type_Group_Material: '2', Color_RGB: '(246, 182, 127)', Color_HEX: 'F6B67F' };
+
+  function isBazisXml(text) {
+    const head = String(text).slice(0, 4000);
+    return /<Materials>\s*<Material>/.test(head) && /<Article[ >\/]/.test(head) && /<Group_Name[ >\/]/.test(head);
+  }
+  function bzGroupType(root) {
+    const t = guessTypeByName(root);
+    if (/лакокрас|краск/i.test(root)) return 'other';
+    return t;
+  }
+  /**
+   * Быстрый импорт выгрузки Базиса. opts.replace — заменить всю базу (иначе добавить к имеющейся; точные повторы пропускаются).
+   * Повторяющиеся артикулы не склеиваются: в Базисе они бывают у разных позиций.
+   */
+  function importBazis(b, text, opts) {
+    opts = opts || {};
+    text = String(text).replace(/^﻿/, '');
+    if (opts.replace) { b.groups = []; b.materials = []; }
+    const gcache = new Map();
+    b.groups.forEach(function (g) { gcache.set((g.parentId || '') + '\u0001' + g.name, g); });
+    const pathCache = new Map();
+    function groupFor(path) {
+      let id = pathCache.get(path); if (id !== undefined) return id;
+      let pid = '';
+      path.split('/').forEach(function (part, i) {
+        part = part.trim(); if (!part) return;
+        const key = pid + '\u0001' + part;
+        let g = gcache.get(key);
+        if (!g) { g = addGroup(b, pid, part, i === 0 ? bzGroupType(part) : ''); gcache.set(key, g); }
+        pid = g.id;
+      });
+      pathCache.set(path, pid); return pid;
+    }
+    const seen = new Set();
+    if (!opts.replace) b.materials.forEach(function (m) { seen.add(groupPathStr(b, m.groupId) + '\u0001' + m.name + '\u0001' + m.article); });
+    const res = { added: 0, skipped: 0, groups: 0 };
+    const g0 = b.groups.length;
+    const blockRe = /<Material>([\s\S]*?)<\/Material>/g, tagRe = /<([A-Za-z_0-9]+)(?:\/>|>([^<]*)<\/\1>)/g;
+    let bm, n = 0;
+    while ((bm = blockRe.exec(text))) {
+      const f = {}; let tm; tagRe.lastIndex = 0;
+      const body = bm[1];
+      while ((tm = tagRe.exec(body))) f[tm[1]] = tm[2] === undefined ? '' : decodeEntities(tm[2]);
+      const path = f.Group_Name || '';
+      if (!opts.replace) {
+        const key = path + '\u0001' + (f.Name || '') + '\u0001' + (f.Article || '');
+        if (seen.has(key)) { res.skipped++; continue; }
+        seen.add(key);
+      }
+      const extra = {};
+      Object.keys(BZ_EXTRA_DEFAULTS).forEach(function (k) { if (f[k] !== undefined && f[k] !== BZ_EXTRA_DEFAULTS[k]) extra[k] = f[k]; });
+      Object.keys(f).forEach(function (k) { if (BZ_TAGS.indexOf(k) < 0) extra[k] = f[k]; }); // неизвестные теги сохраняем
+      const coef = f.Coef === undefined || f.Coef === '' ? 1 : num(f.Coef);
+      b.materials.push({
+        id: 'm' + (++n).toString(36) + Math.random().toString(36).slice(2, 6) + (b.materials.length).toString(36),
+        groupId: groupFor(path), name: f.Name || '', article: f.Article || '', code: f.Sign || '', syncId: f.Sync_External || '', supplier: '',
+        unit: f.Unit_Measure || '', thickness: f.Thickness === '' || f.Thickness === undefined ? '' : num(f.Thickness),
+        sheetW: f.Length === '' || f.Length === undefined ? '' : num(f.Length), sheetH: f.Width === '' || f.Width === undefined ? '' : num(f.Width),
+        grain: false, excess: '', priceBuy: f.Price === '' || f.Price === undefined ? '' : num(f.Price), priceSell: '', servicePrice: '',
+        markup: { mode: 'mul', value: coef }, url: '', note: f.Comment || '', inStock: f.NoAvailable !== 'Y', classes: f.Class || '',
+        history: [], extra: extra, updated: ''
+      });
+      res.added++;
+    }
+    res.groups = b.groups.length - g0;
+    return res;
+  }
+  function groupPathStr(b, gid) { return groupPath(b, gid).join('/'); }
+
+  /** Экспорт в тот же формат, что выдаёт Базис (все 37 полей, порядок как в оригинале). */
+  function toBazisXml(b, mats) {
+    const list = mats || b.materials, out = ['﻿<?xml version="1.0" encoding="UTF-8"?>\n<Database><Materials>'];
+    const pc = new Map();
+    list.forEach(function (m) {
+      let gp = pc.get(m.groupId); if (gp === undefined) { gp = groupPathStr(b, m.groupId); pc.set(m.groupId, gp); }
+      const ex = m.extra || {}, mk = m.markup || {};
+      const rule = markupRule(b, m), buy = num(m.priceBuy);
+      let coef = 1;
+      if (rule.mode === 'mul') coef = num(rule.value) || 1;
+      else if (rule.mode !== 'none' && buy) coef = Math.round(sellPrice(b, m) / buy * 1000) / 1000 || 1;
+      const v = {
+        Article: m.article, Name: m.name, Group_Name: gp, Unit_Measure: m.unit, Price: buy, Coef: coef,
+        Length: m.sheetW === '' ? 0 : m.sheetW, Width: m.sheetH === '' ? 0 : m.sheetH, Thickness: m.thickness === '' ? 0 : m.thickness,
+        Sign: m.code, Class: m.classes, Sync_External: m.syncId, Comment: m.note, NoAvailable: m.inStock === false ? 'Y' : 'N'
+      };
+      let s = '<Material>';
+      BZ_TAGS.forEach(function (t) {
+        let x = v[t];
+        if (x === undefined) x = ex[t] !== undefined ? ex[t] : (BZ_EXTRA_DEFAULTS[t] !== undefined ? BZ_EXTRA_DEFAULTS[t] : '');
+        x = String(x === null ? '' : x);
+        s += x === '' ? '<' + t + '/>' : '<' + t + '>' + encodeXml(x) + '</' + t + '>';
+      });
+      Object.keys(ex).forEach(function (k) { if (BZ_TAGS.indexOf(k) < 0) s += ex[k] === '' ? '<' + k + '/>' : '<' + k + '>' + encodeXml(ex[k]) + '</' + k + '>'; });
+      out.push(s + '</Material>');
+    });
+    out.push('</Materials></Database>');
+    return out.join('');
   }
 
   // ---------- смета заказа ----------
@@ -480,11 +594,12 @@
     emptyBase: emptyBase, newMaterial: newMaterial,
     groupById: groupById, children: children, groupPath: groupPath, groupType: groupType, descendantIds: descendantIds,
     addGroup: addGroup, moveGroup: moveGroup, deleteGroup: deleteGroup, ensureGroupPath: ensureGroupPath, guessTypeByName: guessTypeByName,
+    isBazisXml: isBazisXml, importBazis: importBazis, toXml: toBazisXml, toBazisXml: toBazisXml, sheetPrice: sheetPrice,
     copyMaterial: copyMaterial, moveMaterials: moveMaterials, deleteMaterials: deleteMaterials, kindOf: kindOf,
     markupRule: markupRule, applyMarkup: applyMarkup, sellPrice: sellPrice, recordPrice: recordPrice, repriceGroup: repriceGroup,
     search: search, findDuplicates: findDuplicates, fromLegacy: fromLegacy, toLegacy: toLegacy,
     parseXml: parseXml, xmlRecords: xmlRecords, parseTable: parseTable, importRecords: importRecords, recordToFields: recordToFields,
-    toXml: toXml, toCsv: toCsv,
+    toCsv: toCsv,
     estimateItemFromMaterial: estimateItemFromMaterial, estimateTotals: estimateTotals, refreshEstimate: refreshEstimate
   };
 });

@@ -75,7 +75,8 @@ t('toOrder создаёт недостающие материалы и не ду
   assert.ok(r1.parts.every((p) => p.materialId));
   const r2 = B3D.toOrder(B3D.parse(sample()), mb, MB);
   assert.strictEqual(r2.created.length, 0);
-  assert.strictEqual(r2.items[0].qty, 2);
+  assert.strictEqual(r2.items.find((i) => /Конфирмат/.test(i.name)).qty, 2);
+  assert.ok(r2.items.length >= 3); // лист, кромка, фурнитура
 });
 
 t('не-b3d файл отклоняется', () => {

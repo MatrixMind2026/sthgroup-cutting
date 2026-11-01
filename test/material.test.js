@@ -153,3 +153,44 @@ t('мусорный XML и CSV не ломают разбор', () => {
 });
 
 console.log('\nМодуль «Смета»: пройдено тестов: ' + passed);
+
+// ---- формат Базис-Мебельщика ----
+(function () {
+  const assert = require('assert');
+  const MB = require('../core/materialbase.js');
+  const xml = '﻿<?xml version="1.0" encoding="UTF-8"?>\n<Database><Materials>' +
+    '<Material><Article>A1</Article><Name>ЛДСП 16 &amp; тест</Name><Group_Name>01. Листовые материалы/01. ЛДСП</Group_Name><Unit_Measure>кв.м</Unit_Measure><Price>364</Price><Coef>1.2</Coef><Length>2750</Length><Width>1830</Width><Thickness>16</Thickness><Sign>16мм.</Sign><Overhang>0</Overhang><Color>8369910</Color><Texture/><Class>M1 </Class><IsTape>N</IsTape><Sync_External/><Weight>10.4</Weight><Comment/><NoAvailable>N</NoAvailable><Stretch>0</Stretch><Retry>0</Retry><Mirror>0</Mirror><Transparent>0</Transparent><Shiness>0</Shiness><Bright>0</Bright><DX>0</DX><DY>0</DY><OffsetX>1830</OffsetX><OffsetY>2750</OffsetY><Angle>0</Angle><Coef_Exc_Cutting>1</Coef_Exc_Cutting><Round_Mode>0</Round_Mode><Alt_Price>0</Alt_Price><Name_FNP/><Type_Group_Material>2</Type_Group_Material><Color_RGB>(246, 182, 127)</Color_RGB><Color_HEX>F6B67F</Color_HEX></Material>' +
+    '<Material><Article>A1</Article><Name>Другая плита</Name><Group_Name>01. Листовые материалы/02. МДФ</Group_Name><Unit_Measure>лист</Unit_Measure><Price>1000</Price><Coef>1</Coef><Length>2800</Length><Width>2070</Width><Thickness>.8</Thickness><Sign/><Overhang>0</Overhang><Color>8369910</Color><Texture/><Class/><IsTape>Y</IsTape><Sync_External/><Weight>0</Weight><Comment>тест</Comment><NoAvailable>Y</NoAvailable><Stretch>0</Stretch><Retry>0</Retry><Mirror>0</Mirror><Transparent>0</Transparent><Shiness>0</Shiness><Bright>0</Bright><DX>0</DX><DY>0</DY><OffsetX>1000</OffsetX><OffsetY>1000</OffsetY><Angle>0</Angle><Coef_Exc_Cutting>1</Coef_Exc_Cutting><Round_Mode>0</Round_Mode><Alt_Price>0</Alt_Price><Name_FNP/><Type_Group_Material>2</Type_Group_Material><Color_RGB>(246, 182, 127)</Color_RGB><Color_HEX>F6B67F</Color_HEX></Material>' +
+    '</Materials></Database>';
+  const rec = (s) => { const o = [], re = /<Material>([\s\S]*?)<\/Material>/g; let m; while ((m = re.exec(s))) { const f = {}; m[1].replace(/<(\w+)(?:\/>|>([^<]*)<\/\1>)/g, (a, k, v) => { f[k] = v || ''; }); o.push(f); } return o; };
+  let ok = 0;
+  function t(n, fn) { try { fn(); ok++; console.log('ok   ' + n); } catch (e) { console.error('FAIL ' + n + '\n' + e.stack); process.exitCode = 1; } }
+  t('Базис XML: распознаётся, повторяющиеся артикулы не склеиваются', () => {
+    assert.ok(MB.isBazisXml(xml));
+    const b = MB.emptyBase(); const r = MB.importBazis(b, xml, { replace: true });
+    assert.strictEqual(r.added, 2); assert.strictEqual(b.materials.length, 2);
+    assert.strictEqual(MB.groupPath(b, b.materials[0].groupId).join('/'), '01. Листовые материалы/01. ЛДСП');
+    assert.strictEqual(MB.groupType(b, b.materials[0].groupId), 'sheet');
+  });
+  t('Базис XML: Коэф — это наценка, цена листа считается из цены за м²', () => {
+    const b = MB.emptyBase(); MB.importBazis(b, xml, { replace: true });
+    const m = b.materials[0];
+    assert.strictEqual(MB.sellPrice(b, m), 436.8);
+    assert.strictEqual(MB.sheetPrice(b, m), Math.round(436.8 * 2.75 * 1.83 * 100) / 100);
+  });
+  t('Базис XML: экспорт без потерь (все 37 полей)', () => {
+    const b = MB.emptyBase(); MB.importBazis(b, xml, { replace: true });
+    const a = rec(xml), c = rec(MB.toXml(b));
+    assert.strictEqual(c.length, a.length);
+    a.forEach((x, i) => Object.keys(x).forEach((k) => {
+      const u = x[k], v = c[i][k];
+      if (u !== v) assert.ok(['Price', 'Coef', 'Length', 'Width', 'Thickness'].includes(k) && Number(u) === Number(v), k + ': ' + u + ' ≠ ' + v);
+    }));
+  });
+  t('Базис XML: добавление к имеющейся базе пропускает точные повторы', () => {
+    const b = MB.emptyBase(); MB.importBazis(b, xml, { replace: true });
+    const r = MB.importBazis(b, xml, { replace: false });
+    assert.strictEqual(r.added, 0); assert.strictEqual(r.skipped, 2);
+  });
+  console.log('Формат Базиса: пройдено тестов: ' + ok);
+})();

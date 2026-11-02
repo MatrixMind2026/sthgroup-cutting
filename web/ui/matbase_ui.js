@@ -306,6 +306,7 @@
 				el.querySelector('.tabs').onclick = function (e) { var t = e.target.closest('button'); if (t) show(t.dataset.t); };
 				el.querySelector('.tabs.sub').onclick = function (e) { var t = e.target.closest('button'); if (!t) return; el.querySelectorAll('.tabs.sub button').forEach(function (x) { x.classList.toggle('on', x === t); }); el.querySelectorAll('[data-sp]').forEach(function (x) { x.hidden = x.dataset.sp !== t.dataset.st; }); };
 				var setPhoto = function (d) { m.photo = d || ''; preview(); };
+				el.sthSetPhoto = setPhoto; el.sthHasPhoto = function () { return !!m.photo; };   // STHGroup: фото по ссылке на товар
 				var pickPhoto = async function () { var p = await U.pick({ kind: 'open', title: 'Фото материала', filters: [{ name: 'Картинки', ext: ['jpg', 'jpeg', 'png', 'bmp', 'webp'] }] }); if (!p) return; try { setPhoto(await W.photoOf(new Blob([await U.api.readBytes(p)]))); } catch (er) { U.toast('Картинку не удалось прочитать: ' + er.message, { bad: true }); } };
 				el.querySelector('#mPhoto').onclick = pickPhoto; el.querySelector('#mSw').onclick = pickPhoto;
 				el.querySelector('#mPhotoX').onclick = function () { setPhoto(''); };

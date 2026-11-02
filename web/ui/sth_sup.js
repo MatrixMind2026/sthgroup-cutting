@@ -70,7 +70,7 @@
 					if (f.priceBuy) { pr.value = val(f.priceBuy); got.push('цена ' + val(f.priceBuy) + ' ₽'); el.querySelector('#spWas').textContent = (unit ? 'за ' + unit : '') + (was && num(was) !== f.priceBuy ? ' · было ' + was : ''); }
 					if (f.article) { el.querySelector('#spArt').value = f.article; got.push('артикул ' + f.article); }
 					var shop = f.supplier || host(url); if (shop && !el.querySelector('#sShop').value.trim()) el.querySelector('#sShop').value = shop;
-					if (f.image) { var dimg = await T.image(f.image); if (dimg) { st.img = dimg; prev(el); got.push('фото'); } }
+					if (f.image) { var dimg = await T.image(f.image, Es.shrink); if (dimg) { st.img = dimg; prev(el); got.push('фото'); } else got.push('фото не скачалось'); }
 					if (f.inStock !== undefined) { st.stock = f.inStock ? 1 : 0; got.push(f.inStock ? 'в наличии' : 'нет в наличии'); }
 					st.note = [f.stockNote, f.characteristics].filter(Boolean).join('. ');
 					var box = el.querySelector('#spGot');

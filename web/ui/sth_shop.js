@@ -24,10 +24,20 @@
 	};
 	T.read = async function (url) {
 		var r = await post('/api/shop/fetch', { url: normUrl(url) });
-		return LP.parseProductHtml(r.html, r.url || url).fields;
+		var f = LP.parseProductHtml(r.html, r.url || url).fields;
+		/* фото: из разметки страницы, иначе — что нашла оболочка на открытой странице (самая большая картинка товара) */
+		if (!f.image && r.image) f.image = r.image;
+		if (f.image) { try { f.image = new URL(f.image, r.url || normUrl(url)).href; } catch (e) { f.image = ''; } }
+		return f;
 	};
 	/* фото с сайта — картинкой (data:), чтобы хранилось в базе и печаталось без интернета */
-	T.image = async function (url) { try { var r = await post('/api/shop/image', { url: normUrl(url) }); return r.data || ''; } catch (e) { return ''; } };
+	T.image = async function (url, shrink) {
+		try {
+			var r = await post('/api/shop/image', { url: normUrl(url) }), d = r.data || '';
+			if (d && shrink) { try { d = await shrink(await (await fetch(d)).blob()); } catch (e) { /* как есть */ } }
+			return d;
+		} catch (e) { return ''; }
+	};
 	/* поставщик по названию сайта: есть — берём, нет — заводим */
 	T.supplierFor = function (b, f, url) {
 		var h = host(url), name = f.supplier || h, hit = null;
@@ -56,6 +66,7 @@
 		if (put('mTh', f.thickness, true)) got.push('толщина');
 		if (put('mL', f.sheetW, true) | put('mW', f.sheetH, true)) got.push('размер листа');
 		if (f.inStock !== undefined) { g('mNo').checked = !f.inStock; got.push(f.inStock ? 'в наличии' : 'нет в наличии'); }
+		if (f.image && el.sthSetPhoto && !el.sthHasPhoto()) { var d = await T.image(f.image, window.MBW && window.MBW.photoOf); if (d) { el.sthSetPhoto(d); got.push('фото'); } }
 		var nt = noteWith(g('mNote').value, f); if (nt !== g('mNote').value) { g('mNote').value = nt; got.push('остаток и характеристики — в примечание'); }
 		var s = T.supplierFor(b, f, url), sel = g('mSup');
 		if (s && sel) {

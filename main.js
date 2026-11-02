@@ -45,6 +45,20 @@ else {
 
 const SHOP_PARTITION = 'persist:shops'; // общий профиль для магазинов: вход сохраняется между запусками
 const SHOP_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36';
+const PICK_IMAGE_JS = `(function () {
+  var c = [];
+  function add(u, s) { try { if (u && !/^data:/i.test(u)) c.push({ u: new URL(u, location.href).href, s: s }); } catch (e) {} }
+  var m = document.querySelector('meta[property="og:image"], meta[name="og:image"], meta[property="og:image:url"]'); if (m) add(m.content, 1e12);
+  var it = document.querySelector('[itemprop="image"]'); if (it) add(it.content || it.src || it.href || it.getAttribute('data-src'), 9e11);
+  var l = document.querySelector('link[rel="image_src"]'); if (l) add(l.href, 8e11);
+  [].forEach.call(document.images, function (i) {
+    var r = i.getBoundingClientRect(), a = r.width * r.height, src = i.currentSrc || i.src || i.getAttribute('data-src') || '';
+    if (a < 12000 || !src || /logo|icon|sprite|banner|avatar|placeholder|\\.svg(\\?|$)/i.test(src + ' ' + (i.className || '') + ' ' + (i.alt || ''))) return;
+    var top = r.top + window.scrollY; add(src, a * (top < 1200 ? 1 : 0.3));
+  });
+  c.sort(function (x, y) { return y.s - x.s; });
+  return c.length ? c[0].u : '';
+})()`;
 function checkShopUrl(url) {
   const u = new URL(String(url).trim());
   if (u.protocol !== 'http:' && u.protocol !== 'https:') throw new Error('Нужна ссылка http или https');
@@ -144,7 +158,10 @@ function shopRoutes() {
         await Promise.race([w.loadURL(u.toString()), new Promise(function (_, rej) { setTimeout(function () { rej(new Error('Сайт не ответил за 25 секунд')); }, 25000); })]);
         await new Promise(function (r) { setTimeout(r, 2500); }); // дать скриптам дорисовать цену
         const html = await w.webContents.executeJavaScript('document.documentElement.outerHTML');
-        json(res, 200, { ok: true, html: String(html || '').slice(0, 4 * 1024 * 1024), url: w.webContents.getURL() || u.toString() });
+        // фото товара: og:image / itemprop=image, иначе самая большая картинка в верхней части страницы (без логотипов и значков)
+        let image = '';
+        try { image = String(await w.webContents.executeJavaScript(PICK_IMAGE_JS) || ''); } catch (e) { image = ''; }
+        json(res, 200, { ok: true, html: String(html || '').slice(0, 4 * 1024 * 1024), url: w.webContents.getURL() || u.toString(), image: image });
       } catch (e) { json(res, 502, { error: e.message }); }
       finally { if (w && !w.isDestroyed()) w.destroy(); }
     },

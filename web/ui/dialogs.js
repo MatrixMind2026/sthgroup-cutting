@@ -243,7 +243,10 @@
 		function plPick() { return '<div class="btns" style="margin:0 0 10px"><span class="mute">Прайс</span><select id="ePlSel">' + ps.lists.map(function (x) { return '<option' + (x.name === plName ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '</select><span class="mute">— цены и правила ниже относятся к нему</span></div>'; }
 		function tabECalc() {
 			return '<div class="eset"><h4>Запасы</h4><div class="form">' +
-				'<label>Запас по кромке, %</label><div><input type="text" class="s" id="eEdgeRes" value="' + nv(ec.edgeReserve) + '"></div>' +
+				/* STHGroup: запас кромки на выбор — % от длины или мм свеса на каждую облицованную сторону */
+				'<label>Запас по кромке</label><div><select id="eEdgeMode"><option value="pct"' + (ec.edgeMode !== 'mm' ? ' selected' : '') + '>% от длины</option><option value="mm"' + (ec.edgeMode === 'mm' ? ' selected' : '') + '>мм на сторону</option></select> ' +
+				'<input type="text" class="s" id="eEdgeRes" value="' + nv(ec.edgeReserve) + '"' + (ec.edgeMode === 'mm' ? ' hidden' : '') + '> <input type="text" class="s" id="eEdgeMm" value="' + nv(ec.edgeMm === undefined ? 30 : ec.edgeMm) + '"' + (ec.edgeMode === 'mm' ? '' : ' hidden') + '>' +
+				' <span class="mute" id="eEdgeHint">' + (ec.edgeMode === 'mm' ? '— свес с каждой облицованной стороны детали, мм' : '— к длине кромки по модели, %') + '</span></div>' +
 				'<label>Запас на хлыст профиля, мм</label><div><input type="text" class="s" id="eProfRes" value="' + nv(ec.profReserve) + '"> <span class="mute">— столько с каждого хлыста уходит в отход</span></div>' +
 				'<label>Пропил профиля, мм</label><div><input type="text" class="s" id="eProfKerf" value="' + nv(ec.profKerf) + '"></div></div>' +
 				'<h4>Что считать</h4><div class="form">' +
@@ -598,7 +601,7 @@
 				['useInner', 'useLabel', 'useDrill', 'useGroove', 'useSheet'].forEach(function (k) { q[k] = g('x' + k).checked ? 1 : 0; });
 				q.labelWhat = g('xWhat').value; q.textH = num(g('xTextH').value, 3, 200, q.textH); q.drillByDia = g('xByDia').checked ? 1 : 0; q.arcs = g('xArcs').checked ? 1 : 0; q.margin = g('xMargin').checked ? 1 : 0; q.enc = g('xEnc').value;
 			} else if (cur === 'eCalc') {
-				ec.edgeReserve = num(g('eEdgeRes').value, 0, 499, ec.edgeReserve); ec.profReserve = num(g('eProfRes').value, 0, 499, ec.profReserve); ec.profKerf = num(g('eProfKerf').value, 0, 49, ec.profKerf);
+				ec.edgeReserve = num(g('eEdgeRes').value, 0, 499, ec.edgeReserve); if (g('eEdgeMode')) { ec.edgeMode = g('eEdgeMode').value === 'mm' ? 'mm' : 'pct'; ec.edgeMm = num(g('eEdgeMm').value, 0, 999, ec.edgeMm === undefined ? 30 : ec.edgeMm); } ec.profReserve = num(g('eProfRes').value, 0, 499, ec.profReserve); ec.profKerf = num(g('eProfKerf').value, 0, 49, ec.profKerf);
 				ec.showCuts = g('eShowCuts').checked ? 1 : 0; ec.showHoles = g('eShowHoles').checked ? 1 : 0; ec.showFast = g('eShowFast').checked ? 1 : 0; ec.showProf = g('eShowProf').checked ? 1 : 0;
 				ec.hidden = g('eHidden').checked ? 1 : 0;
 				ec.holesSort = Number(g('eHolesMode').value) ? num(g('eHolesSort').value, 1, 200, 15) : 0;

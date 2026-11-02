@@ -241,3 +241,9 @@
 		if (w) pick(w).catch(U.error);
 	}, true);
 })();
+/* STHGroup: настройки сметы — запас кромки «% от длины» или «мм на сторону»: показать нужное поле */
+document.addEventListener('change', function (e) {
+	if (!e.target || e.target.id !== 'eEdgeMode') return;
+	var mm = e.target.value === 'mm', a = document.getElementById('eEdgeRes'), b = document.getElementById('eEdgeMm'), h = document.getElementById('eEdgeHint');
+	if (a) a.hidden = mm; if (b) b.hidden = !mm; if (h) h.textContent = mm ? '— свес с каждой облицованной стороны детали, мм' : '— к длине кромки по модели, %';
+});

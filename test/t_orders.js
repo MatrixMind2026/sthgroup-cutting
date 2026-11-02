@@ -68,4 +68,6 @@ const pl = O.priceList(nb, { pct: -10, hide: { 'sec:g:mill': 1 } }), w1 = pl.sec
 assert.ok(w1.name === 'ЛДСП 8–16 мм' && w1.note === 'распил / кромка / присадка' && w1.price === 4950 && w1.unit === 'лист');
 assert.ok(!pl.sections.some(x => x.id === 'g:mill') && pl.sections.some(x => x.id === 'g:fac') && pl.terms.length >= 4 && pl.sections[1].rows.every(r => r.unit !== '% от суммы'));
 ok('прайс для клиента: разделы справочника, примечание из названия, скидка −10%, скрытые разделы, условия');
+{ const c2 = E.conf(st.set); c2.edgeMode = 'mm'; c2.edgeMm = 30; const R2 = E.build(st, c2, E.newList('x'), st.work.est), e0 = R.rows.find(w => w.kind === 'edge'), e2 = R2.rows.find(w => w.title === e0.title);
+  assert.ok(e2.calc > Number(e0.note.replace(/[^\d.]/g, '')) && e2.calc < e0.calc && /мм ×/.test(e2.unit)); ok('запас кромки «мм на сторону»: длина по модели + свес на каждую облицованную сторону'); }
 console.log('проверок ' + n + ' | ошибок нет');

@@ -62,6 +62,7 @@
 	E.defaults = function () {
 		return {
 			edgeReserve: 20,                 // запас по кромке, %
+			edgeMode: 'pct', edgeMm: 30,     // STHGroup: запас кромки — % от длины или мм свеса на каждую облицованную сторону детали
 			profReserve: 20,                 // запас на хлыст профиля, мм: столько с каждого хлыста уходит в отход
 			profKerf: 0,                     // пропил профиля, мм
 			showCuts: 1, showHoles: 1, showFast: 1, showProf: 1,
@@ -361,7 +362,7 @@
 	/* ----------------------------- обход проекта ------------------------------- */
 
 	function newRes() {
-		return { groups: [], gmap: {}, Edges: {}, EdgeLine: {}, EdgeCurved: {}, EdgeThicks: {}, EdgeW: {}, EdgeTh: {}, CurveOut: 0, CurveIn: 0, Cuts2: {}, Holes: {}, totalHoles: 0,
+		return { groups: [], gmap: {}, Edges: {}, EdgeN: {}, EdgeLine: {}, EdgeCurved: {}, EdgeThicks: {}, EdgeW: {}, EdgeTh: {}, CurveOut: 0, CurveIn: 0, Cuts2: {}, Holes: {}, totalHoles: 0,
 				 Plastics: {}, Linears: {}, LinPieces: {}, Arts: {}, Fasteners: {}, Cup35: {}, KitNames: {}, KitPieces: {}, KitMulti: {}, PIECES: {}, panels: 0,
 				 hidden: { count: 0, area: 0 }, offParts: 0, old: false, selected: false, noSel: false,
 				 Facades: {}, facNoBlocks: false, facNoSize: 0, MdfFac: {}, Notes: {} };
@@ -452,6 +453,7 @@
 				if (!(bLen > 0)) continue;                         // кромка на элементе, которого в контуре уже нет
 				var bmat = mname(bt.mat, bt.art);
 				R.Edges[bmat] = (R.Edges[bmat] || 0) + bLen * k;
+				R.EdgeN[bmat] = (R.EdgeN[bmat] || 0) + k;          // STHGroup: облицованных сторон — для запаса «мм на сторону»
 				var curved = cmap ? (cmap[eIdx] === false) : false, cix = Number(bt.ci);
 				if (!isNaN(cix) && cix >= 0 && cutCurved[cix]) curved = true;
 				var bTh = edgeThickMm(bt.mat, bt.th), cls = edgeThickClass(cfg, bTh);
@@ -800,9 +802,10 @@
 		var kEdge = 1 + cfg.edgeReserve / 100, edgeKeys = sortedKeys(Res.Edges);
 		for (i = 0; i < edgeKeys.length; i++) {
 			key = edgeKeys[i];
-			var raw = Res.Edges[key] / 1000;
+			var raw = Res.Edges[key] / 1000, byMm = cfg.edgeMode === 'mm', nSides = (Res.EdgeN && Res.EdgeN[key]) || 0;
+			var eCalc = byMm ? raw + nSides * (Number(cfg.edgeMm) || 0) / 1000 : raw * kEdge;
 			mkRow({ kind: 'edge', head: 'КРОМОЧНЫЙ МАТЕРИАЛ', label: edgeTitle(key), akey: key, offKey: 'E:' + key, infoKey: 'E:' + key, emat: key,
-					qtyKey: 'E:' + key, calc: Math.round(raw * kEdge * 100) / 100, unit: 'метров (+' + cfg.edgeReserve + '%)',
+					qtyKey: 'E:' + key, calc: Math.round(eCalc * 100) / 100, unit: byMm ? 'метров (+' + cfg.edgeMm + ' мм × ' + nSides + ')' : 'метров (+' + cfg.edgeReserve + '%)',
 					priceId: 'E:' + key, priceDef: pl.def.edge, punit: 'руб./метр', note: 'по модели ' + f2(raw) + ' м' });
 		}
 

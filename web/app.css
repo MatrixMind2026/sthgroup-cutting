@@ -1288,3 +1288,15 @@ body[data-sec="orders"] #welcome, body[data-sec="clients"] #welcome, body[data-s
 .sthSup .sthGot.bad { background: #3a2f22; border-color: #6b4f2a; color: #f3c58a; }
 .sthSup .ck { display: flex; gap: 6px; align-items: center; }
 .sthSup #spGrp { max-width: 300px; }
+/* STHGroup: перетаскивание строк (⋮⋮) и столбцов (заголовок) */
+.sthH { cursor: grab; color: var(--mute); letter-spacing: -2px; padding: 0 4px; user-select: none; touch-action: none; font-size: 14px; }
+.sthH:hover { color: var(--accent); }
+tr.sthDragging > td { background: rgba(242, 107, 29, .14) !important; outline: 1px dashed var(--accent); }
+tr.sthDropB > td { box-shadow: inset 0 2px 0 var(--accent); }
+tr.sthDropA > td { box-shadow: inset 0 -2px 0 var(--accent); }
+th.sthCol { cursor: grab; }
+th.sthColDrag { background: rgba(242, 107, 29, .18) !important; color: var(--accent) !important; outline: 1px dashed var(--accent); }
+th.sthColB { box-shadow: inset 3px 0 0 var(--accent); }
+th.sthColA { box-shadow: inset -3px 0 0 var(--accent); }
+body.sthNoSel, body.sthNoSel * { user-select: none !important; cursor: grabbing !important; }
+#orders td.soHc { width: 18px; padding-left: 2px; padding-right: 0; }

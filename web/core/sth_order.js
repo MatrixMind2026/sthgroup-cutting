@@ -239,6 +239,12 @@
 			});
 			blocks.push({ id: 'g:' + g.id, title: g.title, note: g.note || '', lines: gl, opt: 1 });
 		});
+		/* порядок строк, заданный в заказе перетаскиванием (o.lineOrder[блок] = ключи строк) */
+		var LO = o.lineOrder || {};
+		blocks.forEach(function (bk) {
+			var ord = LO[bk.id]; if (!Array.isArray(ord) || !ord.length) return;
+			bk.lines = bk.lines.map(function (l, i) { var k = ord.indexOf(l.key); return { l: l, r: k >= 0 ? k : 1000 + i }; }).sort(function (a, c) { return a.r - c.r; }).map(function (x) { return x.l; });
+		});
 		var serv = 0;
 		blocks.forEach(function (bk) { bk.sum = r2(bk.lines.reduce(function (a, l) { return a + (l.sum || 0); }, 0)); serv += bk.sum; });
 		serv = r2(serv);

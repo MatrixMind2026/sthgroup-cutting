@@ -59,4 +59,6 @@ o.items[0].src = '/bazis/Кухня.bmk'; assert.ok(O.byItem(b, '/bazis/Кухн
 E.noWorks = true; const Rn = E.build(st, E.conf(st.set), E.newList('x'), st.work.est); E.noWorks = false;
 assert.ok(R.rows.some(w => w.group === 'РАБОТЫ') && !Rn.rows.some(w => w.group === 'РАБОТЫ') && Rn.rows.every((w, i) => w.i === i) && Rn.groups['МАТЕРИАЛ'] === R.groups['МАТЕРИАЛ'] && !Rn.groups['РАБОТЫ']);
 ok('смета STHGroup без работ: распил, кромкование, пазы и прочие работы — в заказе');
+o.lineOrder = { svc: ['kit', 'up'] }; const q6 = O.calc(b, o), sv = q6.blocks[2].lines.map(l => l.key);
+assert.ok(sv[0] === 'kit' && sv[1] === 'up' && sv.indexOf('pack') > 1); delete o.lineOrder; ok('порядок строк, заданный перетаскиванием, — в расчёте и КП');
 console.log('проверок ' + n + ' | ошибок нет');

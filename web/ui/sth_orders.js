@@ -145,14 +145,15 @@
 		}).join('') || '<p class="mute">Заказов нет. Выгрузите модель скриптом STHGroup_Export — заказ появится сам — или нажмите «+ Новый заказ».</p>';
 	}
 	function opt(list, v) { return list.map(function (x) { return '<option value="' + esc(x[0]) + '"' + (x[0] === v ? ' selected' : '') + '>' + esc(x[1]) + '</option>'; }).join(''); }
-	function lineRow(l, o) {
+	function lineRow(l, o, bid) {
+		var dg = ' data-dg="' + esc(bid || '') + '" data-lk="' + esc(l.key) + '"', H = bid ? window.STHDrag.handle() : '';
 		var ck = l.check ? '<input type="checkbox" data-ck="' + esc(l.key) + '"' + (l.on ? ' checked' : '') + '> ' : '';
 		var editable = l.key.indexOf('m:') !== 0;
 		/* STHGroup: своя строка — название и единица правятся, строку можно убрать */
-		if (l.extra) return '<tr class="soX"><td><input class="soXn" data-xn="' + esc(l.key) + '" value="' + esc(l.name) + '" placeholder="Название услуги"></td><td><input class="soXu" data-xu="' + esc(l.key) + '" value="' + esc(l.unit || '') + '" list="soUnits" placeholder="ед."></td>' +
+		if (l.extra) return '<tr class="soX soLn"' + dg + '>' + '<td class="soHc">' + H + '</td>' + '<td><input class="soXn" data-xn="' + esc(l.key) + '" value="' + esc(l.name) + '" placeholder="Название услуги"></td><td><input class="soXu" data-xu="' + esc(l.key) + '" value="' + esc(l.unit || '') + '" list="soUnits" placeholder="ед."></td>' +
 			'<td class="r"><input class="soN" data-pr="' + esc(l.key) + '" value="' + String(l.price).replace('.', ',') + '"></td><td class="r"><input class="soN" data-qt="' + esc(l.key) + '" value="' + String(l.qty).replace('.', ',') + '"></td>' +
 			'<td class="r"><b>' + money(l.sum) + '</b> <button class="icon" data-xrm="' + esc(l.key) + '" title="Убрать строку">✕</button></td></tr>';
-		return '<tr class="' + ((l.check && !l.on) || (l.opt && !l.qty) ? 'off' : '') + '"><td>' + ck + esc(l.name) + '</td><td class="mute">' + esc(l.unit || '') + '</td>' +
+		return '<tr class="soLn ' + ((l.check && !l.on) || (l.opt && !l.qty) ? 'off' : '') + '"' + dg + '>' + '<td class="soHc">' + H + '</td>' + '<td>' + ck + esc(l.name) + '</td><td class="mute">' + esc(l.unit || '') + '</td>' +
 			'<td class="r">' + (editable ? '<input class="soN" data-pr="' + esc(l.key) + '" value="' + String(l.price).replace('.', ',') + '">' : money(l.price)) + (l.unit === '% от суммы' ? ' %' : '') + '</td>' +
 			'<td class="r">' + (l.key.indexOf('s:') === 0 || l.key.indexOf('m:') === 0 || l.unit === '% от суммы' ? (l.qty || '') : '<input class="soN" data-qt="' + esc(l.key) + '" value="' + String(l.qty).replace('.', ',') + '">') + '</td>' +
 			'<td class="r"><b>' + money(l.sum) + '</b></td></tr>';
@@ -164,16 +165,16 @@
 				/* доп. работы, фасады, фрезеровка: видны строки с количеством, остальные — по «показать все» */
 				var all = !!X.open[bk.id], used = bk.lines.filter(function (l) { return l.qty; }), show = all ? bk.lines : used;
 				h += '<div class="soBh">' + esc(bk.title) + (bk.note ? ' <small class="mute">' + esc(bk.note) + '</small>' : '') + '<span>' + money(bk.sum) + ' ₽</span></div>' +
-					(show.length ? '<table class="soT"><tbody>' + show.map(function (l) { return lineRow(l, o); }).join('') + '</tbody></table>' : '') +
+					(show.length ? '<table class="soT"><tbody>' + show.map(function (l) { return lineRow(l, o, bk.id); }).join('') + '</tbody></table>' : '') +
 					'<button class="link" data-gopen="' + esc(bk.id) + '">' + (all ? '− скрыть строки без количества' : '+ ' + (used.length ? 'ещё строки' : 'выбрать') + ' (' + (bk.lines.length - used.length) + ')') + '</button>';
 				return;
 			}
 			if (!bk.lines.length && bk.id !== 'svc') return;
-			h += '<div class="soBh">' + esc(bk.title) + '<span>' + money(bk.sum + (bk.id === 'svc' ? q.pctSum : 0)) + ' ₽</span></div><table class="soT"><tbody>' + bk.lines.map(function (l) { return lineRow(l, o); }).join('') + '</tbody></table>';
+			h += '<div class="soBh">' + esc(bk.title) + '<span>' + money(bk.sum + (bk.id === 'svc' ? q.pctSum : 0)) + ' ₽</span></div><table class="soT"><tbody>' + bk.lines.map(function (l) { return lineRow(l, o, bk.id); }).join('') + '</tbody></table>';
 			if (bk.id === 'svc') h += '<button class="link" id="soExtra">+ своя строка</button><datalist id="soUnits"><option value="шт"><option value="за заказ"><option value="за лист"><option value="за изделие"><option value="за деталь"><option value="м²"><option value="м.п."><option value="час"></datalist>';
 		});
 		var mk = o.markup !== undefined && o.markup !== '' ? o.markup : X.book.cat.markup;
-		h += '<div class="soBh">Материалы и фурнитура<span>' + money(q.mats) + ' ₽</span></div><table class="soT"><tbody>' + q.matLines.map(function (l) { return lineRow(l, o); }).join('') + '</tbody></table>' +
+		h += '<div class="soBh">Материалы и фурнитура<span>' + money(q.mats) + ' ₽</span></div><table class="soT"><tbody>' + q.matLines.map(function (l) { return lineRow(l, o, ''); }).join('') + '</tbody></table>' +
 			'<div class="soRow mute">Наценка к оптовому прайсу поставщика <input class="soN" id="soMk" value="' + String(mk).replace('.', ',') + '"> %</div>';
 		if (q.matList.length) h += '<div class="soBh">Материалы в заказе</div><table class="soT"><tbody>' + q.matList.map(function (m) { return '<tr><td>' + esc(m.name) + '</td><td class="mute">' + esc(m.th ? P.dim(m.th) + ' мм' : '') + '</td><td class="r">' + m.n + ' л</td></tr>'; }).join('') + '</tbody></table>';
 		if (q.warn.length) h += '<div class="note warn">' + q.warn.map(esc).join('<br>') + '</div>';
@@ -182,16 +183,16 @@
 	function itemsHtml(o) {
 		var rows = o.items.map(function (it, i) {
 			var s = it.snap;
-			return '<tr><td><input class="soTx" data-it="' + i + '" value="' + esc(it.title || '') + '" placeholder="' + esc(U.stemOf(it.path)) + '"></td><td class="mute" title="' + esc(it.path) + '">' + esc(U.baseOf(it.path)) + '</td>' +
+			return '<tr class="soItR" data-dg="items">' + '<td class="soHc">' + window.STHDrag.handle() + '</td>' + '<td><input class="soTx" data-it="' + i + '" value="' + esc(it.title || '') + '" placeholder="' + esc(U.stemOf(it.path)) + '"></td><td class="mute" title="' + esc(it.path) + '">' + esc(U.baseOf(it.path)) + '</td>' +
 				'<td class="r">' + (s ? s.sheets.reduce(function (a, x) { return a + x.n; }, 0) : '—') + '</td><td class="r">' + (s ? s.parts : '—') + '</td><td class="r">' + (s ? money(s.mat) : '—') + '</td><td class="r">' + (s ? money(s.fit) : '—') + '</td>' +
 				'<td class="mute">' + (s ? O.ruDate(s.at.slice(0, 10)) : 'не посчитано') + '</td><td class="nw"><button data-iop="' + i + '">Открыть</button><button data-irc="' + i + '" title="Посчитать заново по файлу">↻</button><button class="icon" data-irm="' + i + '" title="Убрать из заказа">✕</button></td></tr>';
 		}).join('');
-		return '<table class="grid soItems"><thead><tr><th>Изделие</th><th>Файл</th><th>Листов</th><th>Деталей</th><th>Материалы</th><th>Фурнитура</th><th>Посчитано</th><th></th></tr></thead><tbody>' + (rows || '<tr><td colspan="8" class="mute">Изделий нет</td></tr>') + '</tbody></table>' +
+		return '<table class="grid soItems"><thead><tr><th></th><th>Изделие</th><th>Файл</th><th>Листов</th><th>Деталей</th><th>Материалы</th><th>Фурнитура</th><th>Посчитано</th><th></th></tr></thead><tbody>' + (rows || '<tr><td colspan="9" class="mute">Изделий нет</td></tr>') + '</tbody></table>' +
 			'<div class="soRow"><button id="soAddItem">+ Изделие (.bmk)…</button><button id="soRecalc">Пересчитать все</button></div>';
 	}
 	function payHtml(o, q) {
 		var rows = o.payments.map(function (p, i) { return '<tr><td>' + esc(O.ruDate(p.date)) + '</td><td class="r">' + money(p.amount) + ' ₽</td><td>' + esc(p.note || '') + '</td><td><button class="icon" data-prm="' + i + '">✕</button></td></tr>'; }).join('');
-		return '<table class="grid"><thead><tr><th>Дата</th><th>Сумма</th><th>Примечание</th><th></th></tr></thead><tbody>' + (rows || '<tr><td colspan="4" class="mute">Оплат нет</td></tr>') + '</tbody></table>' +
+		return '<table class="grid soPay"><thead><tr><th>Дата</th><th>Сумма</th><th>Примечание</th><th></th></tr></thead><tbody>' + (rows || '<tr><td colspan="4" class="mute">Оплат нет</td></tr>') + '</tbody></table>' +
 			'<div class="soRow"><input type="date" id="soPd" value="' + O.today() + '"><input class="soN" id="soPa" placeholder="сумма" style="width:110px"><input id="soPn" placeholder="примечание" style="width:220px"><button id="soPadd" class="primary">Внести оплату</button>' +
 			'<button id="soPadv">Аванс ' + money(q.advance) + '</button><button id="soPrest">Остаток ' + money(Math.max(0, q.debt)) + '</button></div>';
 	}
@@ -233,6 +234,21 @@
 			'<div class="tabs soTabs">' + tabs.map(function (t) { return '<button data-tb="' + t[0] + '"' + (X.tab === t[0] ? ' class="on"' : '') + '>' + t[1] + '</button>'; }).join('') + '</div>' +
 			'<div class="soBody">' + (X.tab === 'items' ? itemsHtml(o) : X.tab === 'pay' ? payHtml(o, q) : calcHtml(o, q)) + '</div></section>';
 		host.innerHTML = left + center + '<aside class="soS">' + sideHtml(o, q) + '</aside>';
+		X.dnd();
+	};
+	/* перетаскивание: строки расчёта (порядок — в заказе, он же в КП), изделия; столбцы таблиц */
+	X.dnd = function () {
+		var host = $('orders'), D = window.STHDrag; if (!host || !D) return;
+		D.rows(host, { rows: 'tr.soLn, tr.soItR', drop: function (src, t, after, from, to) {
+			var o = cur(); if (!o) return;
+			var g = src.getAttribute('data-dg');
+			if (g === 'items') { D.move(o.items, from, to); changed(); return; }
+			var keys = Array.prototype.filter.call(host.querySelectorAll('tr.soLn'), function (r) { return r.getAttribute('data-dg') === g; }).map(function (r) { return r.getAttribute('data-lk'); });
+			D.move(keys, from, to);
+			(o.lineOrder = o.lineOrder || {})[g] = keys;
+			changed();
+		} });
+		[['table.soItems', 'soItems'], ['table.soPay', 'soPay'], ['table.soClO', 'soClO']].forEach(function (x) { var t = host.querySelector(x[0]); if (t) D.cols(t, x[1], function () { X.render(); }); });
 	};
 
 	/* ------------------------------- клиенты --------------------------------- */
@@ -248,11 +264,12 @@
 			var os = b.orders.filter(function (o) { return o.clientId === c.id; });
 			center = '<div class="soHead"><input id="scName" class="soNo" style="width:360px" value="' + esc(c.name) + '"><button class="icon" id="scDel" title="Удалить клиента">✕</button></div>' +
 				'<div class="soForm"><label>Телефон<input id="scPhone" value="' + esc(c.phone) + '"></label><label>Почта<input id="scEmail" value="' + esc(c.email) + '"></label><label class="w">Примечание<input id="scNote" value="' + esc(c.note) + '"></label></div>' +
-				'<div class="soBh">Заказы клиента</div><table class="grid"><thead><tr><th>№</th><th>Дата</th><th>Изделия</th><th>Статус</th><th>Сумма</th><th>Оплачено</th><th>Долг</th></tr></thead><tbody>' +
+				'<div class="soBh">Заказы клиента</div><table class="grid soClO"><thead><tr><th>№</th><th>Дата</th><th>Изделия</th><th>Статус</th><th>Сумма</th><th>Оплачено</th><th>Долг</th></tr></thead><tbody>' +
 				(os.map(function (o) { var t = orderSum(o); return '<tr class="hov" data-go="' + o.id + '"><td><b>' + esc(o.no) + '</b></td><td>' + esc(O.ruDate(o.date)) + '</td><td>' + (o.items.map(function (i, k) { return '<a href="#" class="soItL" data-go="' + o.id + '" data-gi="' + k + '" title="Открыть модель">' + esc(i.title || U.stemOf(i.path)) + '</a>'; }).join(', ') || '<span class="mute">нет</span>') + '</td><td>' + esc(O.statusName(o.status)) + '</td><td class="r">' + money(t.total) + '</td><td class="r">' + money(t.paid) + '</td><td class="r">' + money(t.debt) + '</td></tr>'; }).join('') || '<tr><td colspan="7" class="mute">Заказов нет</td></tr>') + '</tbody></table>' +
 				'<div class="soRow"><button id="scOrder" class="primary">+ Заказ для клиента</button></div>';
 		}
 		host.innerHTML = '<aside class="soL"><div class="sec">Клиенты</div><button class="primary soNew" id="scNew">+ Клиент</button><input type="search" id="soQ" placeholder="Поиск: имя, телефон" value="' + esc(X.q) + '"><div id="soList">' + list + '</div></aside><section class="soC">' + center + '</section>';
+		X.dnd();
 	};
 
 	/* ------------------------------ действия --------------------------------- */
@@ -341,16 +358,16 @@
 		var tabs = [['works', 'Работа за лист'], ['small', 'Мелкие детали'], ['svc', 'Услуги'], ['grp', 'Доп. работы и фасады'], ['money', 'Скидка, наценка, аванс'], ['terms', 'Условия'], ['firm', 'Компания'], ['dir', 'Папка заказов']];
 		function inp(id, label, v, w) { return '<label class="fl" style="width:' + (w || 200) + 'px">' + label + '<input type="text" id="' + id + '" value="' + esc(v === undefined ? '' : v) + '"></label>'; }
 		function th(v) { return v === undefined || v === null ? '' : v; }
-		function works() { return '<table class="grid" id="ctW"><thead><tr><th>Вид работы (строка КП)</th><th>Цена за лист, ₽</th><th>Материалы — слова в названии через запятую</th><th>Толщина от, мм</th><th>до, мм</th><th></th></tr></thead><tbody>' + c.sheetWorks.map(function (w, i) { return '<tr data-i="' + i + '"><td><input class="cn" value="' + esc(w.name) + '" style="width:290px"></td><td><input class="cp" value="' + esc(w.price) + '" style="width:80px"></td><td><input class="cm" value="' + esc(w.match) + '" style="width:220px"></td><td><input class="ct1" value="' + esc(th(w.thMin)) + '" style="width:60px"></td><td><input class="ct2" value="' + esc(th(w.thMax)) + '" style="width:60px"></td><td><button class="icon" data-wrm="' + i + '">✕</button></td></tr>'; }).join('') + '</tbody></table><button id="ctWadd">+ Вид работы</button><p class="mute">Каждый лист раскроя идёт в первый вид работы, у которого подходят и слово в названии материала, и толщина (пустое — любое). Строка без слов и толщины — для всех остальных листов.</p>'; }
+		function works() { return '<table class="grid" id="ctW"><thead><tr><th></th><th>Вид работы (строка КП)</th><th>Цена за лист, ₽</th><th>Материалы — слова в названии через запятую</th><th>Толщина от, мм</th><th>до, мм</th><th></th></tr></thead><tbody>' + c.sheetWorks.map(function (w, i) { return '<tr data-i="' + i + '" data-id="' + esc(w.id || '') + '" data-dg="w"><td>' + window.STHDrag.handle() + '</td><td><input class="cn" value="' + esc(w.name) + '" style="width:290px"></td><td><input class="cp" value="' + esc(w.price) + '" style="width:80px"></td><td><input class="cm" value="' + esc(w.match) + '" style="width:220px"></td><td><input class="ct1" value="' + esc(th(w.thMin)) + '" style="width:60px"></td><td><input class="ct2" value="' + esc(th(w.thMax)) + '" style="width:60px"></td><td><button class="icon" data-wrm="' + i + '">✕</button></td></tr>'; }).join('') + '</tbody></table><button id="ctWadd">+ Вид работы</button><p class="mute">Каждый лист раскроя идёт в первый вид работы, у которого подходят и слово в названии материала, и толщина (пустое — любое). Строка без слов и толщины — для всех остальных листов.</p>'; }
 		function grp() {
 			return (c.groups || []).map(function (g, gi) {
 				return '<fieldset class="ctG" data-g="' + gi + '"><legend><input class="cgt" value="' + esc(g.title) + '" style="width:280px"> <input class="cgn" value="' + esc(g.note || '') + '" placeholder="пояснение (в КП под заголовком)" style="width:380px"> <button class="icon" data-grm="' + gi + '" title="Убрать раздел">✕</button></legend>' +
-					'<table class="grid"><thead><tr><th>Работа</th><th>Единица</th><th>Цена, ₽</th><th></th></tr></thead><tbody>' + (g.rows || []).map(function (r, ri) { return '<tr><td><input class="cn" value="' + esc(r.name) + '" style="width:460px"></td><td><input class="cu" value="' + esc(r.unit || '') + '" list="ctUnits" style="width:80px"></td><td><input class="cp" value="' + esc(r.price) + '" style="width:90px"></td><td><button class="icon" data-rrm="' + gi + ':' + ri + '">✕</button></td></tr>'; }).join('') + '</tbody></table>' +
+					'<table class="grid ctGt"><thead><tr><th></th><th>Работа</th><th>Единица</th><th>Цена, ₽</th><th></th></tr></thead><tbody>' + (g.rows || []).map(function (r, ri) { return '<tr data-dg="g' + gi + '" data-id="' + esc(r.id || '') + '"><td>' + window.STHDrag.handle() + '</td><td><input class="cn" value="' + esc(r.name) + '" style="width:460px"></td><td><input class="cu" value="' + esc(r.unit || '') + '" list="ctUnits" style="width:80px"></td><td><input class="cp" value="' + esc(r.price) + '" style="width:90px"></td><td><button class="icon" data-rrm="' + gi + ':' + ri + '">✕</button></td></tr>'; }).join('') + '</tbody></table>' +
 					'<button data-radd="' + gi + '">+ Строка</button></fieldset>';
 			}).join('') + '<datalist id="ctUnits"><option value="шт"><option value="м²"><option value="м.п."><option value="за лист"><option value="за заказ"></datalist><button id="ctGadd">+ Раздел</button>' +
 				'<p class="mute">Разделы появляются в расчёте заказа: количество (шт, м², м.п.) вписывается в заказе, в КП попадают только строки с количеством.</p>';
 		}
-		function svc() { return '<table class="grid" id="ctS"><thead><tr><th>Услуга</th><th>Единица</th><th>Цена (для % — процент)</th><th>По умолчанию</th><th></th></tr></thead><tbody>' + c.services.map(function (s, i) { return '<tr data-i="' + i + '"><td><input class="cn" value="' + esc(s.name) + '" style="width:380px"></td><td><select class="cu">' + opt(O.UNITS, s.unit) + '</select></td><td><input class="cp" value="' + esc(s.price) + '" style="width:90px"></td><td><input type="checkbox" class="co"' + (s.on ? ' checked' : '') + '> включена</td><td><button class="icon" data-srm="' + i + '">✕</button></td></tr>'; }).join('') + '</tbody></table><button id="ctSadd">+ Услуга</button>'; }
+		function svc() { return '<table class="grid" id="ctS"><thead><tr><th></th><th>Услуга</th><th>Единица</th><th>Цена (для % — процент)</th><th>По умолчанию</th><th></th></tr></thead><tbody>' + c.services.map(function (s, i) { return '<tr data-i="' + i + '" data-id="' + esc(s.id || '') + '" data-dg="s"><td>' + window.STHDrag.handle() + '</td><td><input class="cn" value="' + esc(s.name) + '" style="width:380px"></td><td><select class="cu">' + opt(O.UNITS, s.unit) + '</select></td><td><input class="cp" value="' + esc(s.price) + '" style="width:90px"></td><td><input type="checkbox" class="co"' + (s.on ? ' checked' : '') + '> включена</td><td><button class="icon" data-srm="' + i + '">✕</button></td></tr>'; }).join('') + '</tbody></table><button id="ctSadd">+ Услуга</button>'; }
 		var body = '<div class="tabs">' + tabs.map(function (t, i) { return '<button data-ct="' + t[0] + '"' + (i ? '' : ' class="on"') + '>' + t[1] + '</button>'; }).join('') + '</div>' +
 			'<div class="pg" data-cp="works">' + works() + '</div>' +
 			'<div class="pg" data-cp="small" hidden><div class="row">' + inp('ctLim', 'Деталь мелкая, если длина или ширина меньше, мм', c.small.limit, 340) + '</div><div class="row">' + inp('ctSe', 'Кромление мелкой детали, ₽ за деталь', c.small.edge, 280) + inp('ctSd', 'Присадка мелкой детали, ₽ за деталь', c.small.drill, 280) + '</div></div>' +
@@ -362,14 +379,14 @@
 			'<div class="pg" data-cp="dir" hidden><p>Заказы, клиенты и этот справочник — один файл «' + esc(O.FILE) + '» в папке. Папка может быть общей (Яндекс Диск, сетевая) — тогда заказы одни на несколько компьютеров.</p><div class="pathrow"><input type="text" id="ctDir" value="' + esc(folder) + '" style="width:600px"><button id="ctDirPick">Выбрать…</button></div><p class="mute">По умолчанию — папка базы материалов.</p></div>';
 		function readTables(m) {
 			var thv = function (x) { x = x.value.trim(); return x === '' ? '' : O.num(x); };
-			c.sheetWorks = []; m.querySelectorAll('#ctW tbody tr').forEach(function (tr, i) { var w = b.cat.sheetWorks[i] || {}; c.sheetWorks.push({ id: w.id || O.id('w'), name: tr.querySelector('.cn').value.trim() || 'Вид работы', price: O.num(tr.querySelector('.cp').value), match: tr.querySelector('.cm').value.trim(), thMin: thv(tr.querySelector('.ct1')), thMax: thv(tr.querySelector('.ct2')) }); });
+			c.sheetWorks = []; m.querySelectorAll('#ctW tbody tr').forEach(function (tr, i) { c.sheetWorks.push({ id: tr.getAttribute('data-id') || O.id('w'), name: tr.querySelector('.cn').value.trim() || 'Вид работы', price: O.num(tr.querySelector('.cp').value), match: tr.querySelector('.cm').value.trim(), thMin: thv(tr.querySelector('.ct1')), thMax: thv(tr.querySelector('.ct2')) }); });
 			var og = c.groups || []; c.groups = [];
 			m.querySelectorAll('.ctG').forEach(function (fs, gi) {
 				var g0 = og[gi] || {}, rows0 = g0.rows || [], g = { id: g0.id || O.id('g'), title: fs.querySelector('.cgt').value.trim() || 'Раздел', note: fs.querySelector('.cgn').value.trim(), rows: [] };
-				fs.querySelectorAll('tbody tr').forEach(function (tr, ri) { var r0 = rows0[ri] || {}; g.rows.push({ id: r0.id || O.id('r'), name: tr.querySelector('.cn').value.trim() || 'Работа', unit: tr.querySelector('.cu').value.trim() || 'шт', price: O.num(tr.querySelector('.cp').value), note: r0.note || '' }); });
+				fs.querySelectorAll('tbody tr').forEach(function (tr, ri) { var rid = tr.getAttribute('data-id'), r0 = rows0.filter(function (x) { return x.id === rid; })[0] || {}; g.rows.push({ id: rid || O.id('r'), name: tr.querySelector('.cn').value.trim() || 'Работа', unit: tr.querySelector('.cu').value.trim() || 'шт', price: O.num(tr.querySelector('.cp').value), note: r0.note || '' }); });
 				c.groups.push(g);
 			});
-			c.services = []; m.querySelectorAll('#ctS tbody tr').forEach(function (tr, i) { var s = b.cat.services[i] || {}; c.services.push({ id: s.id || O.id('s'), name: tr.querySelector('.cn').value.trim() || 'Услуга', unit: tr.querySelector('.cu').value, price: O.num(tr.querySelector('.cp').value), on: tr.querySelector('.co').checked ? 1 : 0 }); });
+			c.services = []; m.querySelectorAll('#ctS tbody tr').forEach(function (tr, i) { var s = (b.cat.services.filter(function (x) { return x.id === tr.getAttribute('data-id'); })[0]) || {}; c.services.push({ id: s.id || O.id('s'), name: tr.querySelector('.cn').value.trim() || 'Услуга', unit: tr.querySelector('.cu').value, price: O.num(tr.querySelector('.cp').value), on: tr.querySelector('.co').checked ? 1 : 0 }); });
 		}
 		var res = await U.modal({ title: 'Справочник: работы, услуги и цены', width: 980, cls: 'soCat', body: body,
 			buttons: [{ label: 'Отмена', value: null }, { label: 'Сохранить', primary: true, run: function (m) {
@@ -383,6 +400,17 @@
 				return { cat: c, next: Math.max(1, Math.round(O.num(g('ctNext'), b.next))), dir: g('ctDir').trim() };
 			} }],
 			onOpen: function (m) {
+				/* перетаскивание строк справочника (порядок важен: лист идёт в первый подходящий вид работы) и столбцов */
+				var D = window.STHDrag;
+				D.rows(m, { rows: '#ctW tbody tr, #ctS tbody tr, .ctGt tbody tr', drop: function (src, t, after, from, to) {
+					readTables(m);
+					var g = src.getAttribute('data-dg');
+					if (g === 'w') { D.move(c.sheetWorks, from, to); m.querySelector('[data-cp=works]').innerHTML = works(); }
+					else if (g === 's') { D.move(c.services, from, to); m.querySelector('[data-cp=svc]').innerHTML = svc(); }
+					else if (/^g\d+$/.test(g)) { D.move(c.groups[Number(g.slice(1))].rows, from, to); m.querySelector('[data-cp=grp]').innerHTML = grp(); }
+				} });
+				var wire = function () { [['#ctW', 'ctW'], ['#ctS', 'ctS']].forEach(function (x) { var t = m.querySelector(x[0]); if (t && !t._sthColsOn) D.cols(t, x[1], function () { readTables(m); m.querySelector('[data-cp=works]').innerHTML = works(); m.querySelector('[data-cp=svc]').innerHTML = svc(); }); }); m.querySelectorAll('.ctGt').forEach(function (t) { if (!t._sthColsOn) D.cols(t, 'ctGt'); }); };
+				wire(); new MutationObserver(wire).observe(m.querySelector('.body'), { childList: true, subtree: true });
 				m.addEventListener('click', function (e) {
 					var t = e.target, d;
 					if ((d = t.closest('[data-ct]'))) { m.querySelectorAll('[data-ct]').forEach(function (x) { x.classList.toggle('on', x === d); }); m.querySelectorAll('[data-cp]').forEach(function (p) { p.hidden = p.dataset.cp !== d.dataset.ct; }); return; }

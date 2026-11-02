@@ -108,6 +108,7 @@
 			var inf = K.rowInfo(w);
 			if (!inf) return;
 			w.mb = { id: inf.id, stock: inf.stock, unit: inf.unit, price: px && px.P[w.priceId] !== undefined && !hasP(w.priceId) };
+			if (inf.art && !w.artSet && !w.own) w.art = inf.art;   // STHGroup: артикул из карточки базы (свой артикул, вписанный в смете, главнее)
 			if (inf.shop || inf.photo) w.sup = { shop: inf.shop || (w.sup && w.sup.shop) || '', url: inf.url || (w.sup && w.sup.url) || '', img: inf.photo || (w.sup && w.sup.img) || '', tex: inf.photo ? 0 : (w.sup && w.sup.tex), how: 'база материалов' };
 		});
 		return R;

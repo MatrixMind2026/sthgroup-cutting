@@ -282,6 +282,26 @@
 		return String(t.text || '').replace(/\{аванс\}/g, adv).replace(/\{загрузка\}/g, ld).replace(/\{срок\}/g, t.days).replace(/\{день\}/g, (num(t.freeDays) + 1) + '-го').replace(/\{хранение\}/g, t.storage)
 			.split(/\n+/).filter(function (s) { return s.trim(); });
 	};
+	/* прайс-лист для клиента: разделы справочника (работа за лист, услуги, доп. работы и фасады), надбавка/скидка в %, скрытые строки;
+	   название «ЛДСП 8–16 мм: распил, кромка» без примечания → название «ЛДСП 8–16 мм», примечание «распил / кромка» */
+	O.priceList = function (b, opt) {
+		opt = opt || {}; var cat = b.cat, k = 1 + num(opt.pct) / 100, hide = opt.hide || {};
+		function pr(v) { return Math.round(num(v) * k); }
+		function split(name, note) { name = String(name || ''); if (note) return [name, note]; var i = name.indexOf(':'); return i > 0 ? [name.slice(0, i).trim(), name.slice(i + 1).trim().replace(/\s*,\s*/g, ' / ')] : [name, '']; }
+		function unitOf(u) { var x = (O.UNITS.filter(function (z) { return z[0] === u; })[0] || ['', u || ''])[1]; return String(x).replace(/^за /, ''); }
+		var secs = [];
+		secs.push({ id: 'w', title: 'Работа за лист', note: 'цена за 1 лист раскроя, без стоимости материала', rows: cat.sheetWorks.map(function (w) { var n = split(w.name, w.note); return { key: 'w:' + w.id, name: n[0], note: n[1], price: pr(w.price), unit: 'лист' }; }) });
+		secs.push({ id: 's', title: 'Услуги', note: '', rows: cat.services.filter(function (x) { return x.unit !== 'pct'; }).map(function (x) { var n = split(x.name, x.note); return { key: 's:' + x.id, name: n[0], note: n[1], price: pr(x.price), unit: unitOf(x.unit) }; }) });
+		(cat.groups || []).forEach(function (g) { secs.push({ id: 'g:' + g.id, title: g.title, note: g.note || '', rows: (g.rows || []).map(function (r) { var n = split(r.name, r.note); return { key: 'r:' + r.id, name: n[0], note: n[1], price: pr(r.price), unit: r.unit || 'шт' }; }) }); });
+		secs.forEach(function (x) { x.all = x.rows.length; x.rows = x.rows.filter(function (r) { return !hide[r.key] && r.price > 0; }); x.off = !!hide['sec:' + x.id]; });
+		var t = cat.terms, terms = [];
+		terms.push('Стандартный срок — до ' + t.days + ' раб. дней.' + (cat.urgentPct ? ' Срочный заказ за ' + (cat.urgentDays || 3) + ' дн. — +' + cat.urgentPct + '% к стоимости услуг.' : ''));
+		if (num(cat.complexPct)) terms.push(String(cat.complexText || 'Скидка за комплекс') + ' — ' + cat.complexPct + '% от услуг.');
+		terms.push('Материал можно привезти свой или купить через нас: ' + String(cat.markupText || ('+' + cat.markup + '% к оптовому прайсу поставщика')) + '.');
+		terms.push('Для запуска — аванс ' + cat.advance.serv + '% за услуги и ' + cat.advance.mat + '% за материалы.');
+		cat.services.filter(function (x) { return x.unit === 'pct' && num(x.price); }).forEach(function (x) { terms.push(x.name + ' — +' + x.price + '% к сумме.'); });
+		return { sections: secs.filter(function (x) { return !x.off && x.rows.length; }), all: secs, terms: opt.noTerms ? [] : terms, date: opt.date || O.today(), pct: num(opt.pct) };
+	};
 	/* сумма прописью: «Пятьдесят девять тысяч четыреста двадцать восемь рублей 05 копеек» */
 	O.words = function (v) {
 		v = Math.round(num(v) * 100); var rub = Math.floor(v / 100), kop = v % 100;

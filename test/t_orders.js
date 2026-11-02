@@ -64,4 +64,8 @@ assert.ok(sv[0] === 'kit' && sv[1] === 'up' && sv.indexOf('pack') > 1); delete o
 assert.strictEqual(O.words(59428.05), 'Пятьдесят девять тысяч четыреста двадцать восемь рублей 05 копеек');
 assert.strictEqual(O.words(1021001.31), 'Один миллион двадцать одна тысяча один рубль 31 копейка'); assert.strictEqual(O.words(2), 'Два рубля 00 копеек');
 ok('сумма прописью');
+const pl = O.priceList(nb, { pct: -10, hide: { 'sec:g:mill': 1 } }), w1 = pl.sections[0].rows[0];
+assert.ok(w1.name === 'ЛДСП 8–16 мм' && w1.note === 'распил / кромка / присадка' && w1.price === 4950 && w1.unit === 'лист');
+assert.ok(!pl.sections.some(x => x.id === 'g:mill') && pl.sections.some(x => x.id === 'g:fac') && pl.terms.length >= 4 && pl.sections[1].rows.every(r => r.unit !== '% от суммы'));
+ok('прайс для клиента: разделы справочника, примечание из названия, скидка −10%, скрытые разделы, условия');
 console.log('проверок ' + n + ' | ошибок нет');

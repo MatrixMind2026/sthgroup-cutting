@@ -212,7 +212,7 @@
 			'<label class="soR"><span>Хранение: бесплатно дней</span><input class="soN" id="soFree" value="' + esc(t.freeDays) + '"></label>' +
 			'<label class="soR"><span>дальше, ₽/сут</span><input class="soN" id="soStor" value="' + esc(t.storage) + '"></label>' +
 			'<div class="soBtns"><button class="primary" id="soKp">КП в PDF</button><button id="soInv">Счёт в PDF</button></div>' +
-			'<div class="soBtns"><button id="soCat">Справочник и цены…</button></div>';
+			'<div class="soBtns"><button id="soCat">Справочник и цены…</button><button id="soPrice">Прайс для клиента</button></div>';
 	}
 	X.render = async function () {
 		var host = $('orders'); if (!host) return;
@@ -224,7 +224,7 @@
 		var o = O.order(X.book, X.cur), b = X.book;
 		var left = '<aside class="soL"><div class="sec">Заказы</div><button class="primary soNew" id="soNew">+ Новый заказ</button>' +
 			'<input type="search" id="soQ" placeholder="Поиск: номер, клиент, изделие" value="' + esc(X.q) + '"><select id="soSt"><option value="">все статусы</option>' + opt(O.STATUSES, X.st) + '</select><div id="soList">' + listHtml() + '</div></aside>';
-		if (!o) { host.innerHTML = left + '<section class="soC"><div class="soEmpty">Выберите заказ или создайте новый.</div></section><aside class="soS"><div class="soBtns"><button id="soCat">Справочник и цены…</button></div><p class="mute sm">Файл заказов: ' + esc(X.path) + '</p></aside>'; return; }
+		if (!o) { host.innerHTML = left + '<section class="soC"><div class="soEmpty">Выберите заказ или создайте новый.</div></section><aside class="soS"><div class="soBtns"><button id="soCat">Справочник и цены…</button><button id="soPrice">Прайс для клиента</button></div><p class="mute sm">Файл заказов: ' + esc(X.path) + '</p></aside>'; return; }
 		var q = O.calc(b, o), c = O.client(b, o.clientId);
 		var clients = '<option value="">— клиент —</option>' + b.clients.map(function (x) { return '<option value="' + x.id + '"' + (x.id === o.clientId ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '<option value="__new">＋ новый клиент…</option>';
 		var tabs = [['calc', 'Расчёт'], ['items', 'Изделия (' + o.items.length + ')'], ['pay', 'Оплаты' + (o.payments.length ? ' (' + o.payments.length + ')' : '')]];
@@ -315,6 +315,7 @@
 			case 'soKp': if (o) X.doc(o, 'kp'); return;
 			case 'soInv': if (o) X.doc(o, 'inv'); return;
 			case 'soCat': X.catalog(); return;
+			case 'soPrice': X.priceList().catch(U.error); return;
 		}
 		if (!o) return;
 		if ((d = t.closest('[data-iop]'))) { var it = o.items[Number(d.dataset.iop)]; if (it) window.App.openPath(it.path).then(function (ok) { if (ok) go('model'); }); return; }
@@ -358,16 +359,16 @@
 		var tabs = [['works', 'Работа за лист'], ['small', 'Мелкие детали'], ['svc', 'Услуги'], ['grp', 'Доп. работы и фасады'], ['money', 'Скидка, наценка, аванс'], ['terms', 'Условия'], ['firm', 'Компания'], ['dir', 'Папка заказов']];
 		function inp(id, label, v, w) { return '<label class="fl" style="width:' + (w || 200) + 'px">' + label + '<input type="text" id="' + id + '" value="' + esc(v === undefined ? '' : v) + '"></label>'; }
 		function th(v) { return v === undefined || v === null ? '' : v; }
-		function works() { return '<table class="grid" id="ctW"><thead><tr><th></th><th>Вид работы (строка КП)</th><th>Цена за лист, ₽</th><th>Материалы — слова в названии через запятую</th><th>Толщина от, мм</th><th>до, мм</th><th></th></tr></thead><tbody>' + c.sheetWorks.map(function (w, i) { return '<tr data-i="' + i + '" data-id="' + esc(w.id || '') + '" data-dg="w"><td>' + window.STHDrag.handle() + '</td><td><input class="cn" value="' + esc(w.name) + '" style="width:290px"></td><td><input class="cp" value="' + esc(w.price) + '" style="width:80px"></td><td><input class="cm" value="' + esc(w.match) + '" style="width:220px"></td><td><input class="ct1" value="' + esc(th(w.thMin)) + '" style="width:60px"></td><td><input class="ct2" value="' + esc(th(w.thMax)) + '" style="width:60px"></td><td><button class="icon" data-wrm="' + i + '">✕</button></td></tr>'; }).join('') + '</tbody></table><button id="ctWadd">+ Вид работы</button><p class="mute">Каждый лист раскроя идёт в первый вид работы, у которого подходят и слово в названии материала, и толщина (пустое — любое). Строка без слов и толщины — для всех остальных листов.</p>'; }
+		function works() { return '<table class="grid" id="ctW"><thead><tr><th></th><th>Вид работы (строка КП)</th><th>Цена за лист, ₽</th><th>Материалы — слова в названии через запятую</th><th>Толщина от, мм</th><th>до, мм</th><th>Примечание для прайса</th><th></th></tr></thead><tbody>' + c.sheetWorks.map(function (w, i) { return '<tr data-i="' + i + '" data-id="' + esc(w.id || '') + '" data-dg="w"><td>' + window.STHDrag.handle() + '</td><td><input class="cn" value="' + esc(w.name) + '" style="width:290px"></td><td><input class="cp" value="' + esc(w.price) + '" style="width:80px"></td><td><input class="cm" value="' + esc(w.match) + '" style="width:220px"></td><td><input class="ct1" value="' + esc(th(w.thMin)) + '" style="width:60px"></td><td><input class="ct2" value="' + esc(th(w.thMax)) + '" style="width:60px"></td><td><input class="cnt" value="' + esc(w.note || '') + '" style="width:170px" placeholder="распил / кромка"></td><td><button class="icon" data-wrm="' + i + '">✕</button></td></tr>'; }).join('') + '</tbody></table><button id="ctWadd">+ Вид работы</button><p class="mute">Каждый лист раскроя идёт в первый вид работы, у которого подходят и слово в названии материала, и толщина (пустое — любое). Строка без слов и толщины — для всех остальных листов.</p>'; }
 		function grp() {
 			return (c.groups || []).map(function (g, gi) {
 				return '<fieldset class="ctG" data-g="' + gi + '"><legend><input class="cgt" value="' + esc(g.title) + '" style="width:280px"> <input class="cgn" value="' + esc(g.note || '') + '" placeholder="пояснение (в КП под заголовком)" style="width:380px"> <button class="icon" data-grm="' + gi + '" title="Убрать раздел">✕</button></legend>' +
-					'<table class="grid ctGt"><thead><tr><th></th><th>Работа</th><th>Единица</th><th>Цена, ₽</th><th></th></tr></thead><tbody>' + (g.rows || []).map(function (r, ri) { return '<tr data-dg="g' + gi + '" data-id="' + esc(r.id || '') + '"><td>' + window.STHDrag.handle() + '</td><td><input class="cn" value="' + esc(r.name) + '" style="width:460px"></td><td><input class="cu" value="' + esc(r.unit || '') + '" list="ctUnits" style="width:80px"></td><td><input class="cp" value="' + esc(r.price) + '" style="width:90px"></td><td><button class="icon" data-rrm="' + gi + ':' + ri + '">✕</button></td></tr>'; }).join('') + '</tbody></table>' +
+					'<table class="grid ctGt"><thead><tr><th></th><th>Работа</th><th>Единица</th><th>Цена, ₽</th><th>Примечание для прайса</th><th></th></tr></thead><tbody>' + (g.rows || []).map(function (r, ri) { return '<tr data-dg="g' + gi + '" data-id="' + esc(r.id || '') + '"><td>' + window.STHDrag.handle() + '</td><td><input class="cn" value="' + esc(r.name) + '" style="width:460px"></td><td><input class="cu" value="' + esc(r.unit || '') + '" list="ctUnits" style="width:80px"></td><td><input class="cp" value="' + esc(r.price) + '" style="width:90px"></td><td><input class="cnt" value="' + esc(r.note || '') + '" style="width:170px"></td><td><button class="icon" data-rrm="' + gi + ':' + ri + '">✕</button></td></tr>'; }).join('') + '</tbody></table>' +
 					'<button data-radd="' + gi + '">+ Строка</button></fieldset>';
 			}).join('') + '<datalist id="ctUnits"><option value="шт"><option value="м²"><option value="м.п."><option value="за лист"><option value="за заказ"></datalist><button id="ctGadd">+ Раздел</button>' +
 				'<p class="mute">Разделы появляются в расчёте заказа: количество (шт, м², м.п.) вписывается в заказе, в КП попадают только строки с количеством.</p>';
 		}
-		function svc() { return '<table class="grid" id="ctS"><thead><tr><th></th><th>Услуга</th><th>Единица</th><th>Цена (для % — процент)</th><th>По умолчанию</th><th></th></tr></thead><tbody>' + c.services.map(function (s, i) { return '<tr data-i="' + i + '" data-id="' + esc(s.id || '') + '" data-dg="s"><td>' + window.STHDrag.handle() + '</td><td><input class="cn" value="' + esc(s.name) + '" style="width:380px"></td><td><select class="cu">' + opt(O.UNITS, s.unit) + '</select></td><td><input class="cp" value="' + esc(s.price) + '" style="width:90px"></td><td><input type="checkbox" class="co"' + (s.on ? ' checked' : '') + '> включена</td><td><button class="icon" data-srm="' + i + '">✕</button></td></tr>'; }).join('') + '</tbody></table><button id="ctSadd">+ Услуга</button>'; }
+		function svc() { return '<table class="grid" id="ctS"><thead><tr><th></th><th>Услуга</th><th>Единица</th><th>Цена (для % — процент)</th><th>По умолчанию</th><th>Примечание для прайса</th><th></th></tr></thead><tbody>' + c.services.map(function (s, i) { return '<tr data-i="' + i + '" data-id="' + esc(s.id || '') + '" data-dg="s"><td>' + window.STHDrag.handle() + '</td><td><input class="cn" value="' + esc(s.name) + '" style="width:380px"></td><td><select class="cu">' + opt(O.UNITS, s.unit) + '</select></td><td><input class="cp" value="' + esc(s.price) + '" style="width:90px"></td><td><input type="checkbox" class="co"' + (s.on ? ' checked' : '') + '> включена</td><td><input class="cnt" value="' + esc(s.note || '') + '" style="width:170px"></td><td><button class="icon" data-srm="' + i + '">✕</button></td></tr>'; }).join('') + '</tbody></table><button id="ctSadd">+ Услуга</button>'; }
 		var body = '<div class="tabs">' + tabs.map(function (t, i) { return '<button data-ct="' + t[0] + '"' + (i ? '' : ' class="on"') + '>' + t[1] + '</button>'; }).join('') + '</div>' +
 			'<div class="pg" data-cp="works">' + works() + '</div>' +
 			'<div class="pg" data-cp="small" hidden><div class="row">' + inp('ctLim', 'Деталь мелкая, если длина или ширина меньше, мм', c.small.limit, 340) + '</div><div class="row">' + inp('ctSe', 'Кромление мелкой детали, ₽ за деталь', c.small.edge, 280) + inp('ctSd', 'Присадка мелкой детали, ₽ за деталь', c.small.drill, 280) + '</div></div>' +
@@ -379,14 +380,14 @@
 			'<div class="pg" data-cp="dir" hidden><p>Заказы, клиенты и этот справочник — один файл «' + esc(O.FILE) + '» в папке. Папка может быть общей (Яндекс Диск, сетевая) — тогда заказы одни на несколько компьютеров.</p><div class="pathrow"><input type="text" id="ctDir" value="' + esc(folder) + '" style="width:600px"><button id="ctDirPick">Выбрать…</button></div><p class="mute">По умолчанию — папка базы материалов.</p></div>';
 		function readTables(m) {
 			var thv = function (x) { x = x.value.trim(); return x === '' ? '' : O.num(x); };
-			c.sheetWorks = []; m.querySelectorAll('#ctW tbody tr').forEach(function (tr, i) { c.sheetWorks.push({ id: tr.getAttribute('data-id') || O.id('w'), name: tr.querySelector('.cn').value.trim() || 'Вид работы', price: O.num(tr.querySelector('.cp').value), match: tr.querySelector('.cm').value.trim(), thMin: thv(tr.querySelector('.ct1')), thMax: thv(tr.querySelector('.ct2')) }); });
+			c.sheetWorks = []; m.querySelectorAll('#ctW tbody tr').forEach(function (tr, i) { c.sheetWorks.push({ id: tr.getAttribute('data-id') || O.id('w'), name: tr.querySelector('.cn').value.trim() || 'Вид работы', price: O.num(tr.querySelector('.cp').value), match: tr.querySelector('.cm').value.trim(), thMin: thv(tr.querySelector('.ct1')), thMax: thv(tr.querySelector('.ct2')), note: tr.querySelector('.cnt').value.trim() }); });
 			var og = c.groups || []; c.groups = [];
 			m.querySelectorAll('.ctG').forEach(function (fs, gi) {
 				var g0 = og[gi] || {}, rows0 = g0.rows || [], g = { id: g0.id || O.id('g'), title: fs.querySelector('.cgt').value.trim() || 'Раздел', note: fs.querySelector('.cgn').value.trim(), rows: [] };
-				fs.querySelectorAll('tbody tr').forEach(function (tr, ri) { var rid = tr.getAttribute('data-id'), r0 = rows0.filter(function (x) { return x.id === rid; })[0] || {}; g.rows.push({ id: rid || O.id('r'), name: tr.querySelector('.cn').value.trim() || 'Работа', unit: tr.querySelector('.cu').value.trim() || 'шт', price: O.num(tr.querySelector('.cp').value), note: r0.note || '' }); });
+				fs.querySelectorAll('tbody tr').forEach(function (tr, ri) { var rid = tr.getAttribute('data-id'), r0 = rows0.filter(function (x) { return x.id === rid; })[0] || {}; g.rows.push({ id: rid || O.id('r'), name: tr.querySelector('.cn').value.trim() || 'Работа', unit: tr.querySelector('.cu').value.trim() || 'шт', price: O.num(tr.querySelector('.cp').value), note: tr.querySelector('.cnt').value.trim() }); });
 				c.groups.push(g);
 			});
-			c.services = []; m.querySelectorAll('#ctS tbody tr').forEach(function (tr, i) { var s = (b.cat.services.filter(function (x) { return x.id === tr.getAttribute('data-id'); })[0]) || {}; c.services.push({ id: s.id || O.id('s'), name: tr.querySelector('.cn').value.trim() || 'Услуга', unit: tr.querySelector('.cu').value, price: O.num(tr.querySelector('.cp').value), on: tr.querySelector('.co').checked ? 1 : 0 }); });
+			c.services = []; m.querySelectorAll('#ctS tbody tr').forEach(function (tr, i) { var s = (b.cat.services.filter(function (x) { return x.id === tr.getAttribute('data-id'); })[0]) || {}; c.services.push({ id: s.id || O.id('s'), name: tr.querySelector('.cn').value.trim() || 'Услуга', unit: tr.querySelector('.cu').value, price: O.num(tr.querySelector('.cp').value), on: tr.querySelector('.co').checked ? 1 : 0, note: tr.querySelector('.cnt').value.trim() }); });
 		}
 		var res = await U.modal({ title: 'Справочник: работы, услуги и цены', width: 980, cls: 'soCat', body: body,
 			buttons: [{ label: 'Отмена', value: null }, { label: 'Сохранить', primary: true, run: function (m) {
@@ -518,6 +519,57 @@
 			(o.docs = o.docs || []).push({ kind: kind, path: p, date: O.today(), total: q.total }); X.save();
 			U.toast('Готово: ' + U.baseOf(p), { actions: [{ label: 'Открыть', run: function () { U.api.open(p).catch(U.error); } }, { label: 'Папка', run: function () { U.api.open(U.dirOf(p)).catch(U.error); } }] });
 		} catch (e) { U.error(e); }
+	};
+
+	/* ------------------------ прайс-лист для клиента ------------------------ */
+	/* вариант «2» (выбран автором): шапка как у КП и счёта, разделы карточками в две колонки, «цена ₽ / ед.», условия */
+	X.priceHtml = function (pl, logoSvg) {
+		var b = X.book, co = b.cat.company, m = O.money;
+		var css = '@page{size:A4;margin:12mm 13mm 14mm}*{box-sizing:border-box}body{margin:0;font:11.5px/1.4 "Segoe UI",Arial,sans-serif;color:#23262B}.mu{color:#7a7d82}' +
+			'.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #F26B1D;padding-bottom:12px}.top svg{width:180px;height:auto;display:block}.ttl{text-align:right}.ttl b{font-size:19px;display:block}.ttl span{font-size:12.5px}' +
+			'.co{display:flex;justify-content:space-between;gap:10px;margin:9px 0 4px;font-size:10.5px}.grid{columns:2;column-gap:18px}.sec{break-inside:avoid;margin:0 0 12px;display:inline-block;width:100%}' +
+			'h3{font-size:11.5px;margin:4px 0 2px;color:#E5531A;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid #F26B1D;padding-bottom:4px}.nt{color:#7a7d82;font-size:9.5px;margin:3px 0 4px}' +
+			'.box{border:1px solid #e4e1db;border-radius:9px;overflow:hidden}.row{display:flex;justify-content:space-between;gap:10px;padding:6px 10px;border-bottom:1px solid #efece7}.row:nth-child(odd){background:#faf8f5}.row:last-child{border:0}' +
+			'.a{font-size:11px}.b{color:#7a7d82;font-size:9.5px}.p{text-align:right;white-space:nowrap}.p b{font-size:12px;display:block}.p span{color:#7a7d82;font-size:9.5px}' +
+			'.cnd{background:#fff6ef;border-left:4px solid #F26B1D;padding:8px 13px;margin-top:6px;break-inside:avoid}.cnd ol{margin:4px 0 0;padding-left:18px}.cnd li{margin:2px 0}';
+		var head = '<div class="top">' + logoSvg + '<div class="ttl"><b>Прайс-лист на услуги производства</b><span>цены действуют с ' + esc(O.ruDate(pl.date)) + '</span></div></div>' +
+			'<div class="co"><span><b>' + esc(co.name || 'STHGroup') + '</b>' + (co.address ? ' · ' + esc(co.address) : '') + '</span><span>' + esc([co.phone, co.email, co.site].filter(Boolean).join(' · ')) + '</span></div>';
+		var body = pl.sections.map(function (x) {
+			return '<div class="sec"><h3>' + esc(x.title) + '</h3>' + (x.note ? '<div class="nt">' + esc(x.note) + '</div>' : '') + '<div class="box">' + x.rows.map(function (r) {
+				return '<div class="row"><div><div class="a">' + esc(r.name) + '</div>' + (r.note ? '<div class="b">' + esc(r.note) + '</div>' : '') + '</div><div class="p"><b>' + m(r.price) + ' ₽</b><span>/ ' + esc(r.unit) + '</span></div></div>';
+			}).join('') + '</div></div>';
+		}).join('');
+		return '<!doctype html><html><head><meta charset="utf-8"><style>' + css + '</style></head><body>' + head + '<div class="grid">' + body + '</div>' +
+			(pl.terms.length ? '<div class="cnd"><b>Условия</b><ol>' + pl.terms.map(function (t) { return '<li>' + esc(t) + '</li>'; }).join('') + '</ol></div>' : '') + '</body></html>';
+	};
+	X.priceList = async function () {
+		if (!X.book) await X.load(); var b = X.book, cat = b.cat, st = cat.pl = cat.pl || { pct: 0, hide: {}, terms: 1 };
+		var full = O.priceList(b, { hide: {} });
+		var rows = full.all.map(function (x) {
+			return '<tr class="plSec"><td><input type="checkbox" data-k="sec:' + esc(x.id) + '"' + (st.hide['sec:' + x.id] ? '' : ' checked') + '></td><td colspan="2"><b>' + esc(x.title) + '</b></td></tr>' +
+				x.rows.map(function (r) { return '<tr><td></td><td colspan="2"><div class="plR"><label class="ck"><input type="checkbox" data-k="' + esc(r.key) + '"' + (st.hide[r.key] ? '' : ' checked') + '> ' + esc(r.name) + (r.note ? ' <span class="mute">· ' + esc(r.note) + '</span>' : '') + '</label><span class="nw">' + O.money(r.price) + ' ₽ / ' + esc(r.unit) + '</span></div></td></tr>'; }).join('');
+		}).join('');
+		var res = await U.modal({ title: 'Прайс для клиента', width: 760, cls: 'soPl',
+			body: '<div class="row" style="display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap"><label class="plF"><span>Цены действуют с</span><input type="date" id="plD" value="' + O.today() + '"></label><label class="plF"><span>Надбавка (+) или скидка (−), %</span><input type="text" id="plP" value="' + String(st.pct || 0).replace('.', ',') + '" style="width:120px"></label><label class="ck" style="margin-bottom:6px"><input type="checkbox" id="plT"' + (st.terms === 0 ? '' : ' checked') + '> Условия внизу</label></div>' +
+				'<p class="mute" style="margin:8px 0 4px">Отметьте, что увидит клиент. Цены — из «Справочник и цены…», примечание под строкой — там же. Выбор запоминается.</p><div style="max-height:52vh;overflow:auto"><table class="grid" style="width:100%"><tbody>' + rows + '</tbody></table></div>',
+			buttons: [{ label: 'Отмена', value: null }, { label: 'Показать', primary: true, run: function (m) {
+				var hide = {}; m.querySelectorAll('[data-k]').forEach(function (c) { if (!c.checked) hide[c.dataset.k] = 1; });
+				return { hide: hide, pct: O.num(m.querySelector('#plP').value), date: m.querySelector('#plD').value || O.today(), terms: m.querySelector('#plT').checked ? 1 : 0 };
+			} }] });
+		if (!res) return;
+		cat.pl = { pct: res.pct, hide: res.hide, terms: res.terms }; X.save();
+		var pl = O.priceList(b, { pct: res.pct, hide: res.hide, date: res.date, noTerms: !res.terms });
+		if (!pl.sections.length) { U.toast('Ничего не отмечено — прайс пустой.'); return; }
+		var html = X.priceHtml(pl, await logo());
+		var go = await U.modal({ title: 'Прайс для клиента — предпросмотр', width: 900, cls: 'sthPrev',
+			body: '<iframe id="soPrev" title="Предпросмотр" style="width:100%;height:72vh;border:1px solid #555;background:#fff"></iframe>',
+			buttons: [{ label: 'Закрыть', value: null }, { label: 'Сохранить в PDF', primary: true, value: 1 }],
+			onOpen: function (m) { m.querySelector('#soPrev').srcdoc = html; } });
+		if (!go) return;
+		var p = await U.pick({ kind: 'save', title: 'Прайс в PDF', dir: X.folder() || S().set.lastDir || S().boot.docs, name: ('Прайс ' + (cat.company.name || 'STHGroup') + ' ' + O.ruDate(pl.date)).replace(/[\\/:*?"<>|«»]+/g, ' ').replace(/\s+/g, ' ').trim() + '.pdf', filters: [{ name: 'PDF', ext: ['pdf'] }] });
+		if (!p) return;
+		if (!/\.pdf$/i.test(p)) p += '.pdf';
+		try { await U.api.pdf(html, p); U.toast('Готово: ' + U.baseOf(p), { actions: [{ label: 'Открыть', run: function () { U.api.open(p).catch(U.error); } }, { label: 'Папка', run: function () { U.api.open(U.dirOf(p)).catch(U.error); } }] }); } catch (e) { U.error(e); }
 	};
 
 	/* -------------------------------- подключение ---------------------------- */

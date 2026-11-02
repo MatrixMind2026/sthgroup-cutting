@@ -179,7 +179,7 @@
 			qty = ov.qty !== undefined && ov.qty !== '' ? num(ov.qty) : s.unit === 'sheet' ? totalSheets : s.unit === 'item' ? o.items.length : s.unit === 'part' ? totalParts : 1;
 			lines.push({ key: s.id, name: s.name, unit: (O.UNITS.filter(function (u) { return u[0] === s.unit; })[0] || ['', ''])[1], price: price, qty: qty, on: on, sum: on ? r2(price * qty) : 0, check: 1 });
 		});
-		(o.extra || []).forEach(function (x, k) { var q = num(x.qty, 1), p = num(x.price); if (x.name) lines.push({ key: 'x:' + k, name: x.name, unit: x.unit || 'шт', price: p, qty: q, sum: r2(p * q), extra: 1 }); });
+		(o.extra || []).forEach(function (x, k) { var q = num(x.qty, 1), p = num(x.price); lines.push({ key: 'x:' + k, name: x.name || '', unit: x.unit || 'шт', price: p, qty: q, sum: r2(p * q), extra: 1 }); });
 		blocks.push({ id: 'svc', title: 'Услуги к заказу', lines: lines });
 		var serv = 0;
 		blocks.forEach(function (bk) { bk.sum = r2(bk.lines.reduce(function (a, l) { return a + (l.sum || 0); }, 0)); serv += bk.sum; });

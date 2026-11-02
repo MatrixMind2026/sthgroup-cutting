@@ -40,4 +40,7 @@ const q2 = O.calc(b, o), cl = q2.blocks[2].lines.find(l => l.key === 'cashless')
 assert.ok(q2.discount === 0 && q2.matLines[1].sum === 0 && cl.sum === O.r2((q2.servD + q2.mats) * 0.07));
 assert.strictEqual(q2.debt, O.r2(q2.total - 1000)); ok('без скидки, без нашей фурнитуры, безнал 7%, долг по оплатам');
 const t = O.termsText(b, o, q2); assert.ok(t.length === 4 && /средняя/.test(t[1]) && /10 раб/.test(t[1]) && /3-го/.test(t[3])); ok('условия «Важно знать» с подстановкой');
+o.extra = [{ name: '', unit: 'шт', qty: 1, price: 0 }, { name: 'Доставка', unit: 'за заказ', qty: 1, price: 3000 }];
+const q3 = O.calc(b, o), ex = q3.blocks[2].lines.filter(l => l.extra);
+assert.ok(ex.length === 2 && ex[0].name === '' && ex[1].sum === 3000 && O.r2(q3.serv - q2.serv) === 3000); ok('своя строка: пустая видна для правки, с ценой — в услугах');
 console.log('проверок ' + n + ' | ошибок нет');

@@ -91,6 +91,10 @@
 	function lineRow(l, o) {
 		var ck = l.check ? '<input type="checkbox" data-ck="' + esc(l.key) + '"' + (l.on ? ' checked' : '') + '> ' : '';
 		var editable = l.key.indexOf('m:') !== 0;
+		/* STHGroup: своя строка — название и единица правятся, строку можно убрать */
+		if (l.extra) return '<tr class="soX"><td><input class="soXn" data-xn="' + esc(l.key) + '" value="' + esc(l.name) + '" placeholder="Название услуги"></td><td><input class="soXu" data-xu="' + esc(l.key) + '" value="' + esc(l.unit || '') + '" list="soUnits" placeholder="ед."></td>' +
+			'<td class="r"><input class="soN" data-pr="' + esc(l.key) + '" value="' + String(l.price).replace('.', ',') + '"></td><td class="r"><input class="soN" data-qt="' + esc(l.key) + '" value="' + String(l.qty).replace('.', ',') + '"></td>' +
+			'<td class="r"><b>' + money(l.sum) + '</b> <button class="icon" data-xrm="' + esc(l.key) + '" title="Убрать строку">✕</button></td></tr>';
 		return '<tr class="' + (l.check && !l.on ? 'off' : '') + '"><td>' + ck + esc(l.name) + '</td><td class="mute">' + esc(l.unit || '') + '</td>' +
 			'<td class="r">' + (editable ? '<input class="soN" data-pr="' + esc(l.key) + '" value="' + String(l.price).replace('.', ',') + '">' : money(l.price)) + (l.unit === '% от суммы' ? ' %' : '') + '</td>' +
 			'<td class="r">' + (l.key.indexOf('s:') === 0 || l.key.indexOf('m:') === 0 || l.unit === '% от суммы' ? (l.qty || '') : '<input class="soN" data-qt="' + esc(l.key) + '" value="' + String(l.qty).replace('.', ',') + '">') + '</td>' +
@@ -101,7 +105,7 @@
 		q.blocks.forEach(function (bk) {
 			if (!bk.lines.length && bk.id !== 'svc') return;
 			h += '<div class="soBh">' + esc(bk.title) + '<span>' + money(bk.sum + (bk.id === 'svc' ? q.pctSum : 0)) + ' ₽</span></div><table class="soT"><tbody>' + bk.lines.map(function (l) { return lineRow(l, o); }).join('') + '</tbody></table>';
-			if (bk.id === 'svc') h += '<button class="link" id="soExtra">+ своя строка</button>';
+			if (bk.id === 'svc') h += '<button class="link" id="soExtra">+ своя строка</button><datalist id="soUnits"><option value="шт"><option value="за заказ"><option value="за лист"><option value="за изделие"><option value="за деталь"><option value="м²"><option value="м.п."><option value="час"></datalist>';
 		});
 		var mk = o.markup !== undefined && o.markup !== '' ? o.markup : X.book.cat.markup;
 		h += '<div class="soBh">Материалы и фурнитура<span>' + money(q.mats) + ' ₽</span></div><table class="soT"><tbody>' + q.matLines.map(function (l) { return lineRow(l, o); }).join('') + '</tbody></table>' +
@@ -218,7 +222,7 @@
 			case 'soDel': (async function () { if (!o || !(await U.confirm('Удалить заказ', 'Удалить заказ ' + o.no + '? Файлы изделий не удаляются.', 'Удалить'))) return; X.book.orders = X.book.orders.filter(function (x) { return x.id !== o.id; }); X.cur = ''; changed(); })(); return;
 			case 'soAddItem': if (o) addItem(o); return;
 			case 'soRecalc': if (o) recalcAll(o); return;
-			case 'soExtra': if (o) { (o.extra = o.extra || []).push({ name: 'Своя строка', unit: 'шт', qty: 1, price: 0 }); changed(); } return;
+			case 'soExtra': if (o) { (o.extra = o.extra || []).push({ name: '', unit: 'шт', qty: 1, price: 0 }); changed(); setTimeout(function () { var a = document.querySelectorAll('#orders [data-xn]'); if (a.length) a[a.length - 1].focus(); }, 30); } return;
 			case 'soPadd': if (o) { var a = O.num($('soPa').value); if (!(a > 0)) { U.toast('Впишите сумму'); return; } o.payments.push({ date: $('soPd').value || O.today(), amount: a, note: $('soPn').value.trim() }); changed(); } return;
 			case 'soPadv': if (o) { $('soPa').value = String(O.calc(X.book, o).advance).replace('.', ','); $('soPn').value = 'аванс'; } return;
 			case 'soPrest': if (o) { $('soPa').value = String(Math.max(0, O.calc(X.book, o).debt)).replace('.', ','); $('soPn').value = 'доплата'; } return;
@@ -230,6 +234,7 @@
 		if ((d = t.closest('[data-iop]'))) { var it = o.items[Number(d.dataset.iop)]; if (it) window.App.openPath(it.path).then(function (ok) { if (ok) go('model'); }); return; }
 		if ((d = t.closest('[data-irc]'))) { var it2 = o.items[Number(d.dataset.irc)]; X.snapFile(it2.path).then(function (sn) { it2.snap = sn; changed(); }, U.error); return; }
 		if ((d = t.closest('[data-irm]'))) { o.items.splice(Number(d.dataset.irm), 1); changed(); return; }
+		if ((d = t.closest('[data-xrm]'))) { o.extra.splice(Number(d.dataset.xrm.slice(2)), 1); changed(); return; }
 		if ((d = t.closest('[data-prm]'))) { o.payments.splice(Number(d.dataset.prm), 1); changed(); return; }
 	}
 	function onChange(e) {
@@ -248,6 +253,7 @@
 		var tk = { soLoad: 'load', soDays: 'days', soFree: 'freeDays', soStor: 'storage' };
 		if (tk[t.id]) { o.terms[tk[t.id]] = t.id === 'soLoad' ? t.value : O.num(t.value); changed(); return; }
 		if ((d = t.closest('[data-ck]'))) { var k = d.dataset.ck; if (k === 'm:mat') o.ownMat = t.checked ? 1 : 0; else if (k === 'm:fit') o.ownFit = t.checked ? 1 : 0; else (o.svc[k] = o.svc[k] || {}).on = t.checked ? 1 : 0; changed(); return; }
+		if ((d = t.closest('[data-xn]')) || (d = t.closest('[data-xu]'))) { var xx = o.extra[Number((d.dataset.xn || d.dataset.xu).slice(2))]; if (xx) xx[d.dataset.xn ? 'name' : 'unit'] = t.value.trim(); changed(); return; }
 		if ((d = t.closest('[data-pr]')) || (d = t.closest('[data-qt]'))) {
 			var key = d.dataset.pr || d.dataset.qt, f = d.dataset.pr ? 'price' : 'qty', v = t.value.trim() === '' ? '' : O.num(t.value);
 			if (key.indexOf('x:') === 0) { var x = o.extra[Number(key.slice(2))]; if (x) x[f] = v; }
@@ -334,7 +340,7 @@
 		}
 		var body = '';
 		q.blocks.forEach(function (bk) {
-			var lines = bk.lines.filter(function (l) { return !l.check || l.on; });
+			var lines = bk.lines.filter(function (l) { return (!l.check || l.on) && !(l.extra && !l.name && !l.sum); });
 			if (!lines.length) return;
 			body += '<h3>' + esc(bk.title) + '<span>' + m(bk.sum + (bk.id === 'svc' ? q.pctSum : 0)) + ' ₽</span></h3><table><thead><tr><th>Операция</th><th>Ед.</th><th class="n">Цена</th><th class="n">Кол-во</th><th class="n">Сумма</th></tr></thead><tbody>' + rows(lines) + '</tbody></table>';
 		});
@@ -354,12 +360,19 @@
 		var q = O.calc(X.book, o);
 		if (!q.total) { U.toast('В заказе нет позиций — добавьте изделие на вкладке «Изделия».'); return; }
 		var cl = O.client(X.book, o.clientId), name = (kind === 'inv' ? 'Счёт ' : 'КП ') + o.no + (cl ? ' ' + cl.name : '');
+		/* STHGroup: сначала предпросмотр в окне программы, сохранение в PDF — из него */
+		var html = X.docHtml(o, q, kind, await logo());
+		var go = await U.modal({ title: (kind === 'inv' ? 'Счёт' : 'Коммерческое предложение') + ' — предпросмотр', width: 900, cls: 'sthPrev',
+			body: '<iframe id="soPrev" title="Предпросмотр" style="width:100%;height:72vh;border:1px solid #555;background:#fff"></iframe>',
+			buttons: [{ label: 'Закрыть', value: null }, { label: 'Сохранить в PDF', primary: true, value: 1 }],
+			onOpen: function (m) { m.querySelector('#soPrev').srcdoc = html; } });
+		if (!go) return;
 		var dir = o.items[0] ? U.dirOf(o.items[0].path) : (S().set.lastDir || S().boot.docs);
 		var p = await U.pick({ kind: 'save', title: kind === 'inv' ? 'Счёт в PDF' : 'КП в PDF', dir: dir, name: name.replace(/[\\/:*?"<>|]+/g, ' ') + '.pdf', filters: [{ name: 'PDF', ext: ['pdf'] }] });
 		if (!p) return;
 		if (!/\.pdf$/i.test(p)) p += '.pdf';
 		try {
-			await U.api.pdf(X.docHtml(o, q, kind, await logo()), p);
+			await U.api.pdf(html, p);
 			(o.docs = o.docs || []).push({ kind: kind, path: p, date: O.today(), total: q.total }); X.save();
 			U.toast('Готово: ' + U.baseOf(p), { actions: [{ label: 'Открыть', run: function () { U.api.open(p).catch(U.error); } }, { label: 'Папка', run: function () { U.api.open(U.dirOf(p)).catch(U.error); } }] });
 		} catch (e) { U.error(e); }

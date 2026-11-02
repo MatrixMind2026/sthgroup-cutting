@@ -1266,3 +1266,14 @@ body[data-sec="orders"] #welcome, body[data-sec="clients"] #welcome, body[data-s
 .sthPick tr[data-id] { cursor: pointer; } .sthPick tr.on td { background: var(--accent-soft); } .sthPick td.r { text-align: right; }
 .sthPick table.grid th, .sthPick table.grid td { padding: 5px 8px; border-bottom: 1px solid var(--line2); text-align: left; }
 .sthPick input[type=search] { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r); padding: 5px 8px; }
+/* STHGroup: своя строка в расчёте заказа, предпросмотр КП, выбор материала из базы для сметы, групповое редактирование */
+#orders input.soXn { width: 100%; min-width: 200px; }
+#orders input.soXu { width: 110px; }
+#orders .soX button.icon { margin-left: 4px; padding: 0 5px; }
+.modal.sthPrev .body { padding: 6px; }
+#sthPickBar { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--accent); color: #fff; font-size: 13px; }
+#sthPickBar .grow { flex: 1; }
+#sthPickBar button { background: #fff; color: #222; border: 0; border-radius: 4px; padding: 4px 12px; }
+#sthPickBar button.primary { background: #222; color: #fff; font-weight: 700; }
+.modal.sthBulk input.bkCalc { background: #f3e9a6 !important; color: #333 !important; }
+.modal.sthBulk .bkTri { margin: 18px 0 0 14px; }

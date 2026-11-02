@@ -401,6 +401,12 @@
 	};
 
 	/* ------------------------------- справочники -------------------------------- */
+	/* STHGroup: в оболочке Electron окно prompt() не открывается (всегда «отмена») — своё окно с полем */
+	function askName(title, v) {
+		return U.modal({ title: title, width: 420, body: '<label class="fl">Название<input type="text" id="anV" value="' + esc(v || '') + '" autofocus></label>',
+			buttons: [{ label: 'Отмена', value: null }, { label: 'OK', primary: true, run: function (m) { var x = m.querySelector('#anV').value.trim(); if (!x) { U.toast('Впишите название'); return false; } return x; } }],
+			onOpen: function (m) { var i = m.querySelector('#anV'); setTimeout(function () { i.focus(); i.select(); }, 30); } });
+	}
 	W.classes = function () {
 		var b = S.b, cg = b.classGroups[0] ? b.classGroups[0].code : '';
 		function draw(m) {
@@ -418,8 +424,8 @@
 				m.addEventListener('click', async function (e) {
 					var t = e.target;
 					if (t.dataset.cg) { cg = t.dataset.cg; draw(m); }
-					else if (t.id === 'cgAdd') { var n = prompt('Название группы классов', 'Поставщики'); if (n) { cg = MB.addClassGroup(b, n).code; W.changed(); draw(m); } }
-					else if (t.id === 'cgRen') { var g = MB.classGroup(b, cg); if (g) { var n2 = prompt('Название группы классов', g.name); if (n2) { g.name = n2.trim() || g.name; W.changed(); draw(m); } } }
+					else if (t.id === 'cgAdd') { var n = await askName('Новая группа классов', 'Поставщики'); if (n) { cg = MB.addClassGroup(b, n).code; W.changed(); draw(m); } }
+					else if (t.id === 'cgRen') { var g = MB.classGroup(b, cg); if (g) { var n2 = await askName('Переименовать группу классов', g.name); if (n2) { g.name = n2.trim() || g.name; W.changed(); draw(m); } } }
 					else if (t.id === 'cgDel' && cg) { if (await U.confirm('Удалить группу классов', 'Группа и её классы будут удалены, у материалов эти классы снимутся.', 'Удалить')) { MB.dropClassGroup(b, cg); cg = b.classGroups[0] ? b.classGroups[0].code : ''; W.changed(); draw(m); } }
 					else if (t.id === 'cAdd') { MB.addClass(b, 'Новый класс', cg); W.changed(); draw(m); }
 					else if (t.dataset.cx) { MB.dropClass(b, t.dataset.cx); W.changed(); draw(m); }

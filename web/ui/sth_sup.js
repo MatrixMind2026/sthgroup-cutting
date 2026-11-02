@@ -21,11 +21,7 @@
 		var hit = b.suppliers.filter(function (s) { return String(s.name).toLowerCase() === name.toLowerCase(); })[0];
 		return hit || MB.saveSupplier(b, { name: name, url: host(url) ? 'https://' + host(url) : '', phone: '', email: '', note: '' });
 	}
-	function groupOpts(b, t) {
-		var gs = b.groups.filter(function (g) { return g.type === t; }).map(function (g) { return [g.id, MB.path(b, g.id).join(' / ')]; }).sort(function (a, c) { return a[1].localeCompare(c[1], 'ru'); });
-		var def = gs.filter(function (g) { return g[1] === KGRP[t]; })[0];
-		return gs.map(function (g, i) { return '<option value="' + g[0] + '"' + ((def ? g === def : i === 0) ? ' selected' : '') + '>' + esc(g[1]) + '</option>'; }).join('') + '<option value=""' + (gs.length ? '' : ' selected') + '>＋ новая «' + esc(KGRP[t]) + '»</option>';
-	}
+	function groupOpts(b, t) { return window.STH.groupOpts(b, t, ''); }
 
 	var sup0 = Es.supEdit;
 	Es.supEdit = async function (w) {

@@ -59,10 +59,22 @@
 		return out;
 	}
 	function sigOf(list) { return list.map(function (x) { return x.kind + ':' + x.name; }).sort().join('\n'); }
+	/* все группы базы деревом (основные и подгруппы, с отступом); выбрана cur, иначе «Из моделей: …» или первая группа своего типа */
 	function groupOpts(b, t, cur) {
-		var gs = b.groups.filter(function (g) { return g.type === t; }).map(function (g) { return [g.id, MB.path(b, g.id).join(' / ')]; }).sort(function (a, c) { return a[1].localeCompare(c[1], 'ru'); });
-		return gs.map(function (g) { return '<option value="' + g[0] + '"' + (g[0] === cur ? ' selected' : '') + '>' + esc(g[1]) + '</option>'; }).join('') + '<option value="">＋ новая «' + esc(KINDS0[t]) + '»</option>';
+		var out = [], kids = {};
+		b.groups.forEach(function (g) { (kids[g.parent || ''] = kids[g.parent || ''] || []).push(g); });
+		if (!cur || !MB.group(b, cur)) { var d = b.groups.filter(function (g) { return g.type === t && g.name === KINDS0[t]; })[0] || b.groups.filter(function (g) { return g.type === t; })[0]; cur = d ? d.id : ''; }
+		var seen = {};
+		function one(g, depth) {
+			if (seen[g.id]) return; seen[g.id] = 1;
+			out.push('<option value="' + g.id + '"' + (g.id === cur ? ' selected' : '') + '>' + new Array(depth + 1).join('\u2003') + esc(g.name) + '</option>');
+			(kids[g.id] || []).forEach(function (c) { one(c, depth + 1); });
+		}
+		(kids[''] || []).forEach(function (g) { one(g, 0); });
+		b.groups.forEach(function (g) { one(g, 0); });      /* группа без родителя в базе — в корень */
+		return out.join('') + '<option value=""' + (cur ? '' : ' selected') + '>＋ новая «' + esc(KINDS0[t]) + '»</option>';
 	}
+	window.STH.groupOpts = groupOpts;
 	var KINDS0 = { sheet: 'Из моделей: листовые', edge: 'Из моделей: кромка', fit: 'Из моделей: фурнитура', other: 'Из моделей: прочее' };
 	function defGroup(b, t) {
 		var hit = b.groups.filter(function (g) { return g.type === t && g.name === KINDS0[t]; })[0];

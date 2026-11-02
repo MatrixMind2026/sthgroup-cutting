@@ -1,6 +1,6 @@
 {
   "name": "sthgroup-cutting",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "STHGroup — раскрой, смета и заказы по модели из БАЗИС-Мебельщика (на основе окна BazisReborn)",
   "main": "main.js",
   "private": true,
@@ -28,7 +28,6 @@
       "main.js",
       "server.js",
       "web/**",
-      "core/**",
       "bazis/**",
       "assets/**",
       "package.json"

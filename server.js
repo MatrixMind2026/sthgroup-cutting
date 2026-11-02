@@ -365,6 +365,11 @@ if (require.main === module) {
   const dataDir = process.argv[2] || path.join(os.tmpdir(), 'sth-test-data');
   start({
     webDir: path.join(__dirname, 'web'), dataDir: dataDir, version: require('./package.json').version, file: process.argv[3] || '', port: Number(process.argv[4]) || 0,
+    // для проверок: подставной магазин — страница товара из файла STH_SHOP_HTML
+    extraRoutes: function () { return {
+      'POST /api/shop/login': function (req, res) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"ok":true}'); },
+      'POST /api/shop/fetch': function (req, res) { const h = process.env.STH_SHOP_HTML ? fs.readFileSync(process.env.STH_SHOP_HTML, 'utf8') : '<html></html>'; res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true, html: h, url: 'https://www.mdm-complect.ru/catalog/x/111185/' })); }
+    }; },
     hooks: {
       pdf: async function (html, out) { fs.writeFileSync(out, '%PDF-test\n' + html.length); },
       dialog: async function (d) { return process.env.STH_DIALOG || null; }

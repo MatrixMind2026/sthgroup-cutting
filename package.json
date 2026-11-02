@@ -1,17 +1,17 @@
 {
   "name": "sthgroup-cutting",
-  "version": "0.6.1",
-  "description": "Расчёт коммерческого распила для заказчиков (STHGroup)",
+  "version": "0.7.0",
+  "description": "STHGroup — раскрой, смета и заказы по модели из БАЗИС-Мебельщика (на основе окна BazisReborn)",
   "main": "main.js",
   "private": true,
   "scripts": {
     "start": "electron .",
-    "test": "node test/core.test.js && node test/material.test.js && node test/b3d.test.js && node test/fdb.test.js",
+    "test": "node test/fixtures.js && node test/t_cut.js && node test/t_project.js && node test/t_est.js && node test/t_matbase.js && node test/t_mblink.js && node test/t_pack.js && node test/t_server.js",
     "dist": "electron-builder --win nsis --publish never",
-    "release": "electron-builder --win nsis --publish always"
+    "release": "electron-builder --win nsis --publish always",
+    "test:ci": "node test/fixtures.js && node test/t_cut.js && node test/t_project.js && node test/t_matbase.js && node test/t_mblink.js && node test/t_pack.js && node test/t_server.js"
   },
   "dependencies": {
-    "adm-zip": "^0.5.16",
     "electron-updater": "^6.3.9"
   },
   "devDependencies": {
@@ -26,9 +26,10 @@
     },
     "files": [
       "main.js",
-      "preload.js",
+      "server.js",
+      "web/**",
       "core/**",
-      "renderer/**",
+      "bazis/**",
       "assets/**",
       "package.json"
     ],
@@ -49,7 +50,7 @@
       "perMachine": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "STHGroup Cutting",
+      "shortcutName": "STHGroup",
       "installerIcon": "assets/icon.ico",
       "uninstallerIcon": "assets/icon.ico",
       "language": "1049"

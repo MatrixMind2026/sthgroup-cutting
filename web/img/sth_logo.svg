@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 440 120" width="440" height="120">
+  <title>STHGroup</title>
+  <defs>
+    <mask id="hole" maskUnits="userSpaceOnUse" x="0" y="0" width="72" height="72">
+      <rect x="0" y="0" width="72" height="72" fill="#fff"/>
+      <circle cx="19" cy="36" r="4.5" fill="#000"/>
+    </mask>
+  </defs>
+  <g transform="translate(10,9.6) scale(1.4)">
+    <rect x="0" y="0" width="38" height="72" rx="3" fill="#23262B" mask="url(#hole)"/>
+    <rect x="41" y="0" width="31" height="40" rx="3" fill="#F26B1D"/>
+    <rect x="41" y="43" width="31" height="29" rx="3" fill="#9AA0A6"/>
+  </g>
+  <text x="130" y="78" font-family="'Segoe UI','Helvetica Neue',Arial,sans-serif" font-size="56" font-weight="700" letter-spacing="-1"><tspan fill="#23262B">STH</tspan><tspan fill="#F26B1D">Group</tspan></text>
+</svg>

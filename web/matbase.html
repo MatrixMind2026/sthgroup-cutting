@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>База материалов и комплектующих — STHGroup</title>
+<link rel="icon" href="img/logo.svg">
+<link rel="stylesheet" href="app.css">
+<link rel="stylesheet" href="matbase.css">
+</head>
+<body class="mb">
+<div id="mbMenu"></div>
+<div id="mbBar">
+	<button id="bGrpAdd" title="Новая группа (внутри выбранной)">＋ Группа</button>
+	<button id="bGrpEd" data-need="group" title="Изменить группу">✎ Группа</button>
+	<button id="bGrpDel" data-need="group" class="icon" title="Удалить группу">✕</button>
+	<i class="sep"></i>
+	<button id="bMatAdd" title="Новый материал (Insert)">＋ Материал</button>
+	<button id="bMatEd" data-need="mat" class="icon" title="Редактировать материал (Enter, двойной щелчок)">✎</button>
+	<button id="bMatDel" data-need="mat" class="icon" title="Удалить материал (Delete)">✕</button>
+	<button id="bMatMv" data-need="mat" title="Переместить выделенные в другую группу">⇢ В группу</button>
+	<i class="sep"></i>
+	<button id="bFilt" title="Показать или скрыть строку фильтров под заголовками">Фильтрация</button>
+	<button id="bFiltClr" class="icon" title="Сбросить фильтры">⌫</button>
+	<span class="grow"></span>
+	<span id="mbState" class="mute"></span>
+</div>
+<div id="mbMain">
+	<aside id="mbLeft">
+		<div class="srch"><input type="search" id="mbQ" placeholder="Введите текст для поиска" spellcheck="false"><button id="mbFind">Найти</button><button id="mbClear">Очистить</button></div>
+		<div class="cap">Группа материалов</div>
+		<div id="mbTree"></div>
+	</aside>
+	<section id="mbRight">
+		<div id="mbHeadWrap"><div id="mbHead"></div></div>
+		<div id="mbScroll"><div id="mbRows"></div></div>
+		<div id="mbSumBar"><span id="mbSum">Всего: 0</span><span class="grow"></span><span id="mbFile" class="mute"></span></div>
+		<div id="mbBottom"><div id="mbRel" class="bp"></div><div id="mbOps" class="bp"></div></div>
+	</section>
+</div>
+<div id="modals"></div>
+<div id="toasts"></div>
+<script src="core/geom.js"></script>
+<script src="core/cut.js"></script>
+<script src="core/project.js"></script>
+<script src="core/draw.js"></script>
+<script src="core/dbf.js"></script>
+<script src="core/zip.js"></script>
+<script src="core/out_tab.js"></script>
+<script src="core/matbase.js"></script>
+<script src="ui/api.js"></script>
+<script src="ui/matbase_ui.js"></script>
+<script>MBW.init().catch(function (e) { UI.error(e); });</script>
+</body>
+</html>

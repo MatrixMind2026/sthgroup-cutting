@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ru" data-theme="light">
+<head>
+<meta charset="utf-8">
+<title>STHGroup</title>
+<link rel="icon" href="img/logo.svg">
+<link rel="stylesheet" href="app.css">
+</head>
+<body data-sec="model">
+<div id="ghost" hidden></div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><linearGradient id="fire" x1="0" y1="59" x2="0" y2="5" gradientUnits="userSpaceOnUse"><stop offset="0" stop-color="#E5482C"/><stop offset=".55" stop-color="#FF8A1F"/><stop offset="1" stop-color="#FFC53D"/></linearGradient></defs></svg>
+<div id="splash"><canvas id="splashCv"></canvas></div>
+<script src="ui/splash.js"></script>
+<div id="app">
+	<header id="top">
+		<div class="brand"><span class="bname sth" aria-label="STHGroup"><i>STH</i><b>Group</b></span></div>
+		<div class="title" id="projTitle"></div>
+		<div class="grp">
+			<div class="hdd" id="fileDd"><button class="dd" id="bFile" title="Открыть проект, сохранить копию">Файл</button><div class="ddMenu">
+				<button id="bOpen" title="Открыть файл проекта (.bmk), Ctrl+O">Открыть…<small>Ctrl+O</small></button>
+				<button id="bSaveAs" title="Сохранить копию проекта в другое место">Сохранить как…</button>
+				<button id="bToDisk" class="tabletOnly" title="Отправить файл проекта на Яндекс Диск, в почту или мессенджер">Отправить на Диск…</button>
+			</div></div>
+		</div>
+		<div class="grp noDrill">
+			<button id="bMats" class="cutOnly" title="Форматы листов, станок, текстура и остатки по всем материалам">Материалы</button>
+			<label class="fld" title="Сколько одинаковых изделий делается по этой модели: умножает раскрой и смету">Комплектов <input id="iSets" type="number" min="1" max="999" step="1" value="1"></label>
+			<label class="fld cutOnly">Качество <select id="sQuality"><option value="0">быстро</option><option value="1">обычно</option><option value="2">тщательно</option></select></label>
+			<button id="bNest" class="primary cutOnly" title="Разложить заново текущий материал">Пересчитать</button>
+			<button id="bImprove" class="cutOnly" title="Долгий перебор раскладки этого материала (может занять больше минуты): меньше листов, свободное место одним куском. Ставится, только если получилось лучше">Улучшить</button>
+		</div>
+		<div class="grow"></div>
+		<div class="grp">
+			<div class="hdd" id="docDd"><button class="dd" id="bDocs" title="PDF, Excel, DXF и списки раскроя">Документы</button><div class="ddMenu r">
+				<button id="bPdf">PDF</button>
+				<button id="bXlsx" class="noDrill">Excel</button>
+				<button id="bDxf" class="cutOnly">DXF</button>
+				<button id="bLists" class="cutOnly" title="CSV и накладные раскроя">Списки</button>
+			</div></div>
+		</div>
+		<div class="grp">
+			<button id="bSettings">Настройки</button>
+		</div>
+	</header>
+	<nav id="ptabs" hidden aria-label="Открытые проекты"></nav>
+	<main id="main">
+		<nav id="rail" aria-label="Разделы программы">
+			<button data-s="model" class="on" title="Изделие целиком в 3D: найти деталь, проверить модель, схема сборки"><svg width="26" height="20" viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M13 1.5l9 4v9l-9 4-9-4v-9zM4 5.5l9 4 9-4M13 9.5v9"/></svg>Модель</button>
+			<button data-s="cut" title="Раскрой листовых материалов"><svg width="26" height="20" viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="24" height="18"/><path d="M10 1v18M10 10h15"/></svg>Раскрой</button>
+			<button data-s="est" title="Смета по модели: материал, работы, фурнитура"><svg width="26" height="20" viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="1" width="16" height="18"/><path d="M8 6h10M8 10h10M8 14h6"/></svg>Смета</button>
+			<button data-s="base" title="База материалов и комплектующих — отдельное окно: группы, карточки, цены, поставщики, склад. Общая для всех проектов"><svg width="26" height="20" viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="13" cy="4" rx="8" ry="2.6"/><path d="M5 4v12c0 1.4 3.6 2.6 8 2.6s8-1.2 8-2.6V4M5 10c0 1.4 3.6 2.6 8 2.6s8-1.2 8-2.6"/></svg>База</button>
+		</nav>
+		<aside id="left" data-pane="left" data-side="l">
+			<div class="sec">Материалы</div>
+			<div id="matList"></div>
+			<div class="sec" id="secSheets">Листы материала</div>
+			<div id="thumbs"></div>
+			<div id="bufBox"></div>
+			<div id="unplaced"></div>
+			<div class="sec">Остатки вручную</div>
+			<div id="remBox"></div>
+		</aside>
+		<section id="center">
+			<div class="bar1">
+				<b id="sheetTitle"></b><span id="sheetChips"></span>
+				<div class="grow"></div>
+				<div class="searchWrap"><input id="iSearch" type="search" placeholder="Поиск детали (Ctrl+F)" autocomplete="off"><div id="searchRes"></div></div>
+			</div>
+			<div class="bar2">
+				<button id="bUndo" class="icon undo" title="Отменить (Ctrl+Z)">↶</button>
+				<button id="bRedo" class="icon undo" title="Повторить (Ctrl+Y)">↷</button>
+				<button id="bVariant" title="Переложить этот лист по-другому">Другой вариант</button>
+				<button id="bAll" title="Показать все листы материала">Все листы</button>
+				<button id="bLock" title="Закреплённый лист не меняется при пересчёте"></button>
+				<button id="bDropSheet" title="Убрать этот пустой лист" hidden>Удалить пустой лист</button>
+				<span id="legend"></span>
+				<div class="grow"></div>
+				<div class="hdd" id="cutViewDd"><button class="dd" id="bCutView" title="Цвет деталей, присадка, текстуры, масштаб">Вид</button><div class="ddMenu r">
+					<label class="ddRow">Цвет <select id="sColor"><option value="none">без цвета</option><option value="name">по названию</option><option value="cab">по шкафу</option><option value="grp">по группе</option></select></label>
+					<label class="ddRow" id="lHoles"><input id="cHoles" type="checkbox"> присадка на карте</label>
+					<label class="ddRow" id="lTex" title="Текстура материала из раздела «База» — на карте и в PDF"><input id="cTex" type="checkbox" checked> текстуры</label>
+					<div class="ddRow">Масштаб <span class="zoom"><button id="bZoomOut" class="icon keep">−</button><button id="bZoomFit" class="keep" title="По размеру окна">100 %</button><button id="bZoomIn" class="icon keep">+</button></span></div>
+				</div></div>
+			</div>
+			<div id="mapWrap"><div id="map"></div><div id="tiles"></div><div id="mapMsg"></div></div>
+			<div id="busy" hidden><svg class="frame" viewBox="0 0 64 64" aria-hidden="true"><path class="f-base" d="M32 5 L55.5 18.5 V45.5 L32 59 L8.5 45.5 V18.5 Z M32 32 V59 M32 32 L8.5 18.5 M32 32 L55.5 18.5"/><path class="f-fire f1" pathLength="100" d="M8.5 45.5 V18.5 L32 5 L55.5 18.5 V45.5 L32 59 Z"/><path class="f-fire f2" pathLength="100" d="M32 59 V32 L8.5 18.5"/><path class="f-fire f3" pathLength="100" d="M32 59 V32 L55.5 18.5"/></svg><div class="bt"><span id="busyText">Идёт раскладка…</span><span id="busyPc"></span></div><div class="bb"><i id="busyBar"></i></div></div>
+		</section>
+		<aside id="right" data-pane="right" data-side="r" data-min="240">
+			<div class="sec"><span id="listTitle">Детали листа</span>
+				<span class="seg" id="listMode"><button data-m="sheet" class="on">лист</button><button data-m="mat">материал</button><button data-m="cuts" title="Таблица резов листа: порядок, установы, упоры">резы</button></span>
+			</div>
+			<div id="partList"></div>
+			<div id="card"></div>
+		</aside>
+		<section id="model">
+			<aside id="mLeft" data-pane="mLeft" data-side="l" data-min="260">
+				<div id="mTreeBox">
+					<div class="sec"><span id="mListTitle">Структура модели</span><span class="seg"><button id="mTabMods" class="on">Структура</button><button id="mTabMats">Материалы</button></span></div>
+					<input type="search" id="mSearch" placeholder="Поиск: блок, деталь, позиция, обозначение" autocomplete="off">
+					<div id="mCols"><span>Элемент</span><span>Поз.</span><span>Обозн.</span></div>
+					<div id="mList"></div>
+					<div id="mLeftFoot"><button id="mNoFac" title="Убрать фасады, чтобы увидеть корпуса">Скрыть фасады</button></div>
+				</div>
+				<div id="mPropBox"><div class="sec">Свойства <span class="mute" id="mCardTitle">Изделие</span></div><div id="mCard"></div></div>
+				<div id="aeGroups"></div>
+			</aside>
+			<section id="mCenter">
+				<div id="mBar">
+					<div class="pill" id="mViews"><button data-v="front">Спереди</button><button data-v="top">Сверху</button><button data-v="iso" class="on">Изометрия</button></div>
+					<div class="mDd"><button class="dd" id="mViewsDd" title="Другие виды">Ещё</button><div class="ddMenu" id="mViewsMore"><button data-v="left">Слева</button><button data-v="right">Справа</button><button data-v="persp">Перспектива</button></div></div>
+					<button id="mFit" title="Вписать видимое в окно">Вписать</button>
+					<div class="mDd"><button class="dd" id="mModesDd" title="Как рисовать модель">Отображение: Текстуры с линиями</button><div class="ddMenu" id="mModes"><button data-m="tex" title="Материалы без контуров">Текстуры</button><button data-m="texl" class="on" title="Материалы и видимые линии">Текстуры с линиями</button><button data-m="nohid" title="Светлые панели, только видимые линии">Без невидимых</button><button data-m="thin" title="Видимые линии и тонкие невидимые">Невидимые тонкие</button><button data-m="wire" title="Все линии, панели не закрашены">Каркас</button></div></div><button id="mXray" title="Рентген: панели полупрозрачные, фурнитура и крепёж видны. Только в видах «Текстуры» и «Текстуры с линиями»">Рентген</button>
+					<div class="mDd"><button class="dd" title="Что показывать на модели">Показывать</button><div class="ddMenu chk" id="mShow"><button data-k="holes" class="on" title="Отверстия присадки">Отверстия</button><button data-k="band" class="on" title="Кромка — цветной полосой по торцу">Кромка</button><button data-k="grooves" class="on" title="Пазы">Пазы</button><button data-k="furn" class="on" title="Фурнитура и профили">Фурнитура</button><button id="mOutline" class="on" title="Тёмные границы деталей">Контур</button><button data-k="bdims" title="Размеры, проставленные в модели БАЗИСа (выгрузка скриптом 1.10). Едут вместе с ящиками и дверями">Размеры из БАЗИСа</button></div></div>
+					<button id="mOpen" title="Открыть фасады и выдвинуть ящики">Открыть фасады</button>
+					<div class="pill" id="mAnimMode" title="Анимация: свои подвижные группы — двери, ящики, подъёмники; воспроизведение"><button data-a="0" class="on">Просмотр</button><button data-a="1">Анимация</button></div>
+					<button id="mLightB" title="Источники света: солнце, лампы, подсветка лентой; день и вечер">Свет</button>
+					<div class="mDd"><button class="dd" id="mToolsDd" title="Линейка и размеры">Инструменты</button><div class="ddMenu" id="mTools"><button id="mRuler" title="Линейка: щёлкните по двум углам деталей">Линейка</button><button id="mRulerClr" title="Убрать поставленные размеры">Убрать размеры линейки</button><button id="mDims" title="Габаритные размеры изделия и модулей">Габаритные размеры</button><label class="ddRow" title="Раздвинуть детали, чтобы видеть каждую">Разнести <input type="range" id="mExpl" min="0" max="100" value="0"></label></div></div>
+					<select id="mScheme" title="Схема сборки модуля: разнесённый шкаф с номерами позиций и спецификацией"><option value="">Схема сборки…</option></select>
+					<button id="mPos" hidden class="on" title="Кружки с номерами позиций">Позиции</button>
+					<button id="mBack" hidden>← К модели</button>
+					<span class="grow"></span>
+					<div class="pill" id="mLook" title="Как рисовать материалы"><button data-l="plain" class="on">Обычный</button><button data-l="shine" title="Блеск и отражения — как заданы в материалах БАЗИСа">С отражениями</button></div>
+					<button id="mShot" title="Сохранить снимок окна картинкой в папку документов проекта">Снимок</button>
+					<button id="mClient" title="Сохранить 3D-модель для заказчика одним файлом">Заказчику</button>
+				</div>
+				<div id="mView"></div>
+				<div id="mLight" hidden></div>
+				<div id="mHint"></div>
+				<div id="mStat" hidden></div>
+				<div id="aeRight" data-pane="aeRight"></div>
+				<div id="aeBottom"></div>
+			</section>
+
+		</section>
+		<section id="detail">
+			<aside id="kLeft" data-pane="kLeft" data-side="l"><div class="sec">Детали</div><div id="kSort" class="lSort"></div><div id="kCount" class="mute"></div><div id="kList"></div></aside>
+			<section id="kCenter">
+				<div class="bar1">
+					<b id="kTitle"></b>
+					<span id="kChips"></span>
+					<div class="grow"></div>
+					<div class="zoom"><button id="kZoomOut" class="icon">−</button><button id="kZoomFit" title="По ширине окна">по ширине</button><button id="kZoomIn" class="icon">+</button></div>
+				</div>
+				<div class="bar2 lkBar" id="kLook"></div>
+				<div id="kPages"></div>
+			</section>
+		</section>
+		<section id="asm">
+			<aside id="aLeft" data-pane="aLeft" data-side="l"><div class="sec">Листы сборки</div><div id="aCount" class="mute"></div><div id="aList"></div></aside>
+			<section id="aCenter">
+				<div class="bar1">
+					<b id="aTitle"></b>
+					<span id="aChips"></span>
+					<div class="grow"></div>
+					<div class="zoom" id="aZoomWrap"><button id="aZoomOut" class="icon">−</button><button id="aZoomFit" title="По ширине окна">по ширине</button><button id="aZoomIn" class="icon">+</button></div>
+				</div>
+				<div id="aPages"></div>
+			</section>
+		</section>
+		<section id="drill">
+			<aside id="dLeft" data-pane="dLeft" data-side="l"><div class="sec">Детали</div><div id="dSort" class="lSort"></div><div id="dCount" class="mute"></div><div id="dList"></div></aside>
+			<section id="dCenter">
+				<div class="bar1">
+					<b id="dTitle"></b>
+					<span id="dMode" class="mseg" title="Вид присадки"><button class="on" title="Карты для разметки, кондукторов и присадочного станка">Ручная</button><button class="soon" title="Присадка для станков с ЧПУ — в разработке">ЧПУ<small>в разработке</small></button></span>
+					<span id="dChips"></span>
+					<div class="grow"></div>
+					<div class="zoom"><button id="dZoomOut" class="icon">−</button><button id="dZoomFit" title="По ширине окна">по ширине</button><button id="dZoomIn" class="icon">+</button></div>
+				</div>
+				<div class="bar2 lkBar" id="dLook"></div>
+				<div id="dPages"></div>
+			</section>
+			<aside id="dRight" data-pane="dRight" data-side="r" data-min="200"><div id="dInfo"></div></aside>
+		</section>
+		<section id="est">
+			<aside id="eLeft" data-pane="eLeft" data-side="l"><div class="sec">Смета</div><div id="eSecs"></div></aside>
+			<section id="eCenter">
+				<div class="bar1">
+					<b id="eTitle">Смета</b>
+					<span id="eView" class="mseg" title="Вид окна: таблица, где всё правится, или смета, как она выйдет на бумаге"><button data-v="0">Цены и количества</button><button data-v="1">Как на бумаге</button></span>
+					<span id="eChips"></span>
+					<div class="grow"></div>
+					<label class="fld" title="Прайс — свой набор цен и правил. Прайсы независимы друг от друга">Прайс <select id="ePl"></select></label>
+				</div>
+				<div class="bar2" id="eBar"></div>
+				<div id="eBody"></div>
+			</section>
+			<aside id="eRight" data-pane="eRight" data-side="r" data-min="240"><div id="eCard"></div><div id="eTotal"></div></aside>
+		</section>
+		<section id="base">
+			<div class="bar1"><b>База</b><span id="bTabs" class="mseg"></span><button id="bBzLoad" title="Материалы и фурнитура из базы материалов БАЗИСа (.dbf)">Загрузить из БАЗИСа…</button><div class="grow"></div><input type="search" id="bSearch" placeholder="Поиск по названию, артикулу…" autocomplete="off"></div>
+			<div id="bBody"></div>
+		</section>
+	</main>
+	<footer id="status"><span id="stInfo"></span><div class="grow"></div><span id="stScope"></span><span id="stSave"></span></footer>
+</div>
+<div id="welcome" hidden>
+	<div class="wbox">
+		<img src="img/sth_logo.svg" alt="" style="width:220px">
+		<h1>Проект не открыт</h1>
+		<p class="mute">Запустите в БАЗИСе скрипт <b>STHGroup_Export</b> — он сохранит проект рядом с моделью и откроет его здесь. Или откройте готовый файл проекта.</p>
+		<button id="wOpen" class="primary">Открыть проект…</button>
+		<div id="recent"></div>
+		<p class="mute wset">Настройки и прайсы доступны и без проекта — <button id="wSettings" class="link">открыть настройки</button></p>
+		<div class="mute ver" id="wVer"></div>
+	</div>
+</div>
+<div id="modals"></div>
+<div id="toasts"></div>
+<script src="core/geom.js"></script>
+<script src="core/cut.js"></script>
+<script src="core/project.js"></script>
+<script src="core/m3d.js"></script>
+<script src="core/glb.js"></script>
+<script src="core/glbmat.js"></script>
+<script src="core/anim.js"></script>
+<script src="core/animuser.js"></script>
+<script src="core/draw.js"></script>
+<script src="core/zip.js"></script>
+<script src="core/out_pdf.js"></script>
+<script src="core/out_tab.js"></script>
+<script src="core/out_dxf.js"></script>
+<script src="core/drill.js"></script>
+<script src="core/detail.js"></script>
+<script src="core/out_drill.js"></script>
+<script src="core/out_detail.js"></script>
+<script src="core/asm.js"></script>
+
+<script src="core/asm3d.js"></script>
+<script src="core/kit.js"></script>
+<script src="core/base.js"></script>
+<script src="core/dbf.js"></script>
+<script src="core/matbase.js"></script>
+<script src="core/estimate.js"></script>
+<script src="core/out_est.js"></script>
+<script src="core/facades.js"></script>
+<script src="core/out_det.js"></script>
+<script src="core/native.js"></script>
+<script src="ui/api.js"></script>
+<script src="ui/panes.js"></script>
+<script src="ui/split.js"></script>
+<script src="ui/map.js"></script>
+<script src="ui/panels.js"></script>
+<script src="ui/preview.js"></script>
+<script src="ui/cutset.js"></script>
+<script src="ui/dialogs.js"></script>
+<script src="ui/drill.js"></script>
+<script src="ui/detail.js"></script>
+<script src="ui/asm.js"></script>
+<script src="ui/kitpics.js"></script>
+
+<script src="ui/estimate.js"></script>
+<script src="ui/base.js"></script>
+<script src="ui/matbase_link.js"></script>
+<script src="lib/three.min.js"></script>
+<script src="ui/dropdown.js"></script>
+<script src="ui/v3dpost.js"></script>
+<script src="ui/light3d.js"></script>
+<script src="ui/v3d.js"></script>
+<script src="ui/model.js"></script>
+<script src="ui/client3d.js"></script>
+<script src="ui/light.js"></script>
+<script src="ui/animed.js"></script>
+<script src="ui/matlook.js"></script>
+<script src="ui/feedback.js"></script>
+<script src="ui/link.js"></script>
+<script src="ui/app.js"></script>
+</body>
+</html>

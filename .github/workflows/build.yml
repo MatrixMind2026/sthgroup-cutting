@@ -13,7 +13,7 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: 20 }
       - run: npm install
-      - run: npm test
+      - run: npm run test:ci
       - name: Build and publish release
         run: npx electron-builder --win nsis --publish always
         env: { GH_TOKEN: '${{ secrets.GITHUB_TOKEN }}' }

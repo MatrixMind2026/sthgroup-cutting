@@ -165,7 +165,7 @@ function start(opt) {
 
   function json(res, code, v) {
     const b = Buffer.from(JSON.stringify(v));
-    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(b);
+    res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(b);
   }
   function fail(res, code, msg) { json(res, code, { error: msg }); }
   function body(req) {

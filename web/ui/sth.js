@@ -199,6 +199,10 @@
 		if (!document.body.classList.contains('tablet')) { try { win = window.open(url, 'sthpick', 'width=1400,height=900'); } catch (e) { win = null; } }
 		if (win) { try { win.focus(); } catch (e2) { } } else K.overlay(url);
 	}
+	/* для окна «Поставщик» (ui/sth_sup.js): материал строки по связи, запись связи, выбор в окне базы */
+	window.STH.linkOf = linkOf;
+	window.STH.pickFor = function (w) { return pick(w); };
+	window.STH.linkSet = function (w, id) { var b = MB.cur; if (!b) return; b.links = b.links || {}; keysOf(w).forEach(function (k) { delete b.links[w.kind + '|' + k]; if (id) b.links[w.kind + '|' + k] = id; }); };
 	window.STH.picked = async function (key, res) {
 		var w = PEND[key]; delete PEND[key];
 		var o = document.getElementById('mbOverlay'); if (o && !o.hidden) K.closeOverlay();

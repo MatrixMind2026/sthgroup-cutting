@@ -1277,3 +1277,13 @@ body[data-sec="orders"] #welcome, body[data-sec="clients"] #welcome, body[data-s
 #sthPickBar button.primary { background: #222; color: #fff; font-weight: 700; }
 .modal.sthBulk input.bkCalc { background: #f3e9a6 !important; color: #333 !important; }
 .modal.sthBulk .bkTri { margin: 18px 0 0 14px; }
+/* STHGroup: окно «Поставщик» у строки сметы — материал базы, ссылка, цена */
+.sthSup .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.sthSup .grow { flex: 1; }
+.sthSup .sm { font-size: 12px; }
+.sthSup .sthMb { background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.sthSup .sthOk { color: #7fd3a8; font-weight: 600; }
+.sthSup .sthWarn { color: #f3b15a; font-weight: 600; }
+.sthSup .sthGot { margin-top: 10px; background: #24382e; border: 1px solid #2e5a43; color: #a9e3c4; border-radius: 6px; padding: 7px 10px; font-size: 12px; }
+.sthSup .sthGot.bad { background: #3a2f22; border-color: #6b4f2a; color: #f3c58a; }
+.sthSup .ck { display: flex; gap: 6px; align-items: center; }

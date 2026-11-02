@@ -26,6 +26,8 @@
 		var r = await post('/api/shop/fetch', { url: normUrl(url) });
 		return LP.parseProductHtml(r.html, r.url || url).fields;
 	};
+	/* фото с сайта — картинкой (data:), чтобы хранилось в базе и печаталось без интернета */
+	T.image = async function (url) { try { var r = await post('/api/shop/image', { url: normUrl(url) }); return r.data || ''; } catch (e) { return ''; } };
 	/* поставщик по названию сайта: есть — берём, нет — заводим */
 	T.supplierFor = function (b, f, url) {
 		var h = host(url), name = f.supplier || h, hit = null;

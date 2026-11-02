@@ -392,6 +392,7 @@ if (require.main === module) {
     // для проверок: подставной магазин — страница товара из файла STH_SHOP_HTML
     extraRoutes: function () { return {
       'POST /api/shop/login': function (req, res) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"ok":true}'); },
+      'POST /api/shop/image': function (req, res) { res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true, data: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==' })); },
       'POST /api/shop/fetch': function (req, res) { const h = process.env.STH_SHOP_HTML ? fs.readFileSync(process.env.STH_SHOP_HTML, 'utf8') : '<html></html>'; res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ ok: true, html: h, url: 'https://www.mdm-complect.ru/catalog/x/111185/' })); }
     }; },
     hooks: {

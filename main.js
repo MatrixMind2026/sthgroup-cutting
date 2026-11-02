@@ -4,7 +4,7 @@
    Принудительная проверка — кнопка «Проверить обновления» в настройках: окно зовёт /api/upd/check,
    сервер передаёт вызов сюда (hooks.updCheck), а проверяет и качает electron-updater. */
 'use strict';
-const { app, BrowserWindow, dialog, shell, Menu } = require('electron');
+const { app, BrowserWindow, dialog, shell, Menu, session } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const server = require('./server');
@@ -147,6 +147,19 @@ function shopRoutes() {
         json(res, 200, { ok: true, html: String(html || '').slice(0, 4 * 1024 * 1024), url: w.webContents.getURL() || u.toString() });
       } catch (e) { json(res, 502, { error: e.message }); }
       finally { if (w && !w.isDestroyed()) w.destroy(); }
+    },
+    // фото товара с сайта магазина — картинкой в базу (data:), под тем же входом; не больше 3 МБ
+    'POST /api/shop/image': async function (req, res) {
+      const d = await jbody(req);
+      try {
+        const u = checkShopUrl(d.url);
+        const r = await session.fromPartition(SHOP_PARTITION).fetch(u.toString(), { headers: { 'User-Agent': SHOP_UA } });
+        const type = String(r.headers.get('content-type') || '').split(';')[0].trim();
+        if (!r.ok || !/^image\//.test(type)) throw new Error('по ссылке не картинка');
+        const b = Buffer.from(await r.arrayBuffer());
+        if (b.length > 3 * 1024 * 1024) throw new Error('картинка больше 3 МБ');
+        json(res, 200, { ok: true, data: 'data:' + type + ';base64,' + b.toString('base64') });
+      } catch (e) { json(res, 502, { error: e.message }); }
     }
   };
 }

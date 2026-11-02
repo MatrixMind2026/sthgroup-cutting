@@ -523,7 +523,7 @@
 		if (keep) {
 			var root = keep.card ? $('eCard') : $('eBody'), list = root.querySelectorAll('.' + keep.cls), el = null;
 			list.forEach(function (x) { if (x.dataset.k === keep.k) el = x; });
-			if (el) { el.focus(); if (el.select && keep.cls !== 'uv') el.select(); }
+			if (el) { el.focus({ preventScroll: true }); if (el.select && keep.cls !== 'uv') el.select(); }   // STHGroup: без прокрутки — строка «не считать» уходит вниз, смета за ней не прыгает
 		}
 	}
 	function later() { setTimeout(redraw, 0); }

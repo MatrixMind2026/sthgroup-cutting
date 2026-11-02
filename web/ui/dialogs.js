@@ -343,6 +343,16 @@
 			return (d.toDateString() === now.toDateString() ? 'сегодня' : d.toLocaleDateString('ru-RU')) + ' в ' + t;
 		}
 		function updRepoUrl(r) { return 'https://github.com/' + r + '/releases'; }
+		/* STHGroup: обновления — у оболочки (GitHub, electron-updater) */
+		function tabUpdSth() {
+			var us = Upd.state;
+			return '<div class="form"><label>Версия</label><div style="display:flex;align-items:center;gap:10px"><b>' + esc(us.current || S.boot.version) + '</b>' +
+				'<span class="mute" id="uLast">' + (us.checked ? 'проверено ' + esc(updWhen(us.checked)) + (us.seen ? ' · последняя ' + esc(us.seen) : '') : '') + '</span></div>' +
+				'<label></label><div><button id="uCheckSth" class="primary">Проверить обновления</button></div>' +
+				'<label>Через интернет</label><div><label class="chk"><input type="checkbox" id="uOnline"' + chk(set.updateOnline !== 0) + '> проверять обновления при запуске</label></div>' +
+				'<div class="hint">Новые версии лежат на GitHub. Найденная версия скачивается сама, потом программа предложит перезапуститься; проекты и настройки сохранятся.</div>' +
+				(us.problem ? '<div class="hint" style="color:var(--warn)">' + esc(us.problem) + '</div>' : '') + '</div>';
+		}
 		function tabUpd() {
 			var us = Upd.state, pb = us.publisher, h;
 			h = '<div class="form">' +
@@ -544,9 +554,10 @@
 		if (!Fb.state.tester && isAuthor && !isTab) { SECS[0].tabs.push(['fb', 'Отзывы', tabFb]); SECS[0].tabs.push(['tst', 'Пользователи', tabTst]); SECS[0].tabs.push(['regs', 'Ключи регистрации', tabRegs]); }
 		var isSth = !!(S.boot && S.boot.edition === 'sth');             // STHGroup: обновления — у оболочки, регистрации нет
 		if (!isTab && !isSth) SECS[0].tabs.push(['upd', 'Обновления', tabUpd]);
+		if (isSth) SECS[0].tabs.push(['upd', 'Обновления', tabUpdSth]);   // STHGroup: своя вкладка — версия и «Проверить обновления»
 		if (isUser && !isSth) SECS[0].tabs.push(['reg', 'Регистрация', tabReg]);
 		function secOf(t) { for (var i = 0; i < SECS.length; i++) for (var j = 0; j < SECS[i].tabs.length; j++) if (SECS[i].tabs[j][0] === t) return SECS[i]; return null; }
-		var cur = (tab && secOf(tab)) ? tab : (S.section === 'drill' ? 'dDraw' : S.section === 'detail' ? 'kDraw' : (S.section === 'est' ? 'eCalc' : (S.section === 'model' ? 'mView' : 'cgen'))), mine = false, last = {};
+		var cur = (tab && secOf(tab)) ? tab : isSth ? 'look' : (S.section === 'drill' ? 'dDraw' : S.section === 'detail' ? 'kDraw' : (S.section === 'est' ? 'eCalc' : (S.section === 'model' ? 'mView' : 'cgen'))), mine = false, last = {};
 
 		function read(m) {
 			/* запомнить то, что введено на открытой вкладке */
@@ -811,7 +822,9 @@
 				g('sZ0').onclick = function () { A.setZoom(1); };
 				document.addEventListener('brzoom', zSync); zSync();
 			}
-			if (cur === 'upd') {
+			if (cur === 'upd' && isSth) {
+				g('uCheckSth').onclick = async function () { read(m); var b = this; b.disabled = true; b.textContent = 'Проверяю…'; try { await Dg.checkSth(); await Dg.updRefresh(); } finally { if (cur === 'upd' && m.isConnected) show(m); } };
+			} else if (cur === 'upd') {
 				var again = async function () { read(m); await Dg.updRefresh(); if (cur === 'upd' && m.isConnected) show(m); };
 				var ubusy = async function (btn, text, job) { var was = btn.textContent; btn.disabled = true; btn.textContent = text; try { await job(); } catch (e) { U.error(e); } finally { if (btn.isConnected) { btn.disabled = false; btn.textContent = was; } } };
 				g('uCheck').onclick = async function () { read(m); var b = this; b.disabled = true; b.textContent = 'Проверяю…'; try { await Dg.checkOnline(false); } finally { await again(); } };
@@ -1306,9 +1319,21 @@
 	Dg.upd = { state: { current: '', edition: 'user', hasKey: false, keySrc: '', problem: '', repo: '', checked: 0, seen: '', publisher: null } };
 	Dg.updRefresh = async function () { try { Dg.upd.state = await U.api.upd.state(); } catch (e) { console.error(e); } return Dg.upd.state; };
 	/* Спросить GitHub о новой версии. silent — проверка при запуске: молчит, если нового нет. */
+	/* STHGroup: «Проверить обновления» — оболочка спрашивает GitHub, новая версия качается сама */
+	Dg.checkSth = async function () {
+		var r;
+		try { r = await U.api.upd.check(false); } catch (e) { U.error(e); return; }
+		if (r.status === 'none') U.toast('У вас последняя версия: ' + r.current + '.');
+		else if (r.status === 'available') U.toast('Найдена версия ' + (r.version || '') + '. Она скачивается — когда скачается, программа предложит перезапуститься.', { ms: 12000 });
+		else if (r.status === 'checking') U.toast('Проверка уже идёт — подождите немного.');
+		else if (r.status === 'dev') U.toast('Проверка обновлений работает только в установленной программе.');
+		else if (r.status === 'skip') U.toast('Проверка обновлений здесь недоступна.');
+		else U.toast(r.message || 'Не удалось проверить обновления.', { bad: true, ms: 12000 });
+	};
 	Dg.checkOnline = async function (silent) {
 		var S = window.App.S, r;
 		if (silent && S.set.updateOnline === 0) return;
+		if (S.boot && S.boot.edition === 'sth') return;   // STHGroup: при запуске проверяет сама оболочка (main.js), окно BazisReborn «Скачать и установить» здесь не работает
 		try { r = await U.api.upd.check(!!silent); } catch (e) { if (!silent) U.error(e); else console.warn('обновления: ' + (e && e.message)); return; }
 		if (r.status === 'skip') return;
 		await Dg.updRefresh();      // когда проверяли и какая версия последняя — для вкладки «Обновления»

@@ -1319,3 +1319,10 @@ input:not([type]):focus { outline: none; border-color: var(--accent); }
 .modal.soPl td.r { width: 150px; text-align: right; }
 .modal.soPl .plR { display: flex; justify-content: space-between; gap: 12px; align-items: center; }
 .modal.soPl .plR .nw { white-space: nowrap; color: var(--text); }
+/* STHGroup: числа в таблицах заказов и клиентов — по правому краю вместе с заголовком; ширины столбцов не «плывут» при растягивании окна */
+#orders table.grid th.r, #orders table.grid td.r { text-align: right; white-space: nowrap; }
+#orders table.grid td, #orders table.grid th { padding: 5px 10px; }
+#orders table.grid th.r, #orders table.grid td.r { width: 1%; min-width: 110px; }
+#orders a.soItL { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); }
+/* STHGroup: переключателя «Цены и количества / Как на бумаге» нет — документы смотрятся в предпросмотре перед сохранением */
+#eView { display: none !important; }

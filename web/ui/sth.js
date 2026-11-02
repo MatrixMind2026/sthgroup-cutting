@@ -16,7 +16,9 @@
 		} catch (e) { U.error(e); }
 	}
 	window.STH = { installScript: installScript };
-	BM.est.noWorks = true;   // работы считаются в заказе (раздел «Заказы»), в смете — только материалы, фурнитура, фасады, прочее
+	BM.est.noWorks = true;
+	/* фурнитура и профили в смете — всегда (галочек над сметой нет); вида «Как на бумаге» нет — документ виден в предпросмотре перед сохранением */
+	(function () { var c0 = BM.est.conf; BM.est.conf = function () { var c = c0.apply(this, arguments); c.showFast = 1; c.showProf = 1; c.paper = 0; return c; }; })();   // работы считаются в заказе (раздел «Заказы»), в смете — только материалы, фурнитура, фасады, прочее
 		['bScript', 'wScript'].forEach(function (id) { var b0 = document.getElementById(id); if (b0) b0.onclick = installScript; });
 })();
 

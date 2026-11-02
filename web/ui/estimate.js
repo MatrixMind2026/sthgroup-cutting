@@ -101,8 +101,9 @@
 				'<label class="chk"><input type="checkbox" id="eNoPrice"' + (cfg.noPrice ? ' checked' : '') + (kind === 'mat' || kind === 'det' ? ' disabled' : '') + '> без цены</label>' +
 				'<label class="chk"><input type="checkbox" id="eTotals"' + (cfg.totals ? ' checked' : '') + ((kind === 'client' || kind === 'full') ? '' : ' disabled') + '> только итоги разделов</label>';
 		} else {
-			bar = '<span class="mute">Считать разделы:</span><label class="chk"><input type="checkbox" data-f="showCuts"' + (cfg.showCuts ? ' checked' : '') + '> пазы</label><label class="chk"><input type="checkbox" data-f="showHoles"' + (cfg.showHoles ? ' checked' : '') + '> отверстия</label>' +
-				'<label class="chk"><input type="checkbox" data-f="showFast"' + (cfg.showFast ? ' checked' : '') + '> фурнитура</label><label class="chk"><input type="checkbox" data-f="showProf"' + (cfg.showProf ? ' checked' : '') + '> профили</label><div class="grow"></div>' +
+			/* STHGroup: галочек «Считать разделы» нет — работы (пазы, отверстия) считаются в заказе, фурнитура и профили в смете всегда */
+			bar = (E.noWorks ? '' : '<span class="mute">Считать разделы:</span><label class="chk"><input type="checkbox" data-f="showCuts"' + (cfg.showCuts ? ' checked' : '') + '> пазы</label><label class="chk"><input type="checkbox" data-f="showHoles"' + (cfg.showHoles ? ' checked' : '') + '> отверстия</label>' +
+				'<label class="chk"><input type="checkbox" data-f="showFast"' + (cfg.showFast ? ' checked' : '') + '> фурнитура</label><label class="chk"><input type="checkbox" data-f="showProf"' + (cfg.showProf ? ' checked' : '') + '> профили</label>') + '<div class="grow"></div>' +
 				(c.manual ? '<button id="eQClear" title="Вернуть всем строкам количество по модели">Сбросить количества</button>' : '') +
 				(window.MatBase && BM.mb.cur ? '<button id="eWriteOff" title="Списать со склада «Базы материалов» листы раскроя и материалы сметы этого заказа; деловые обрезки — на склад с размерами. Повторное списание заменяет прежнее">Списать по заказу</button>' : '');
 		}

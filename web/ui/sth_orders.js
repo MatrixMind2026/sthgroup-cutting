@@ -187,12 +187,12 @@
 				'<td class="r">' + (s ? s.sheets.reduce(function (a, x) { return a + x.n; }, 0) : '—') + '</td><td class="r">' + (s ? s.parts : '—') + '</td><td class="r">' + (s ? money(s.mat) : '—') + '</td><td class="r">' + (s ? money(s.fit) : '—') + '</td>' +
 				'<td class="mute">' + (s ? O.ruDate(s.at.slice(0, 10)) : 'не посчитано') + '</td><td class="nw"><button data-iop="' + i + '">Открыть</button><button data-irc="' + i + '" title="Посчитать заново по файлу">↻</button><button class="icon" data-irm="' + i + '" title="Убрать из заказа">✕</button></td></tr>';
 		}).join('');
-		return '<table class="grid soItems"><thead><tr><th></th><th>Изделие</th><th>Файл</th><th>Листов</th><th>Деталей</th><th>Материалы</th><th>Фурнитура</th><th>Посчитано</th><th></th></tr></thead><tbody>' + (rows || '<tr><td colspan="9" class="mute">Изделий нет</td></tr>') + '</tbody></table>' +
+		return '<table class="grid soItems"><thead><tr><th></th><th>Изделие</th><th>Файл</th><th class="r">Листов</th><th class="r">Деталей</th><th class="r">Материалы</th><th class="r">Фурнитура</th><th>Посчитано</th><th></th></tr></thead><tbody>' + (rows || '<tr><td colspan="9" class="mute">Изделий нет</td></tr>') + '</tbody></table>' +
 			'<div class="soRow"><button id="soAddItem">+ Изделие (.bmk)…</button><button id="soRecalc">Пересчитать все</button></div>';
 	}
 	function payHtml(o, q) {
 		var rows = o.payments.map(function (p, i) { return '<tr><td>' + esc(O.ruDate(p.date)) + '</td><td class="r">' + money(p.amount) + ' ₽</td><td>' + esc(p.note || '') + '</td><td><button class="icon" data-prm="' + i + '">✕</button></td></tr>'; }).join('');
-		return '<table class="grid soPay"><thead><tr><th>Дата</th><th>Сумма</th><th>Примечание</th><th></th></tr></thead><tbody>' + (rows || '<tr><td colspan="4" class="mute">Оплат нет</td></tr>') + '</tbody></table>' +
+		return '<table class="grid soPay"><thead><tr><th>Дата</th><th class="r">Сумма</th><th>Примечание</th><th></th></tr></thead><tbody>' + (rows || '<tr><td colspan="4" class="mute">Оплат нет</td></tr>') + '</tbody></table>' +
 			'<div class="soRow"><input type="date" id="soPd" value="' + O.today() + '"><input class="soN" id="soPa" placeholder="сумма" style="width:110px"><input id="soPn" placeholder="примечание" style="width:220px"><button id="soPadd" class="primary">Внести оплату</button>' +
 			'<button id="soPadv">Аванс ' + money(q.advance) + '</button><button id="soPrest">Остаток ' + money(Math.max(0, q.debt)) + '</button></div>';
 	}
@@ -264,7 +264,7 @@
 			var os = b.orders.filter(function (o) { return o.clientId === c.id; });
 			center = '<div class="soHead"><input id="scName" class="soNo" style="width:360px" value="' + esc(c.name) + '"><button class="icon" id="scDel" title="Удалить клиента">✕</button></div>' +
 				'<div class="soForm"><label>Телефон<input id="scPhone" value="' + esc(c.phone) + '"></label><label>Почта<input id="scEmail" value="' + esc(c.email) + '"></label><label class="w">Примечание<input id="scNote" value="' + esc(c.note) + '"></label></div>' +
-				'<div class="soBh">Заказы клиента</div><table class="grid soClO"><thead><tr><th>№</th><th>Дата</th><th>Изделия</th><th>Статус</th><th>Сумма</th><th>Оплачено</th><th>Долг</th></tr></thead><tbody>' +
+				'<div class="soBh">Заказы клиента</div><table class="grid soClO"><thead><tr><th>№</th><th>Дата</th><th>Изделия</th><th>Статус</th><th class="r">Сумма</th><th class="r">Оплачено</th><th class="r">Долг</th></tr></thead><tbody>' +
 				(os.map(function (o) { var t = orderSum(o); return '<tr class="hov" data-go="' + o.id + '"><td><b>' + esc(o.no) + '</b></td><td>' + esc(O.ruDate(o.date)) + '</td><td>' + (o.items.map(function (i, k) { return '<a href="#" class="soItL" data-go="' + o.id + '" data-gi="' + k + '" title="Открыть модель">' + esc(i.title || U.stemOf(i.path)) + '</a>'; }).join(', ') || '<span class="mute">нет</span>') + '</td><td>' + esc(O.statusName(o.status)) + '</td><td class="r">' + money(t.total) + '</td><td class="r">' + money(t.paid) + '</td><td class="r">' + money(t.debt) + '</td></tr>'; }).join('') || '<tr><td colspan="7" class="mute">Заказов нет</td></tr>') + '</tbody></table>' +
 				'<div class="soRow"><button id="scOrder" class="primary">+ Заказ для клиента</button></div>';
 		}

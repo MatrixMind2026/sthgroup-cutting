@@ -139,8 +139,17 @@ function setupAutoUpdate() {
 }
 
 app.whenReady().then(async function () {
+  const dataDir = app.getPath('userData');
+  // путь к программе — для скрипта выгрузки (он открывает проект в STHGroup); скрипт в БАЗИСе обновляется вместе с программой
+  if (app.isPackaged) {
+    try { fs.mkdirSync(dataDir, { recursive: true }); fs.writeFileSync(path.join(dataDir, 'exe.txt'), process.execPath, 'utf8'); } catch (e) { /* нет */ }
+    try {
+      const set = JSON.parse(fs.readFileSync(path.join(dataDir, 'settings.json'), 'utf8'));
+      if (set.sthScripts && fs.existsSync(set.sthScripts)) server.installScript(set.sthScripts, path.join(__dirname, 'bazis'), process.execPath);
+    } catch (e) { /* скрипт ещё не ставили */ }
+  }
   srv = await server.start({
-    webDir: path.join(__dirname, 'web'), dataDir: app.getPath('userData'), version: app.getVersion(),
+    webDir: path.join(__dirname, 'web'), dataDir: dataDir, version: app.getVersion(), bazisDir: path.join(__dirname, 'bazis'), exePath: process.execPath,
     file: fileArg(process.argv), hooks: hooks, extraRoutes: shopRoutes
   });
   createWindow(srv.url);

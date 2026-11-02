@@ -527,7 +527,7 @@
 			var s = whd(sc.size), mdl = (A.S.doc && A.S.doc.model) || {}, gi = S3.glb ? S3.glbInfo : null;
 			title = 'Изделие';
 			h = '<div class="mCard"><h3>' + esc(BM.project.modelName(mdl) || sc.title || 'Модель') + '</h3>' +
-				kv([['Наименование', mdl.title || '—'], ['Артикул', mdl.art || '—'], ['Заказ', mdl.order || '—'], mdl.note ? ['Заметки', mdl.note] : null,
+				kv([['Наименование', mdl.title || '—'], ['Артикул', mdl.art || '—'], mdl.customer !== undefined ? ['Заказчик', mdl.customer || '—'] : ['Заказ', mdl.order || '—'], mdl.orderNo ? ['Номер заказа', mdl.orderNo] : null, mdl.note ? ['Заметки', mdl.note] : null,          // STHGroup: данные заказа из окна выгрузки
 					['Габариты', Math.round(s[0]) + ' × ' + Math.round(s[1]) + ' × ' + Math.round(s[2]) + ' мм (Ш × В × Г)'],
 					['Панелей', String(sc.items.length)], ['Материалов', String(sc.mats.length)], ['Отверстий', String(sc.holes.length)], sc.solids.length ? ['Фурнитуры', String(sc.solids.length)] : null,
 					['3D', gi ? 'как в БАЗИСе · ' + gi.parts + ' частей · ' + Math.max(1, Math.round(gi.tris / 1000)) + ' тыс. треугольников' : 'по деталям'],

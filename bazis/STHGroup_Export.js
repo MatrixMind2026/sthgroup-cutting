@@ -1,11 +1,11 @@
 /* ==========================================================================
-   BazisReborn — выгрузка модели БАЗИС-Мебельщик в файл проекта (.bmk)
+   STHGroup — выгрузка модели БАЗИС-Мебельщик в файл проекта (.bmk)
 
    Что делает: обходит модель, собирает листовые панели (контур с дугами,
    кромку, пазы, текстуру, позицию и обозначение), отверстия крепежа и
    системы координат панелей, а для сметы — фурнитуру штуками, комплекты,
    профили, погонные материалы и скрытые панели. Сохраняет всё в файл
-   <имя модели>.bmk рядом с моделью и открывает его в программе BazisReborn.
+   <имя модели>.bmk рядом с моделью и открывает его в программе STHGroup.
 
    Модель скрипт не меняет. Если файл проекта уже есть, раскрой и настройки
    в нём сохраняются: заменяются только данные модели, прежние данные
@@ -720,10 +720,10 @@ function bmSignature(parts) {
 
 function bmExePath() {
 	if (BM_EXE && BM_EXE.indexOf('%%') < 0) return BM_EXE;
+	/* программа STHGroup при каждом запуске записывает свой путь в %APPDATA%\STHGroup Cutting\exe.txt */
 	try {
-		var sh = NewCOMObject('WScript.Shell');
-		var d = sh.RegRead('HKLM\\Software\\BazisReborn\\InstallDir');
-		if (d) return String(d).replace(/[\\\/]+$/, '') + '\\BazisReborn.exe';
+		var ad = String(process.env.APPDATA || ''), f = ad + '\\STHGroup Cutting\\exe.txt', fs = bmFs();
+		if (ad && fs.existsSync(f)) { var p = bmTrim(String(fs.readFileSync(f, 'utf8')).replace(/^\uFEFF/, '')); if (p) return p; }
 	} catch (e) { }
 	return '';
 }
@@ -811,78 +811,91 @@ function bmUV(file) {
 	return info;
 }
 
-/* ------------------------ окно хода выгрузки ------------------------------- */
+/* ------------------------ окно выгрузки STHGroup --------------------------- */
 
-/* Отдельное окно (mshta): пока скрипт работает, БАЗИС занят, а окно живёт своим процессом и каждые
-   40 мс читает файл состояния state.txt, который пишет скрипт. В конце — выбор «Открыть в BazisReborn» /
-   «Только сохранить», «Запомнить выбор» (файл export-choice.txt в папке настроек программы). Если окно не
-   открылось — всё как раньше: программа запускается сама, ошибки — сообщением. */
+/* Отдельное окно (mshta), вариант «C»: слева — сводка модели и ход выгрузки, справа — данные заказа
+   (заказчик, номер заказа, изделие, комментарий). Пока человек заполняет поля, скрипт уже читает модель
+   и сохраняет 3D; перед записью проекта ждёт ответа окна (файл answer.txt). Закрыли окно — выгрузка
+   отменяется. Окно живёт своим процессом и каждые 40 мс читает файл состояния state.txt, который пишет скрипт.
+   Если окно не открылось — всё как раньше: проект с данными из модели, программа запускается сама. */
 var BM_WIN_HTA = [
 	"<!DOCTYPE html>",
-	"<html><head><meta charset=\"utf-8\"><meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"><title>BazisReborn — выгрузка</title>",
-	"<hta:application id=\"bmw\" applicationname=\"BazisRebornExport\" border=\"dialog\" borderstyle=\"normal\" caption=\"yes\" maximizebutton=\"no\" minimizebutton=\"yes\" showintaskbar=\"yes\" singleinstance=\"no\" sysmenu=\"yes\" scroll=\"no\">",
+	"<html><head><meta charset=\"utf-8\"><meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"><title>STHGroup — выгрузка модели</title>",
+	"<hta:application id=\"bmw\" applicationname=\"STHGroupExport\" border=\"dialog\" borderstyle=\"normal\" caption=\"yes\" maximizebutton=\"no\" minimizebutton=\"yes\" showintaskbar=\"yes\" singleinstance=\"no\" sysmenu=\"yes\" scroll=\"no\" contextmenu=\"no\" selection=\"yes\" icon=\"\">",
 	"<style>",
-	"html,body{margin:0;padding:0;background:#1f2327;color:#eceef0;font-family:\"Segoe UI\",Arial,sans-serif;font-size:14px;overflow:hidden}",
-	"#w{padding:22px 24px 18px}",
-	"#top{display:table;width:100%}#ring,#ttl{display:table-cell;vertical-align:middle}#ring{width:84px}",
-	"#ttl h1{margin:0;font-size:20px;font-weight:600;line-height:1.25}#sub{color:#9aa3ab;font-size:13px;margin-top:2px}#now{color:#FF8A1F;font-size:13.5px;font-weight:600;margin-top:8px}",
-	"#now.ok{color:#3FCFAE}#now.bad{color:#FF6B5A}",
-	"ul{list-style:none;margin:18px 0 0;padding:0}li{padding:5px 0;color:#6b747c;font-size:13.5px;position:relative;padding-left:30px;min-height:20px}",
-	"li i{position:absolute;left:0;top:5px;width:16px;height:16px;border-radius:9px;border:2px solid #3b4148;font-style:normal;font-size:11px;line-height:16px;text-align:center}",
-	"li.ok{color:#d4d8dc}li.ok i{background:#3FCFAE;border-color:#3FCFAE;color:#0c211c}li.now{color:#eceef0;font-weight:600}li.now i{border-color:#FF8A1F;border-top-color:#30363c}",
-	"li.warn{color:#FFC53D}li.warn i{background:#43301a;border-color:#FFC53D;color:#FFC53D}li.bad{color:#FF6B5A}li.bad i{border-color:#FF6B5A;color:#FF6B5A}",
-	"li span{float:right;color:#9aa3ab;font-weight:normal;font-size:12.5px}",
-	"#btns{margin-top:18px;display:none}",
-	".b{display:block;width:100%;box-sizing:border-box;border:1px solid #3b4148;background:#272c31;color:#eceef0;border-radius:8px;padding:12px 14px;margin-top:8px;text-align:left;font:600 14px \"Segoe UI\",Arial,sans-serif;cursor:pointer}",
-	".b small{float:right;font-weight:normal;opacity:.75;font-size:12px;margin-top:1px}.b:hover{border-color:#5b646c}",
-	".b.p{background:#FF8A1F;border-color:#FF8A1F;color:#1d1104}.b.p:hover{background:#ff9a3d}",
-	"#opt{margin-top:12px;font-size:12.5px;color:#9aa3ab;display:none}#opt label{cursor:pointer}#opt a{float:right;color:#FF8A1F;cursor:pointer;text-decoration:none}",
-	"#err{margin-top:12px;color:#FF6B5A;font-size:13px;display:none}",
+	"html,body{margin:0;padding:0;background:#fff;color:#23262B;font-family:\"Segoe UI\",Arial,sans-serif;font-size:14px;overflow:hidden}",
+	"#w{display:table;width:640px;height:100%}#l,#r{display:table-cell;vertical-align:top}",
+	"#l{width:200px;background:#2a2c30;color:#eceef0;padding:20px 18px;border-right:3px solid #F26B1D}",
+	"#lg{background:#fff;border-radius:8px;padding:8px 10px}#lg svg{display:block}",
+	"#mt{margin:16px 0 4px;font-size:15px;font-weight:600;line-height:1.25;word-wrap:break-word}#ms{color:#a3a8ae;font-size:12.5px;line-height:1.5}",
+	"ul{list-style:none;margin:16px 0 0;padding:0}li{padding:4px 0 4px 24px;color:#8f959b;font-size:12.5px;position:relative;min-height:16px}",
+	"li i{position:absolute;left:0;top:5px;width:12px;height:12px;border-radius:7px;border:2px solid #4a4e55;font-style:normal;font-size:9px;line-height:12px;text-align:center}",
+	"li.ok{color:#d9dcdf}li.ok i{background:#F26B1D;border-color:#F26B1D;color:#fff}li.now{color:#fff;font-weight:600}li.now i{border-color:#F26B1D}",
+	"li.warn{color:#f5c453}li.warn i{border-color:#f5c453;color:#f5c453}li.bad{color:#ff8a7a}li.bad i{border-color:#ff8a7a;color:#ff8a7a}",
+	"li span{display:block;color:#a3a8ae;font-weight:normal;font-size:11.5px}",
+	"#r{padding:18px 22px 18px}h2{margin:0;font-size:18px}.s{color:#777;font-size:12.5px;margin-top:2px}",
+	"label{display:block;margin-top:10px}label span{display:block;font-size:12px;color:#666;margin-bottom:3px}",
+	"input,textarea{width:100%;box-sizing:border-box;border:1px solid #d6d3ce;border-radius:6px;padding:7px 9px;font:14px \"Segoe UI\",Arial,sans-serif;background:#faf9f7;color:#23262B}",
+	"input:focus,textarea:focus{border-color:#F26B1D;outline:none;background:#fff}textarea{height:56px;resize:none}",
+	"#two{display:table;width:100%;border-spacing:0}#two div{display:table-cell;width:50%}#two div.a{padding-right:6px}#two div.b{padding-left:6px}",
+	"#btns{margin-top:16px;display:table;width:100%}#btns div{display:table-cell;width:50%}#btns div.a{padding-right:6px}#btns div.b{padding-left:6px}",
+	"button{width:100%;white-space:nowrap;padding:10px 8px;border-radius:7px;border:1px solid #d6d3ce;background:#fff;color:#23262B;font:600 14px \"Segoe UI\",Arial,sans-serif;cursor:pointer}",
+	"button.p{background:#F26B1D;border-color:#F26B1D;color:#fff}button:disabled{opacity:.5;cursor:default}",
+	"#now{margin-top:12px;font-size:13px;color:#c2560f;font-weight:600;min-height:18px}#now.ok{color:#2e8b57}#now.bad{color:#c0392b}",
+	"#err{margin-top:8px;color:#c0392b;font-size:12.5px;display:none}#fold{margin-top:6px;font-size:12.5px;display:none}#fold a{color:#F26B1D;cursor:pointer}",
 	"</style></head><body><div id=\"w\">",
-	"<div id=\"top\"><div id=\"ring\"><svg width=\"74\" height=\"74\" viewBox=\"0 0 74 74\"><circle cx=\"37\" cy=\"37\" r=\"33\" fill=\"none\" stroke=\"#30363c\" stroke-width=\"5\"/><circle id=\"arc\" cx=\"37\" cy=\"37\" r=\"33\" fill=\"none\" stroke=\"#FF8A1F\" stroke-width=\"5\" stroke-linecap=\"round\" stroke-dasharray=\"70 137\" transform=\"rotate(-90 37 37)\"/><g transform=\"translate(17 17) scale(0.625)\">%LOGO%</g></svg></div>",
-	"<div id=\"ttl\"><h1 id=\"title\">Выгрузка модели</h1><div id=\"sub\"></div><div id=\"now\">Читаю модель…</div></div></div>",
-	"<ul id=\"steps\"></ul>",
-	"<div id=\"btns\"><button class=\"b p\" id=\"bOpen\">&#9654;&nbsp; Открыть в BazisReborn<small>раскрой, присадка, смета</small></button><button class=\"b\" id=\"bSave\">Только сохранить проект<small>файл уже рядом с моделью</small></button></div>",
-	"<div id=\"opt\"><label><input type=\"checkbox\" id=\"remember\"> Запомнить выбор и больше не спрашивать</label><a id=\"bFolder\">Показать в папке</a></div>",
-	"<div id=\"err\"></div>",
-	"</div>",
+	"<div id=\"l\"><div id=\"lg\">%LOGO%</div><div id=\"mt\"></div><div id=\"ms\"></div><ul id=\"steps\"></ul></div>",
+	"<div id=\"r\"><h2>Данные заказа</h2><div class=\"s\">Попадут в проект, смету и КП</div>",
+	"<div id=\"two\"><div class=\"a\"><label><span>Заказчик</span><input id=\"fCust\"></label></div><div class=\"b\"><label><span>Номер заказа</span><input id=\"fNo\"></label></div></div>",
+	"<label><span>Изделие</span><input id=\"fTitle\"></label>",
+	"<label><span>Комментарий</span><textarea id=\"fNote\"></textarea></label>",
+	"<div id=\"btns\"><div class=\"a\"><button id=\"bSave\">Только сохранить</button></div><div class=\"b\"><button class=\"p\" id=\"bOpen\">Выгрузить и открыть</button></div></div>",
+	"<div id=\"now\"></div><div id=\"err\"></div><div id=\"fold\"><a id=\"bFolder\">Показать файл проекта в папке</a></div>",
+	"</div></div>",
 	"<script>",
-	"var DIR = '%DIR%', CHOICE = '%CHOICE%', fso = new ActiveXObject('Scripting.FileSystemObject'), sh = new ActiveXObject('WScript.Shell'), S = null, ang = 0, finished = false, lastStamp = '', idle = 0;",
+	"var DIR = '%DIR%', fso = new ActiveXObject('Scripting.FileSystemObject'), sh = new ActiveXObject('WScript.Shell'), S = null, CHOICE = '', finished = false, lastStamp = '', idle = 0, filled = false;",
 	"function $(id) { return document.getElementById(id); }",
 	"function esc(s) { return String(s == null ? '' : s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }",
 	"function read() { try { var f = fso.OpenTextFile(DIR + '\\\\state.txt', 1, false, -1), t = f.ReadAll(); f.Close(); return t; } catch (e) { return ''; } }",
 	"function write(name, text) { try { var f = fso.CreateTextFile(name, true, true); f.Write(text); f.Close(); } catch (e) { } }",
-	"function fit() { var h = $('w').offsetHeight + 46; try { window.resizeTo(540, h); } catch (e) { } }",
-	"function center() { try { window.moveTo(Math.max(0, (screen.availWidth - 540) / 2), Math.max(0, (screen.availHeight - 420) / 2.4)); } catch (e) { } }",
+	"function q(s) { return '\"' + String(s).replace(/\\\\/g, '\\\\\\\\').replace(/\"/g, '\\\\\"').replace(/\\r?\\n/g, '\\\\n') + '\"'; }",
+	"function fit() { try { window.resizeTo(660, Math.max(430, $('w').offsetHeight + 40)); } catch (e) { } }",
+	"function center() { try { window.moveTo(Math.max(0, (screen.availWidth - 660) / 2), Math.max(0, (screen.availHeight - 460) / 2.4)); } catch (e) { } }",
 	"function draw() {",
-	"\t$('title').innerHTML = esc(S.title || 'Модель'); $('sub').innerHTML = esc(S.sub || '');",
+	"\t$('mt').innerHTML = esc(S.title || 'Модель');",
+	"\tvar m = S.sum ? (S.sum.parts + ' дет. · материалов ' + S.sum.mats + '<br>фурнитуры ' + S.sum.furn) : esc(S.sub || '');",
+	"\t$('ms').innerHTML = m;",
 	"\tvar h = '';",
 	"\tfor (var i = 0; i < S.steps.length; i++) { var s = S.steps[i]; h += '<li class=\"' + (s.st || '') + '\"><i>' + (s.st == 'ok' ? '&#10003;' : (s.st == 'warn' ? '!' : (s.st == 'bad' ? '&#215;' : ''))) + '</i>' + esc(s.t) + (s.v ? '<span>' + esc(s.v) + '</span>' : '') + '</li>'; }",
 	"\t$('steps').innerHTML = h;",
-	"\t$('now').innerHTML = esc(S.now || ''); $('now').className = S.done ? (S.fail ? 'bad' : 'ok') : '';",
+	"\tif (!filled && S.form) { filled = true; $('fCust').value = S.form.customer || ''; $('fNo').value = S.form.orderNo || ''; $('fTitle').value = S.form.title || ''; $('fNote').value = S.form.note || ''; try { $(S.form.customer ? 'fNo' : 'fCust').focus(); } catch (e) { } }",
+	"\tif (CHOICE) { $('now').innerHTML = esc(S.now || ''); $('now').className = S.done ? (S.fail ? 'bad' : 'ok') : ''; }",
 	"\tif (S.done) finish();",
 	"\tfit();",
 	"}",
-	"function finish() {",
-	"\tif (finished) return; finished = true;",
-	"\t$('arc').setAttribute('stroke', S.fail ? '#FF6B5A' : '#3FCFAE'); $('arc').setAttribute('stroke-dasharray', '208 0');",
-	"\tif (S.fail) { $('err').style.display = 'block'; $('err').innerHTML = esc(S.err || ''); return; }",
-	"\tif (CHOICE == 'open') { $('now').innerHTML = 'Открываю в BazisReborn…'; setTimeout(open_, 900); return; }",
-	"\tif (CHOICE == 'save') { setTimeout(function () { window.close(); }, 2500); return; }",
-	"\t$('btns').style.display = 'block'; $('opt').style.display = S.out ? 'block' : 'none';",
-	"\tif (!S.exe) { $('bOpen').disabled = true; $('bOpen').innerHTML = 'BazisReborn не найдена<small>установите программу</small>'; $('bOpen').className = 'b'; }",
-	"\tfit();",
+	"function answer(choice) {",
+	"\tif (CHOICE) return; CHOICE = choice;",
+	"\tvar a = '{\"customer\":' + q($('fCust').value) + ',\"orderNo\":' + q($('fNo').value) + ',\"title\":' + q($('fTitle').value) + ',\"note\":' + q($('fNote').value) + ',\"choice\":' + q(choice) + '}';",
+	"\twrite(DIR + '\\\\answer.txt', a);",
+	"\tvar f = ['fCust', 'fNo', 'fTitle', 'fNote', 'bSave', 'bOpen']; for (var i = 0; i < f.length; i++) $(f[i]).disabled = true;",
+	"\t$('now').innerHTML = 'Выгружаю…'; if (S) draw();",
 	"}",
-	"function remember(v) { if ($('remember').checked && S.choiceFile) { try { var d = S.choiceFile.replace(/\\\\[^\\\\]*$/, ''); if (!fso.FolderExists(d)) fso.CreateFolder(d); } catch (e) { } write(S.choiceFile, v); } }",
-	"function open_() { try { sh.Run('\"' + S.exe + '\" \"' + S.out + '\"', 1, false); } catch (e) { $('err').style.display = 'block'; $('err').innerHTML = 'Не удалось запустить программу: ' + esc(S.exe); return; } setTimeout(function () { window.close(); }, 300); }",
-	"$('bOpen').onclick = function () { remember('open'); open_(); };",
-	"$('bSave').onclick = function () { remember('save'); window.close(); };",
+	"function finish() {",
+	"\tif (finished || !CHOICE) return; finished = true;",
+	"\tif (S.fail) { $('err').style.display = 'block'; $('err').innerHTML = esc(S.err || ''); return; }",
+	"\tif (CHOICE == 'open') { if (!S.exe) { $('err').style.display = 'block'; $('err').innerHTML = 'Программа STHGroup не найдена. Установите её или откройте файл проекта вручную.'; $('fold').style.display = 'block'; return; } $('now').innerHTML = 'Открываю в STHGroup…'; setTimeout(open_, 700); return; }",
+	"\t$('fold').style.display = S.out ? 'block' : 'none'; setTimeout(function () { window.close(); }, 6000);",
+	"}",
+	"function open_() { try { sh.Run('\"' + S.exe + '\" \"' + S.out + '\"', 1, false); } catch (e) { $('err').style.display = 'block'; $('err').innerHTML = 'Не удалось запустить программу: ' + esc(S.exe); return; } setTimeout(function () { window.close(); }, 400); }",
+	"$('bOpen').onclick = function () { answer('open'); };",
+	"$('bSave').onclick = function () { answer('save'); };",
 	"$('bFolder').onclick = function () { try { sh.Run('explorer.exe /select,\"' + S.out + '\"', 1, false); } catch (e) { } };",
+	"document.onkeydown = function (e) { e = e || window.event; if (e.keyCode == 13 && !e.ctrlKey && document.activeElement && document.activeElement.tagName != 'TEXTAREA') answer('open'); };",
+	"window.onbeforeunload = function () { if (!CHOICE) write(DIR + '\\\\cancel.txt', 'cancel'); };",
 	"function tick() {",
-	"\tif (!finished) { ang = (ang + 12) % 360; $('arc').setAttribute('transform', 'rotate(' + (ang - 90) + ' 37 37)'); }",
 	"\tvar t = read();",
 	"\tif (t && t != lastStamp) { lastStamp = t; idle = 0; try { S = JSON.parse(t.replace(/^\\uFEFF/, '')); draw(); } catch (e) { } }",
-	"\telse if (!finished && ++idle > 25 * 300) { $('now').innerHTML = 'БАЗИС не отвечает — окно можно закрыть'; $('now').className = 'bad'; }",
+	"\telse if (CHOICE && !finished && ++idle > 25 * 300) { $('now').innerHTML = 'БАЗИС не отвечает — окно можно закрыть'; $('now').className = 'bad'; }",
 	"}",
 	"write(DIR + '\\\\alive.txt', 'ok');",
 	"center(); fit();",
@@ -890,25 +903,48 @@ var BM_WIN_HTA = [
 	"</script></body></html>",
 	""
 ].join('\n');
-var BM_LOGO_SVG = "<defs><linearGradient id=\"brf\" x1=\"0\" y1=\"59\" x2=\"0\" y2=\"5\" gradientUnits=\"userSpaceOnUse\"><stop offset=\"0\" stop-color=\"#E5482C\"/><stop offset=\".55\" stop-color=\"#FF8A1F\"/><stop offset=\"1\" stop-color=\"#FFC53D\"/></linearGradient></defs><path d=\"M32 5 V32 M8.5 45.5 L32 32 L55.5 45.5\" fill=\"none\" stroke=\"#FF8A1F\" stroke-width=\"1.1\" stroke-dasharray=\"2.6 2.4\"/><path d=\"M32 5 L55.5 18.5 V45.5 L32 59 L8.5 45.5 V18.5 Z M32 32 V59 M32 32 L8.5 18.5 M32 32 L55.5 18.5\" fill=\"none\" stroke=\"url(#brf)\" stroke-width=\"1.9\" stroke-linejoin=\"round\" stroke-linecap=\"round\"/>";
+/* логотип STHGroup: графитовый прямоугольник с отверстием, оранжевый и серый — как в логотипе программы */
+var BM_LOGO_SVG = "<svg width=\"150\" height=\"40\" viewBox=\"0 0 150 40\"><rect x=\"0\" y=\"0\" width=\"18\" height=\"40\" rx=\"2\" fill=\"#23262B\"/><circle cx=\"9\" cy=\"20\" r=\"2.6\" fill=\"#fff\"/><rect x=\"20\" y=\"0\" width=\"15\" height=\"22\" rx=\"2\" fill=\"#F26B1D\"/><rect x=\"20\" y=\"24\" width=\"15\" height=\"16\" rx=\"2\" fill=\"#9AA0A6\"/><text x=\"42\" y=\"28\" font-family=\"Segoe UI, Arial, sans-serif\" font-size=\"21\" font-weight=\"700\" fill=\"#23262B\">STH<tspan fill=\"#F26B1D\">Group</tspan></text></svg>";
 var BM_WIN = null;
-function bmChoiceFile() { try { var ad = String(process.env.APPDATA || ''); if (ad) return ad + '\\BazisReborn\\export-choice.txt'; } catch (e) { } return ''; }
-function bmWinOpen(title, sub) {
+function bmWinOpen(title, sub, form) {
 	var fs = bmFs(), tmp = '';
 	try { tmp = String(process.env.TEMP || process.env.TMP || ''); } catch (e) { tmp = ''; }
 	if (!tmp) return null;
-	var dir = tmp + '\\BazisReborn_export_' + new Date().getTime(), choice = '', cf = bmChoiceFile();
-	try { if (cf && fs.existsSync(cf)) choice = bmTrim(String(fs.readFileSync(cf, 'utf8'))).replace(/[^a-z]/g, ''); } catch (e1) { }
+	var dir = tmp + '\\STHGroup_export_' + new Date().getTime();
 	try {
 		fs.mkdirSync(dir);
-		var hta = BM_WIN_HTA.replace('%LOGO%', BM_LOGO_SVG).replace('%DIR%', dir.replace(/\\/g, '\\\\')).replace('%CHOICE%', choice);
+		var hta = BM_WIN_HTA.replace('%LOGO%', BM_LOGO_SVG).replace('%DIR%', dir.replace(/\\/g, '\\\\'));
 		fs.writeFileSync(dir + '\\window.hta', '\uFEFF' + hta, 'utf8');
 	} catch (e2) { return null; }
-	var W = { dir: dir, choice: choice, cf: cf, st: { title: title, sub: sub, now: 'Читаю модель…', steps: [
+	var W = { dir: dir, st: { title: title, sub: sub, form: form, now: 'Читаю модель…', steps: [
 		{ t: 'Детали и материалы', st: 'now' }, { t: 'Фурнитура и блоки' }, { t: '3D-модель и текстуры' }, { t: 'Записываю проект' }] } };
 	bmWinWrite(W);
 	try { NewCOMObject('WScript.Shell').Run('mshta.exe "' + dir + '\\window.hta"', 1, false); } catch (e3) { return null; }
 	return W;
+}
+/* Текст UTF-16LE (с меткой или без) — так пишет окно (CreateTextFile … unicode). */
+function bmUtf16Text(b) {
+	if (!b) return '';
+	var s = '', i = (b.length >= 2 && b[0] === 0xFF && b[1] === 0xFE) ? 2 : 0;
+	for (; i + 1 < b.length; i += 2) s += String.fromCharCode(b[i] | (b[i + 1] << 8));
+	return s;
+}
+/* Пауза без загрузки процессора: скрытая команда, которую ждём (около секунды). Не вышло — короткий цикл. */
+function bmSleep() {
+	try { NewCOMObject('WScript.Shell').Run('cmd.exe /c ping -n 2 127.0.0.1 >nul', 0, true); return; } catch (e) { }
+	var t = new Date().getTime(); while (new Date().getTime() - t < 300) { }
+}
+/* Ждём ответа окна: { customer, orderNo, title, note, choice } или null — окно закрыли (отмена). */
+function bmWinWait(W) {
+	var fs = bmFs();
+	for (var i = 0; i < 3600; i++) {                                 // не дольше часа
+		try {
+			if (fs.existsSync(W.dir + '\\answer.txt')) { var a = JSON.parse(bmUtf16Text(bmReadBin(W.dir + '\\answer.txt')).replace(/^\uFEFF/, '')); return a && typeof a === 'object' ? a : null; }
+			if (fs.existsSync(W.dir + '\\cancel.txt')) return null;
+		} catch (e) { return null; }
+		bmSleep();
+	}
+	return null;
 }
 function bmWinWrite(W) {
 	if (!W) return;
@@ -1093,7 +1129,7 @@ function bmExport3D(base) {
 function bmMain() {
 	var top = 0, i, t0 = new Date().getTime();
 	var mfile0 = bmModelFile();
-	BM_WIN = bmWinOpen(bmTitle(), bmOrder() ? 'Заказ ' + bmOrder() : (mfile0 ? mfile0.replace(/^.*[\\\/]/, '') : ''));
+	BM_WIN = bmWinOpen(bmTitle(), mfile0 ? mfile0.replace(/^.*[\\\/]/, '') : '', { customer: bmOrder(), orderNo: '', title: bmTitle(), note: bmModelNote() });
 	try { top = Number(Model.Count) || 0; } catch (e) { top = 0; }
 	for (i = 0; i < top; i++) {
 		var o = null;
@@ -1112,10 +1148,11 @@ function bmMain() {
 	}
 	if (!nSheet) {
 		if (BM_WIN && bmWinAlive(BM_WIN)) { BM_WIN.st.done = 1; BM_WIN.st.fail = 1; BM_WIN.st.now = 'Выгружать нечего'; BM_WIN.st.err = 'В модели не найдено листовых панелей.'; bmWinStep(0, 'bad'); return; }
-		alert('BazisReborn: в модели не найдено листовых панелей — выгружать нечего.'); return;
+		alert('STHGroup: в модели не найдено листовых панелей — выгружать нечего.'); return;
 	}
-	bmWinStep(0, 'ok', nSheet + ' ' + bmPlural(nSheet, 'деталь', 'детали', 'деталей') + ' · ' + nMat + ' ' + bmPlural(nMat, 'материал', 'материала', 'материалов'));
 	var nFurn = BM_SOLIDS.length;
+	if (BM_WIN) BM_WIN.st.sum = { parts: nSheet, mats: nMat, furn: nFurn };
+	bmWinStep(0, 'ok', nSheet + ' ' + bmPlural(nSheet, 'деталь', 'детали', 'деталей') + ' · ' + nMat + ' ' + bmPlural(nMat, 'материал', 'материала', 'материалов'));
 	bmWinStep(1, 'ok', nFurn ? String(nFurn) : 'нет', 'Сохраняю 3D-модель…');
 
 	var mfile = mfile0, fs = bmFs(), out = '';
@@ -1139,7 +1176,16 @@ function bmMain() {
 	var m3 = BM_DIAG.mesh || {};
 	if (m3.ok) bmWinStep(2, 'ok', m3.size ? Math.max(1, Math.round(m3.size / 1048576)) + ' МБ' : '', 'Записываю проект…');
 	else bmWinStep(2, 'warn', 'нет', 'Записываю проект…');
-	var model = { title: bmTitle(), order: bmOrder(), art: bmModelArt(), note: bmModelNote(), solids: BM_SOLIDS, mats: BM_MATS,
+	/* данные заказа из окна STHGroup: ждём, пока человек нажмёт «Выгрузить»; закрыл окно — выгрузка отменена */
+	var ans = null, winUp = BM_WIN && bmWinAlive(BM_WIN);
+	if (winUp) {
+		BM_WIN.st.now = 'Жду данные заказа…'; bmWinWrite(BM_WIN);
+		ans = bmWinWait(BM_WIN);
+		if (!ans) return;
+	}
+	var form = ans || {};
+	var model = { title: bmTrim(form.title) || bmTitle(), order: bmOrder(), art: bmModelArt(), note: form.note !== undefined ? bmTrim(form.note) : bmModelNote(),
+				  customer: form.customer !== undefined ? bmTrim(form.customer) : bmOrder(), orderNo: bmTrim(form.orderNo), choice: form.choice || '', solids: BM_SOLIDS, mats: BM_MATS,
 				  mesh: m3.ok ? m3.file : '', uv: BM_DIAG.uv && BM_DIAG.uv.ok ? BM_DIAG.uv.file : '', file: mfile, sig: bmSignature(BM_PARTS), selected: nSel,
 				  parts: BM_PARTS, holes: BM_FAST, est: 1, fast: bmEstList(BM_EST.fast), kits: bmEstList(BM_EST.kits),
 				  prof: bmEstList(BM_EST.prof), lin: bmEstList(BM_EST.lin), blocks: BM_BLOCKS, anim: BM_ANIM, dims: BM_DIMS,
@@ -1163,7 +1209,7 @@ function bmMain() {
 		}
 	} catch (e4) { bmErr('старый проект', e4); }
 
-	var exe = bmExePath(), win = BM_WIN && bmWinAlive(BM_WIN);
+	var exe = bmExePath(), win = winUp;
 	var docText = JSON.stringify(doc), packed = null;
 	if (stem) {
 		bmWinStep(3, 'now', undefined, 'Собираю всё в один файл…');
@@ -1173,7 +1219,7 @@ function bmMain() {
 	catch (e5) {
 		var msg = 'Не удалось записать файл проекта:\n' + out + '\n' + (e5 && e5.message ? e5.message : e5);
 		if (win) { BM_WIN.st.done = 1; BM_WIN.st.fail = 1; BM_WIN.st.now = 'Проект не записан'; BM_WIN.st.err = msg; bmWinStep(3, 'bad'); return; }
-		alert('BazisReborn: ' + msg); return;
+		alert('STHGroup: ' + msg); return;
 	}
 
 	if (win) {
@@ -1186,13 +1232,13 @@ function bmMain() {
 		if (BM_HIDDEN.count) warn.push('Скрытых панелей: ' + BM_HIDDEN.count + ' — в раскрой не идут');
 		if (BM_DIAG.errors.length) warn.push('Ошибок чтения: ' + BM_DIAG.errors.length + ' — подробно в «Сведениях о выгрузке»');
 		for (i = 0; i < warn.length; i++) BM_WIN.st.steps.push({ t: warn[i], st: 'warn' });
-		BM_WIN.st.out = out; BM_WIN.st.exe = exe; BM_WIN.st.choiceFile = BM_WIN.cf; BM_WIN.st.done = 1;
+		BM_WIN.st.out = out; BM_WIN.st.exe = exe; BM_WIN.st.done = 1;
 		BM_WIN.st.now = 'Выгружено за ' + Math.max(1, Math.round((new Date().getTime() - t0) / 1000)) + ' с';
 		bmWinStep(3, 'ok', out.replace(/^.*[\\\/]/, ''));
 		return;
 	}
 	if (!exe) {
-		alert('Проект сохранён:\n' + out + '\n\nПрограмма BazisReborn не найдена. Установите её или откройте файл проекта вручную.');
+		alert('Проект сохранён:\n' + out + '\n\nПрограмма STHGroup не найдена. Установите её или откройте файл проекта вручную.');
 		return;
 	}
 	try { NewCOMObject('WScript.Shell').Run('"' + exe + '" "' + out + '"', 1, false); }

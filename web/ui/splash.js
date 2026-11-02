@@ -14,6 +14,7 @@
 	var el = document.getElementById('splash');
 	var S = window.Splash = { done: true, skip: function () { } };
 	if (!el) return;
+	el.remove(); return;          // STHGroup: заставка BazisReborn (название с кубом) не показывается
 	var off = document.documentElement.classList.contains('noanim') || /[?&]splash=0\b/.test(location.search);
 	try { off = off || window.matchMedia('(prefers-reduced-motion: reduce)').matches; } catch (e) { /* нет matchMedia — играем */ }
 	var cv = document.getElementById('splashCv'), cx = cv && cv.getContext ? cv.getContext('2d') : null;

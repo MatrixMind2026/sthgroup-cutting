@@ -314,7 +314,8 @@ const fakeFs = { existsSync: p => p in written || kids(p).length > 0,
 const glbCalls = [];
 const mio = { ExportModelMeshFormat: (m, f) => { glbCalls.push(f); written[f] = PACK ? Buffer.from('glTF-байты') : 'glTF';
 	if (PACK) { const td = f.replace(/\.glb$/, '_textures'); written[td] = '<папка>'; written[td + '\\Дерево'] = '<папка>'; written[td + '\\Дерево\\дуб.jpg'] = Buffer.from([0xFF, 0xD8, 0xFF, 1, 2, 3]); } }, fileType: {} };
-const ran = [], alerts = [];
+const ran = [], alerts = []; let winDir = '';
+written['C:\\A\\STHGroup Cutting\\exe.txt'] = 'C:\\Program Files\\STHGroup Cutting\\STHGroup Cutting.exe';
 const ctx = { console, Math, JSON, Date, String, Number, Object, isNaN, isFinite, Array,
 	Model: { Count: top.length, Objects: top },
 	Article: { Name: 'СМД001_Кухня', OrderName: 'Северная Венеция', OrderCode: '', Code: 'СМД001-26', Notes: 'Цоколь 100 мм, ручки Gola', ExtraInfo: {} },
@@ -322,7 +323,12 @@ const ctx = { console, Math, JSON, Date, String, Number, Object, isNaN, isFinite
 	Action: { ModelFilename: 'C:\\Проекты\\СМД001_Кухня Северная Венеция.b3d' },
 	NewVector: V, NewCOMObject: () => ({ Run: c => {
 		/* окно хода выгрузки (mshta): по умолчанию «нет mshta» — всё как раньше; в режиме win окно «открылось» */
-		if (/^mshta/.test(c)) { if (mode !== 'win') throw new Error('mshta недоступна'); const d = c.match(/"(.*)\\window\.hta"/)[1]; written[d + '\\alive.txt'] = 'ok'; }
+		if (/^mshta/.test(c)) { if (mode !== 'win') throw new Error('mshta недоступна'); const d = c.match(/"(.*)\\window\.hta"/)[1]; written[d + '\\alive.txt'] = 'ok'; winDir = d; }
+		/* STHGroup: скрипт ждёт ответа окна данных заказа (пауза — ping); «человек» отвечает из BM_MOCK_ANSWER или закрывает окно (BM_MOCK_CANCEL) */
+		if (/ping -n/.test(c) && winDir) {
+			if (process.env.BM_MOCK_CANCEL) written[winDir + '\\cancel.txt'] = 'cancel';
+			else { const t = process.env.BM_MOCK_ANSWER || '{"customer":"Северная Венеция","orderNo":"STH-1167","title":"Кухня CAA003","note":"срочно","choice":"open"}'; written[winDir + '\\answer.txt'] = Buffer.concat([Buffer.from([0xFF, 0xFE]), Buffer.from(t, 'utf16le')]); }
+		}
 		ran.push(c); return 0; }, RegRead: () => 'C:\\Program Files\\BazisReborn' }),
 	alert: m => alerts.push(m), require: n => { if (n === 'fs') return fakeFs; throw new Error('require ' + n); }, process: { env: { TEMP: 'C:\\T', APPDATA: 'C:\\A' } } };
 ctx.TextureOrientation = { None: 0, Horizontal: 1, Vertical: 2 };
@@ -334,6 +340,7 @@ if (process.env.BM_MOCK_ONLY) return;
 vm.runInContext(fs.readFileSync(process.env.SCRIPT || path.join(__dirname, '..', 'bazis', 'STHGroup_Export.js'), 'utf8'), ctx, { filename: 'STHGroup_Export.js' });
 const keys = Object.keys(written);
 if (!keys.length) { console.log('файл не записан; сообщения:', alerts); process.exit(1); }
+if (!keys.some(k => /\.bmk$/.test(k))) { console.log('проект не записан' + (alerts.length ? ': ' + alerts.join('; ') : ' (выгрузку отменили)')); if (outFile) try { fs.unlinkSync(outFile); } catch (e) { /* не было */ } return; }
 if (process.env.BM_MOCK_DUMP) { fs.mkdirSync(process.env.BM_MOCK_DUMP, { recursive: true }); keys.forEach(k => { const d = written[k]; fs.writeFileSync(path.join(process.env.BM_MOCK_DUMP, k.replace(/^.*\\/, '')), typeof d === 'string' ? d : Buffer.from(d.buffer || d)); }); }
 const bmkKey = keys.filter(k => /\.bmk$/.test(k)).pop() || keys[keys.length - 1], raw = written[bmkKey];
 /* проект одним файлом (zip без сжатия): project.json — из архива */

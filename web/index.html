@@ -19,6 +19,7 @@
 			<div class="hdd" id="fileDd"><button class="dd" id="bFile" title="Открыть проект, сохранить копию">Файл</button><div class="ddMenu">
 				<button id="bOpen" title="Открыть файл проекта (.bmk), Ctrl+O">Открыть…<small>Ctrl+O</small></button>
 				<button id="bSaveAs" title="Сохранить копию проекта в другое место">Сохранить как…</button>
+				<button id="bScript" title="Положить скрипт выгрузки STHGroup в папку скриптов БАЗИС-Мебельщика">Скрипт для БАЗИСа…</button>
 				<button id="bToDisk" class="tabletOnly" title="Отправить файл проекта на Яндекс Диск, в почту или мессенджер">Отправить на Диск…</button>
 			</div></div>
 		</div>
@@ -198,7 +199,7 @@
 	<div class="wbox">
 		<img src="img/sth_logo.svg" alt="" style="width:220px">
 		<h1>Проект не открыт</h1>
-		<p class="mute">Запустите в БАЗИСе скрипт <b>STHGroup_Export</b> — он сохранит проект рядом с моделью и откроет его здесь. Или откройте готовый файл проекта.</p>
+		<p class="mute">Запустите в БАЗИСе скрипт <b>STHGroup_Export</b> — он спросит данные заказа, сохранит проект рядом с моделью и откроет его здесь. Скрипта ещё нет в БАЗИСе — <button id="wScript" class="link">поставить скрипт…</button></p>
 		<button id="wOpen" class="primary">Открыть проект…</button>
 		<div id="recent"></div>
 		<p class="mute wset">Настройки и прайсы доступны и без проекта — <button id="wSettings" class="link">открыть настройки</button></p>
@@ -265,5 +266,6 @@
 <script src="ui/feedback.js"></script>
 <script src="ui/link.js"></script>
 <script src="ui/app.js"></script>
+<script src="ui/sth.js"></script>
 </body>
 </html>

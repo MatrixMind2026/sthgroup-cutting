@@ -94,6 +94,27 @@ function packPut(bmk, from, puts) {
   zipWrite(bmk, items);
 }
 
+// ---------------- скрипт выгрузки для БАЗИСа ----------------
+/* Только латиницей: каждый не-ASCII знак — кодом \uXXXX (БАЗИС может читать скрипт как Windows-1251), путь к программе вписан. */
+function asciiScript(src, exePath) {
+  const js = String(exePath || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+  const text = String(src).replace(/^\uFEFF/, '').replace("'%%BM_EXE%%'", "'" + js + "'");
+  let out = '';
+  for (let i = 0; i < text.length; i++) { const c = text.charCodeAt(i); out += c < 128 ? text[i] : '\\u' + ('000' + c.toString(16)).slice(-4); }
+  return out;
+}
+/* Папка STHGroup в папке скриптов БАЗИСа: скрипт и его значок. Возвращает путь к скрипту. */
+function installScript(scriptsDir, bazisDir, exePath) {
+  let root = path.resolve(scriptsDir);
+  if (path.basename(root).toLowerCase() === 'sthgroup') root = path.dirname(root);
+  const dir = path.join(root, 'STHGroup');
+  fs.mkdirSync(dir, { recursive: true });
+  const js = path.join(dir, 'STHGroup_Export.js');
+  fs.writeFileSync(js, asciiScript(fs.readFileSync(path.join(bazisDir, 'STHGroup_Export.js'), 'utf8'), exePath), 'ascii');
+  fs.writeFileSync(path.join(dir, 'STHGroup_Export.bmp'), fs.readFileSync(path.join(bazisDir, 'STHGroup_Export.bmp')));          // copyFileSync из app.asar не работает
+  return js;
+}
+
 function writeAtomic(p, data) {
   fs.mkdirSync(path.dirname(p), { recursive: true });
   const tmp = p + '.tmp' + process.pid;
@@ -155,10 +176,7 @@ function start(opt) {
   function indexPage() {
     let page = fs.readFileSync(path.join(opt.webDir, 'index.html'), 'utf8');
     let set = {}; try { set = JSON.parse(fs.readFileSync(path.join(opt.dataDir, 'settings.json'), 'utf8')); } catch (e) { /* нет */ }
-    let attr = 'data-theme="light"';
-    if (set.theme === 'dark') attr = 'data-theme="dark"';
-    else if (set.theme === 'fire' || set.theme === 'night') attr = 'data-theme="dark" data-skin="' + set.theme + '"';
-    else if (set.theme === 'paper' || set.theme === 'steel') attr = 'data-theme="light" data-skin="' + set.theme + '"';
+    let attr = 'data-theme="dark" data-skin="sth"';          // STHGroup: одна тема — графит и оранжевый
     if (set.anim === 0) attr += ' class="noanim"';
     return page.replace('data-theme="light"', attr);
   }
@@ -290,6 +308,13 @@ function start(opt) {
     'POST /api/tester/hello': function (req, res) { json(res, 200, { name: '' }); },
     'GET /api/feedback/state': function (req, res) { json(res, 200, { enabled: false, tester: false }); },
     'GET /api/reg/state': function (req, res) { json(res, 200, { code: '', name: '', ok: true }); },
+    // STHGroup: положить скрипт выгрузки в папку скриптов БАЗИСа
+    'POST /api/sth/script': async function (req, res) {
+      const d = await jbody(req);
+      if (!d.dir || !path.isAbsolute(d.dir)) return fail(res, 400, 'не указана папка скриптов БАЗИСа');
+      try { json(res, 200, { ok: true, path: installScript(d.dir, opt.bazisDir || path.join(__dirname, 'bazis'), opt.exePath || process.execPath) }); }
+      catch (e) { fail(res, 500, fileErr(e, d.dir)); }
+    },
     'POST /api/sound/play': function (req, res) { json(res, 200, { ok: true, played: false }); },
     'POST /api/sound/stop': function (req, res) { json(res, 200, { ok: true }); }
   };
@@ -333,7 +358,7 @@ function start(opt) {
   });
 }
 
-module.exports = { start: start, isPacked: isPacked, packRead: packRead, packPut: packPut, zipWrite: zipWrite };
+module.exports = { asciiScript: asciiScript, installScript: installScript, start: start, isPacked: isPacked, packRead: packRead, packPut: packPut, zipWrite: zipWrite };
 
 // Запуск без Electron — для проверок окна в Chromium: node server.js <папка данных> [проект.bmk] [порт]
 if (require.main === module) {

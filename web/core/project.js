@@ -66,13 +66,9 @@
 	/* ------------------------------- настройки -------------------------------- */
 
 	/* Темы окна: id, название, основа (светлая или тёмная — от неё зависят заставка и тени) и три цвета для образца. */
+	/* STHGroup: одна тема — графит и оранжевый из логотипа (прежние темы BazisReborn убраны) */
 	BM.THEMES = [
-		{ id: 'light', name: 'Светлая', base: 'light', sw: ['#eef0f2', '#ffffff', '#0E6B5A'] },
-		{ id: 'paper', name: 'Бумага', base: 'light', sw: ['#ece7de', '#fbf9f4', '#0E6B5A'] },
-		{ id: 'steel', name: 'Сталь', base: 'light', sw: ['#e9eef4', '#ffffff', '#1F5FBF'] },
-		{ id: 'dark', name: 'Тёмная', base: 'dark', sw: ['#1d2023', '#262a2e', '#3FCFAE'] },
-		{ id: 'fire', name: 'Графит и огонь', base: 'dark', sw: ['#15171a', '#1f2327', '#FF8A1F'] },
-		{ id: 'night', name: 'Ночь', base: 'dark', sw: ['#121826', '#1a2232', '#5AB0FF'] }
+		{ id: 'sth', name: 'STHGroup', base: 'dark', sw: ['#2a2c30', '#323539', '#F26B1D'] }
 	];
 	BM.theme = function (id) { for (var i = 0; i < BM.THEMES.length; i++) if (BM.THEMES[i].id === id) return BM.THEMES[i]; return BM.THEMES[0]; };
 	/* Настройки раскроя без четырёх основных (рез, отступ, припуск, качество — они лежат рядом на верхнем уровне). */

@@ -165,7 +165,7 @@ function start(opt) {
 
   function json(res, code, v) {
     const b = Buffer.from(JSON.stringify(v));
-    res.writeHead(code, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(b);
+    res.writeHead(200, { 'Content-Type': 'application/json; charset=utf-8', 'Cache-Control': 'no-store' }); res.end(b);
   }
   function fail(res, code, msg) { json(res, code, { error: msg }); }
   function body(req) {
@@ -300,9 +300,13 @@ function start(opt) {
     'POST /api/quit': function (req, res) { json(res, 200, { ok: true }); if (hooks.quit) setTimeout(hooks.quit, 150); },
     // Ядро C++ BazisReborn здесь не используется: считает JS (окно само переходит на него при ошибке).
     'POST /api/core': function (req, res) { fail(res, 503, 'ядро C++ не подключено'); },
-    // Обновления — у оболочки STHGroup (GitHub, electron-updater); окну говорим «проверять не нужно».
-    'GET /api/upd/state': function (req, res) { json(res, 200, { current: opt.version, edition: 'sth', hasKey: false, keySrc: '', problem: '', repo: '', checked: 0, seen: '', publisher: null }); },
-    'POST /api/upd/check': function (req, res) { json(res, 200, { status: 'skip' }); },
+    // Обновления — у оболочки STHGroup (GitHub, electron-updater): состояние и принудительная проверка
+    // (кнопка «Проверить обновления» в настройках) идут через hooks. Без оболочки (тесты, браузер) — «проверять не нужно».
+    'GET /api/upd/state': function (req, res) { json(res, 200, hooks.updState ? hooks.updState() : { current: opt.version, edition: 'sth', hasKey: false, keySrc: '', problem: '', repo: '', checked: 0, seen: '', publisher: null }); },
+    'POST /api/upd/check': async function (req, res) {
+      if (!hooks.updCheck) return json(res, 200, { status: 'skip' });
+      try { json(res, 200, await hooks.updCheck()); } catch (e) { json(res, 200, { status: 'error', message: String((e && e.message) || e) }); }
+    },
     'GET /api/tester/state': function (req, res) { json(res, 200, { edition: 'sth', ack: true, name: '', pings: false }); },
     'POST /api/tester/sec': function (req, res) { json(res, 200, { ok: true }); },
     'POST /api/tester/hello': function (req, res) { json(res, 200, { name: '' }); },

@@ -143,6 +143,98 @@
 	}
 	if (window.Est && window.Est.render) {
 		var r0 = window.Est.render;
-		window.Est.render = function () { var x = r0.apply(this, arguments); try { drawChip(); } catch (e) { /* нет */ } return x; };
+		window.Est.render = function () {
+			var x = r0.apply(this, arguments);
+			try {          /* счётчик «Нет в базе» — по только что посчитанной смете: строки без материала базы */
+				var R = window.Est.R, seen = {};
+				if (R && MB.cur) { count = 0; R.rows.forEach(function (w) { if (!KINDS[w.kind] || w.own || w.mb) return; var key = w.kind + '|' + String(w.skey || w.title).toLowerCase(); if (!seen[key]) { seen[key] = 1; count++; } }); }
+				drawChip();
+			} catch (e) { /* нет */ }
+			return x;
+		};
 	}
+})();
+
+/* STHGroup: «Сопоставить с базой материалов» — кнопка у каждой строки сметы (плита, кромка, погонный, фурнитура, профиль).
+   Связь «наименование из модели → материал базы» хранится в самой базе (b.links) — одна на все проекты и компьютеры.
+   Связанная строка берёт из базы цену, поставщика, формат листа, остаток. Без связи — как раньше: поиск по наименованию и артикулу. */
+(function () {
+	'use strict';
+	var U = window.UI, esc = U.esc, MB = BM.mb, K = window.MatBase;
+	var KIND = { panel: 'sheet', linear: 'sheet', edge: 'edge', fastener: 'fit', profile: '' };
+	function low(s) { return String(s || '').toLowerCase().replace(/ё/g, 'е').replace(/\s+/g, ' ').trim(); }
+	function keysOf(w) { var out = []; [w.name0, w.skey, w.title].forEach(function (n) { n = low(n); if (n && out.indexOf(n) < 0) out.push(n); }); return out; }
+	function linkOf(w) {
+		var b = MB.cur; if (!b || !b.links) return null;
+		var ks = keysOf(w);
+		for (var i = 0; i < ks.length; i++) { var id = b.links[w.kind + '|' + ks[i]] || b.links['*|' + ks[i]]; if (id && b.mats[id]) return b.mats[id]; }
+		return null;
+	}
+	/* связь — главнее поиска по названию */
+	var row0 = K.rowInfo;
+	K.rowInfo = function (w) {
+		if (!MB.cur || !w || w.own) return null;
+		var m = linkOf(w);
+		if (m) { var inf = MB.infoFor(MB.cur, m.name, m.art); if (inf && inf.id === m.id) return inf; var s = MB.supplier(MB.cur, m.sup); return { id: m.id, price: MB.priceOf(MB.cur, m), unit: m.unit, L: m.maxL, W: m.maxW, th: m.th, k: m.k, kCut: m.kCut, shop: s ? s.name : '', url: m.url || (s ? s.url : ''), art: m.art, photo: m.photo || '', stock: MB.balance(MB.cur, m.id), noStock: m.noStock, offcuts: [] }; }
+		return row0.call(K, w);
+	};
+	window.STH.mbBtn = function (w, i) {
+		if (!MB.cur || w.own || w.card || !(w.kind in KIND)) return '';
+		var inf = w.mb ? MB.cur.mats[w.mb.id] : null, linked = !!linkOf(w);
+		if (inf) return '<button class="mbLink on" data-mbi="' + i + '" title="' + esc((linked ? 'Сопоставлено вручную' : 'Найдено в базе по наименованию/артикулу') + ': ' + inf.name + (inf.art ? ' (' + inf.art + ')' : '') + '. Щёлкните, чтобы выбрать другой') + '">✓ ' + esc(inf.name.length > 34 ? inf.name.slice(0, 33) + '…' : inf.name) + '</button>';
+		return '<button class="mbLink" data-mbi="' + i + '" title="Выбрать материал из базы для этой строки — дальше цена и поставщик из базы">Сопоставить с базой</button>';
+	};
+	function score(m, words, art) {
+		var n = low(m.name + ' ' + m.art), s = 0;
+		if (art && low(m.art) === low(art)) s += 100;
+		words.forEach(function (x) { if (n.indexOf(x) >= 0) s += x.length > 2 ? 3 : 1; });
+		return s;
+	}
+	async function pick(w) {
+		await K.refresh();
+		var b = MB.cur; if (!b) { U.toast('Базы материалов нет: нажмите «База» слева и выберите папку.'); return; }
+		var t = KIND[w.kind], cur = linkOf(w), name = w.kind === 'panel' ? w.skey : (w.skey || w.title), sel = cur ? cur.id : (w.mb ? w.mb.id : '');
+		var all = Object.keys(b.mats).map(function (k) { return b.mats[k]; });
+		function list(q, onlyType) {
+			var words = low(q).split(/[\s,;()«»"x×*]+/).filter(function (x) { return x.length > 1; });
+			return all.filter(function (m) { return !onlyType || !t || MB.typeOf(b, m) === t; })
+				.map(function (m) { return { m: m, s: score(m, words, w.art) }; })
+				.filter(function (x) { return !words.length || x.s > 0; })
+				.sort(function (a, c) { return c.s - a.s || a.m.name.localeCompare(c.m.name, 'ru'); }).slice(0, 200);
+		}
+		function rows(q, ot) {
+			var L = list(q, ot);
+			return L.map(function (x) { var m = x.m; return '<tr data-id="' + m.id + '" class="' + (m.id === sel ? 'on' : '') + '"><td>' + esc(m.name) + '</td><td class="mute">' + esc(m.art) + '</td><td class="mute">' + esc(MB.path(b, m.group).join(' / ')) + '</td><td>' + esc(m.unit) + '</td><td class="r">' + String(MB.priceOf(b, m)).replace('.', ',') + '</td></tr>'; }).join('') || '<tr><td colspan="5" class="mute">Ничего не найдено. Измените слова поиска или снимите галочку «только …».</td></tr>';
+		}
+		var tn = t ? (MB.typeName(t) || '').toLowerCase() : '';
+		var res = await U.modal({ title: 'Сопоставить с базой материалов', width: 900, cls: 'sthPick',
+			body: '<p>Строка сметы: <b>' + esc(name) + '</b>' + (w.art ? ' · артикул ' + esc(w.art) : '') + ' · ' + esc(E_unit(w)) + '</p>' +
+				'<div class="row" style="display:flex;gap:10px;align-items:center"><input type="search" id="spQ" value="' + esc(name) + '" style="flex:1" autofocus>' + (t ? '<label><input type="checkbox" id="spT" checked> только «' + esc(tn) + '»</label>' : '') + '</div>' +
+				'<div style="max-height:50vh;overflow:auto;margin-top:8px"><table class="grid" style="width:100%"><thead><tr><th>Наименование в базе</th><th>Артикул</th><th>Группа</th><th>Ед.</th><th>Цена</th></tr></thead><tbody id="spB">' + rows(name, !!t) + '</tbody></table></div>' +
+				'<p class="mute">Выберите строку и нажмите «Сопоставить» (или дважды щёлкните). Связь запомнится в базе: в других проектах этот материал найдётся сам.</p>',
+			buttons: [{ label: 'Отмена', value: null }].concat(cur ? [{ label: 'Отвязать', value: { unlink: 1 } }] : []).concat([{ label: 'Сопоставить', primary: true, run: function (m) { var r = m.querySelector('#spB tr.on'); if (!r || !r.dataset.id) { U.toast('Выберите материал в списке'); return false; } return { id: r.dataset.id }; } }]),
+			onOpen: function (m, close) {
+				var q = m.querySelector('#spQ'), ot = m.querySelector('#spT'), body = m.querySelector('#spB');
+				var redraw = function () { body.innerHTML = rows(q.value, ot ? ot.checked : false); };
+				q.addEventListener('input', redraw); if (ot) ot.addEventListener('change', redraw);
+				body.addEventListener('click', function (e) { var r = e.target.closest('tr[data-id]'); if (!r) return; body.querySelectorAll('tr.on').forEach(function (x) { x.classList.remove('on'); }); r.classList.add('on'); });
+				body.addEventListener('dblclick', function (e) { var r = e.target.closest('tr[data-id]'); if (r) close({ id: r.dataset.id }); });
+			} });
+		if (!res) return;
+		await K.refresh(); b = MB.cur;
+		b.links = b.links || {};
+		keysOf(w).forEach(function (k) { delete b.links[w.kind + '|' + k]; });
+		if (!res.unlink) keysOf(w).forEach(function (k) { b.links[w.kind + '|' + k] = res.id; });
+		await K.saveBase();
+		if (window.Est) window.Est.render();
+		U.toast(res.unlink ? 'Связь убрана: строка снова ищется в базе по наименованию и артикулу.' : 'Сопоставлено: «' + name + '» → «' + b.mats[res.id].name + '». Цена и поставщик — из базы.');
+	}
+	function E_unit(w) { return BM.est.shortUnit ? BM.est.shortUnit(w.unit) : w.unit; }
+	document.addEventListener('click', function (e) {
+		var bt = e.target.closest && e.target.closest('button.mbLink');
+		if (!bt || !window.Est || !window.Est.R) return;
+		e.preventDefault(); e.stopPropagation();
+		var w = window.Est.R.rows[Number(bt.dataset.mbi)];
+		if (w) pick(w).catch(U.error);
+	}, true);
 })();

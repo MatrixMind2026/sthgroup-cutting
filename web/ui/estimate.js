@@ -184,6 +184,7 @@
 				/* метки: «такая же» позиция выше и «объединено из N» */
 				var dup = dups[w.offKey];
 				if (dup && !w.own) name += '<button class="dupC" data-k="' + k + '" title="Наименование и артикул совпадают со строкой ' + (numOf[dup.offKey] || '') + '">⚠ такая же — строка ' + (numOf[dup.offKey] || '') + ' · Объединить…</button>';
+				if (window.STH && window.STH.mbBtn) name += window.STH.mbBtn(w, i);          // STHGroup: сопоставить с базой материалов
 				if (w.parts) name += '<span class="mrgC" title="' + esc(w.parts.map(function (p) { return E.num(p.val) + ' ' + E.shortUnit(p.unit) + ' — ' + p.name; }).join('\n') + '\nРазъединить — правой кнопкой мыши по строке') + '">⧉ объединено из ' + w.parts.length + '</span>';
 				var qty;
 				if (w.kind === 'own') qty = '<input type="text" class="qv" data-k="' + k + '" value="' + val(w.val) + '"> ' + ownUnit(w, k);

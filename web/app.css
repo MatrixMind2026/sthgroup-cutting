@@ -1202,3 +1202,60 @@ body.phone:not([data-sec="cut"]) #main > .grip { display: none; }
 /* STHGroup: название в шапке */
 .bname.sth i { font-weight: 800; }
 .bname.sth b { color: #F26B1D; font-weight: 800; }
+
+/* ===== STHGroup: заказы и клиенты (вариант «A») ===== */
+body:not([data-sec="orders"]):not([data-sec="clients"]) #orders { display: none; }
+body[data-sec="orders"] #welcome, body[data-sec="clients"] #welcome, body[data-sec="orders"] .noDrill, body[data-sec="clients"] .noDrill, body[data-sec="orders"] #docDd, body[data-sec="clients"] #docDd { display: none !important; }
+#orders { flex: 1 1 auto; display: flex; min-width: 0; min-height: 0; }
+#orders .soL { width: 290px; flex: none; background: var(--panel); border-right: 1px solid var(--line); padding: 10px; display: flex; flex-direction: column; gap: 6px; min-height: 0; }
+#orders .soL .sec { padding: 0; }
+#orders #soList { overflow: auto; flex: 1; }
+#orders .soNew { width: 100%; padding: 6px; }
+#orders .soIt { padding: 8px 10px; border: 1px solid var(--line); border-radius: 7px; margin-bottom: 6px; background: var(--panel2); cursor: pointer; }
+#orders .soIt:hover { border-color: var(--mute); }
+#orders .soIt.on { border-color: var(--accent); background: var(--accent-soft); }
+#orders .soIt small { display: block; color: var(--mute); margin-top: 2px; }
+#orders .soTag { float: right; font-size: 11px; padding: 1px 6px; border-radius: 4px; background: var(--line); }
+#orders .soTag.o { background: var(--accent); color: #fff; } #orders .soTag.g { background: #2e7d4f; color: #fff; } #orders .soTag.b { background: #3b6ea8; color: #fff; }
+#orders .soC { flex: 1 1 auto; min-width: 0; overflow: auto; padding: 12px 16px; }
+#orders .soS { width: 290px; flex: none; background: var(--panel); border-left: 1px solid var(--line); padding: 12px; overflow: auto; }
+#orders .soHead { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+#orders .soNo { font-size: 17px; font-weight: 700; width: 140px; }
+#orders .soNote { width: 100%; margin-top: 6px; }
+#orders .soTabs { margin: 10px 0 6px; }
+#orders .soBh { background: var(--panel2); padding: 6px 10px; font-weight: 600; display: flex; justify-content: space-between; margin-top: 10px; border-radius: 5px; }
+#orders .soBh span { color: var(--accent); }
+#orders .soT { width: 100%; border-collapse: collapse; }
+#orders .soT td { padding: 5px 8px; border-bottom: 1px solid var(--line2); }
+#orders .soT tr.off td { color: var(--mute); }
+#orders .r { text-align: right; white-space: nowrap; }
+#orders .nw { white-space: nowrap; }
+#orders input.soN { width: 84px; text-align: right; }
+#orders input.soTx { width: 100%; min-width: 160px; }
+#orders .soRow { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+#orders .soTot { background: var(--accent); color: #fff; border-radius: 8px; padding: 9px 12px; font-size: 22px; font-weight: 800; margin: 4px 0 10px; }
+#orders .soR { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 4px 0; border-bottom: 1px dashed var(--line); }
+#orders .soR.ac { color: #ffb27a; }
+#orders .soR input.soN, #orders .soR select { width: 96px; }
+#orders .soPay { background: #23262B; border-radius: 8px; padding: 8px 10px; margin-top: 10px; }
+#orders .soPay .soR { border: 0; } #orders .soPay b { color: var(--accent); }
+#orders .bad { color: var(--bad); }
+#orders .sm { font-size: 11.5px; }
+#orders .sec2 { color: var(--mute); font-weight: 600; font-size: 12px; margin: 14px 0 4px; text-transform: uppercase; letter-spacing: .04em; }
+#orders .soBtns { display: flex; gap: 6px; margin-top: 12px; flex-wrap: wrap; }
+#orders .soEmpty { padding: 40px; color: var(--mute); }
+#orders .soForm { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+#orders .soForm label { display: flex; flex-direction: column; gap: 3px; color: var(--mute); font-size: 12px; }
+#orders .soForm label.w input { width: 420px; }
+#orders tr.hov { cursor: pointer; } #orders tr.hov:hover td { background: var(--hover); }
+#orders .note.warn { margin-top: 10px; }
+.soCat .pg { padding-top: 8px; } .soCat .row { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; } .soCat .fl { display: flex; flex-direction: column; gap: 3px; }
+.soCat textarea { width: 100%; }
+#orders input:not([type=checkbox]):not([type=radio]), #orders select { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r); padding: 4px 7px; }
+#orders input:focus, #orders select:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+#orders input[type=date] { color-scheme: dark; }
+.soCat input:not([type=checkbox]):not([type=radio]), .soCat select, .soCat textarea { background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r); padding: 4px 7px; }
+.soCat table.grid, #orders table.grid { border-collapse: collapse; width: 100%; margin-top: 6px; }
+.soCat table.grid th, .soCat table.grid td, #orders table.grid th, #orders table.grid td { padding: 5px 8px; border-bottom: 1px solid var(--line2); text-align: left; }
+.soCat table.grid th, #orders table.grid th { color: var(--mute); font-size: 11.5px; font-weight: 600; }
+#orders table.grid td.r { text-align: right; }

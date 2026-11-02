@@ -1,15 +1,15 @@
 {
   "name": "sthgroup-cutting",
-  "version": "0.7.2",
+  "version": "0.8.0",
   "description": "STHGroup — раскрой, смета и заказы по модели из БАЗИС-Мебельщика (на основе окна BazisReborn)",
   "main": "main.js",
   "private": true,
   "scripts": {
     "start": "electron .",
-    "test": "node test/fixtures.js && node test/t_cut.js && node test/t_project.js && node test/t_est.js && node test/t_matbase.js && node test/t_mblink.js && node test/t_pack.js && node test/t_server.js && node test/t_export.js",
+    "test": "node test/fixtures.js && node test/t_cut.js && node test/t_project.js && node test/t_est.js && node test/t_matbase.js && node test/t_mblink.js && node test/t_pack.js && node test/t_server.js && node test/t_export.js && node test/t_orders.js",
     "dist": "electron-builder --win nsis --publish never",
     "release": "electron-builder --win nsis --publish always",
-    "test:ci": "node test/fixtures.js && node test/t_cut.js && node test/t_project.js && node test/t_matbase.js && node test/t_mblink.js && node test/t_pack.js && node test/t_server.js && node test/t_export.js"
+    "test:ci": "node test/fixtures.js && node test/t_cut.js && node test/t_project.js && node test/t_matbase.js && node test/t_mblink.js && node test/t_pack.js && node test/t_server.js && node test/t_export.js && node test/t_orders.js"
   },
   "dependencies": {
     "electron-updater": "^6.3.9"

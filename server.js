@@ -319,6 +319,26 @@ function start(opt) {
       try { json(res, 200, { ok: true, path: installScript(d.dir, opt.bazisDir || path.join(__dirname, 'bazis'), opt.exePath || process.execPath) }); }
       catch (e) { fail(res, 500, fileErr(e, d.dir)); }
     },
+    // STHGroup: копия файла модели в папку заказа (.bmk целиком; если проект не одним файлом — и файлы рядом с тем же именем: .glb, .uv, текстуры)
+    'POST /api/sth/copy': async function (req, res) {
+      const d = await jbody(req), src = String(d.src || ''), dst = String(d.dst || '');
+      if (!path.isAbsolute(src) || !path.isAbsolute(dst)) return fail(res, 400, 'не указан путь');
+      if (path.resolve(src).toLowerCase() === path.resolve(dst).toLowerCase()) return json(res, 200, { ok: true, path: dst, same: true });
+      try {
+        fs.mkdirSync(path.dirname(dst), { recursive: true });
+        fs.writeFileSync(dst, fs.readFileSync(src));
+        const extra = [];
+        if (!isPacked(src)) {
+          const stem = path.basename(src, path.extname(src)), sd = path.dirname(src), dd = path.dirname(dst), nstem = path.basename(dst, path.extname(dst));
+          fs.readdirSync(sd).forEach(function (n) {
+            if (n === path.basename(src) || n.indexOf(stem + '.') !== 0) return;
+            const f = path.join(sd, n); if (!fs.statSync(f).isFile()) return;
+            const t = path.join(dd, nstem + n.slice(stem.length)); fs.writeFileSync(t, fs.readFileSync(f)); extra.push(t);
+          });
+        }
+        json(res, 200, { ok: true, path: dst, extra: extra });
+      } catch (e) { fail(res, 500, fileErr(e, src)); }
+    },
     'POST /api/sound/play': function (req, res) { json(res, 200, { ok: true, played: false }); },
     'POST /api/sound/stop': function (req, res) { json(res, 200, { ok: true }); }
   };

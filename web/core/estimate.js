@@ -1001,6 +1001,11 @@
 			}
 			R.merged = gone.length;
 		})();
+		/* STHGroup: работы (распил, кромкование, облицовка, пазы, упаковка, отверстия) считаются в заказе — в смете их нет */
+		if (E.noWorks) {
+			for (var qw = ROWS.length - 1; qw >= 0; qw--) if (ROWS[qw].group === 'РАБОТЫ') ROWS.splice(qw, 1);
+			for (qw = 0; qw < ROWS.length; qw++) ROWS[qw].i = qw;
+		}
 
 		/* ---------------- прочее: строки прайса и свои строки заказа ---------------- */
 		var xrows = [];

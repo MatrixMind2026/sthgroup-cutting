@@ -28,10 +28,11 @@
 	/* ------------------------------ книга ------------------------------------ */
 	O.defCatalog = function () {
 		return {
-			sheetWorks: [
-				{ id: 'full', name: 'Распил, кромкооблицовка и присадка', price: 5250, match: '' },
-				{ id: 'cut', name: 'Распил', price: 1050, match: 'хдф, двп, hdf, оргалит' }
-			],
+			sheetWorks: O.foxyWorks().concat([
+				{ id: 'full', name: 'Распил, кромкооблицовка и присадка', price: 5250, match: '' }
+			]),
+			groups: O.foxyGroups(),
+			urgentPct: 30, urgentDays: 3, urgentText: 'Срочный заказ',
 			small: { limit: 60, edge: 420, drill: 420 },
 			services: [
 				{ id: 'up', name: 'Разработка УП и адаптация модели под производство', unit: 'item', price: 2200, on: 1 },
@@ -52,7 +53,41 @@
 			prefix: 'STH-'
 		};
 	};
-	O.empty = function () { return { format: O.FORMAT, v: 1, next: 1, clients: [], orders: [], cat: O.defCatalog() }; };
+	/* образец цен другой фабрики (FOXY): цена за лист по материалу и толщине, доп. работы за штуку, фасады и фрезеровка за м². Цены — заменить на свои. */
+	O.foxyWorks = function () {
+		return [
+			{ id: 'f_ldsp16', name: 'ЛДСП 8–16 мм: распил, кромка, присадка', price: 5500, match: 'лдсп', thMin: 8, thMax: 16 },
+			{ id: 'f_ldsp25', name: 'ЛДСП 25 мм: распил, кромка, присадка', price: 7500, match: 'лдсп', thMin: 17, thMax: 40 },
+			{ id: 'f_veneer', name: 'Шпон 17–25 мм: кромка, присадка, распил', price: 8500, match: 'шпон' },
+			{ id: 'f_mdf19', name: 'МДФ 8–19 мм: распил, присадка', price: 1500, match: 'мдф, mdf', thMin: 8, thMax: 19 },
+			{ id: 'f_mdf25', name: 'МДФ 22–25 мм: распил, присадка', price: 2500, match: 'мдф, mdf', thMin: 20, thMax: 40 },
+			{ id: 'f_hdf', name: 'ХДФ: распил, вырезы', price: 800, match: 'хдф, двп, hdf, оргалит' }
+		];
+	};
+	function row(id, name, price, unit, note) { return { id: id, name: name, price: price, unit: unit, note: note || '' }; }
+	O.foxyGroups = function () {
+		return [
+			{ id: 'dop', title: 'Дополнительные работы', note: '', rows: [
+				row('d_pack', 'Упаковка с картонными уголками', 500, 'за лист'), row('d_euro', 'Еврозапил', 10000, 'шт'),
+				row('d_h1', 'Интегрированная ручка до 1000 мм', 2000, 'шт'), row('d_h2', 'Интегрированная ручка после 1000 мм', 3000, 'шт'),
+				row('d_45a', 'Спил 0–45° детали до 500 мм', 250, 'шт'), row('d_45b', 'Спил 0–45° детали после 500 мм', 500, 'шт'),
+				row('d_g1', 'Склейка деталей до 0,5 м²', 1500, 'шт'), row('d_g2', 'Склейка деталей от 0,5 до 1 м²', 3500, 'шт'), row('d_g3', 'Склейка деталей после 1 м²', 5000, 'шт'),
+				row('d_c1', 'Криволинейка, кромка 1 мм, до 1000 мм', 500, 'шт'), row('d_c2', 'Криволинейка, кромка 1 мм, после 1000 мм', 800, 'шт'),
+				row('d_mel', 'Меламиновая кромка', 300, 'шт'), row('d_c3', 'Криволинейка, кромка 1,5–2 мм', 1000, 'м.п.')] },
+			{ id: 'fac', title: 'Фасады МДФ с эмалью', note: 'цена за 1 м²: с материалом, эмалью, присадкой и упаковкой', rows: [
+				row('e_m16', 'Мыло 16 мм, мат', 7100, 'м²'), row('e_m19', 'Мыло 19 мм, мат', 7100, 'м²'), row('e_g16', 'Мыло 16 мм, глянец', 15400, 'м²'), row('e_g19', 'Мыло 19 мм, глянец', 15600, 'м²'),
+				row('e_1', '1 группа — простая фрезеровка без выборки, МДФ 19 мм', 10600, 'м²'), row('e_2', '2 группа — простая фрезеровка с небольшой выборкой, МДФ 19 мм', 11600, 'м²'),
+				row('e_3', '3 группа — большая выборка, волна, валики, МДФ 19 мм', 12600, 'м²'), row('e_4', '4 группа — большая выборка и сложная фрезеровка, МДФ 19 мм', 16600, 'м²'),
+				row('e_hand', 'Интегрированная ручка с покраской', 2500, 'шт'), row('e_lak', 'Лаковое покрытие', 2500, 'м²'), row('e_back', 'Эмаль на вторую (заднюю) сторону', 3000, 'м²')] },
+			{ id: 'mill', title: 'Фрезеровка без эмали', note: 'цена за 1 м²; группа — по сложности рисунка', rows: [
+				row('m_0a', 'Мыло, материал производства (мыло, интегрированная ручка)', 2500, 'м²'), row('m_0b', 'Мыло, МДФ клиента (мыло, интегрированная ручка)', 1500, 'м²'),
+				row('m_1a', 'Группа 1, материал производства — простая фрезеровка без гравера и выборки', 3600, 'м²'), row('m_1b', 'Группа 1, МДФ клиента', 2600, 'м²'),
+				row('m_2a', 'Группа 2, материал производства — выборка без гравера, волны, интеграция, рамки', 4600, 'м²'), row('m_2b', 'Группа 2, МДФ клиента', 3600, 'м²'),
+				row('m_3a', 'Группа 3, материал производства — волны, валики, лжевыборки, с гравером', 5600, 'м²'), row('m_3b', 'Группа 3, МДФ клиента', 4600, 'м²'),
+				row('m_4a', 'Группа 4, материал производства — сложные фасады по чертежу', 6600, 'м²'), row('m_4b', 'Группа 4, МДФ клиента', 5600, 'м²')] }
+		];
+	};
+	O.empty = function () { var c = O.defCatalog(); c.v2 = 1; return { format: O.FORMAT, v: 1, next: 1, clients: [], orders: [], cat: c }; };
 	O.fix = function (b) {
 		var e = O.empty(), k;
 		if (!b || typeof b !== 'object' || b.format !== O.FORMAT) b = e;
@@ -62,6 +97,13 @@
 		['small', 'advance', 'terms', 'company'].forEach(function (x) { for (var f in d[x]) if (b.cat[x][f] === undefined) b.cat[x][f] = d[x][f]; });
 		if (!Array.isArray(b.cat.sheetWorks) || !b.cat.sheetWorks.length) b.cat.sheetWorks = d.sheetWorks;
 		if (!Array.isArray(b.cat.services)) b.cat.services = d.services;
+		if (!Array.isArray(b.cat.groups)) b.cat.groups = d.groups;
+		/* книга до 0.9: добавить виды работ по толщине из образца (свои строки остаются; ХДФ — если своей нет) */
+		if (!b.cat.v2) {
+			var has = {}; b.cat.sheetWorks.forEach(function (w) { has[w.id] = 1; String(w.match || '').split(/[,;]+/).forEach(function (k) { has['k:' + low(k).trim()] = 1; }); });
+			O.foxyWorks().forEach(function (w) { if (!has[w.id] && !(w.id === 'f_hdf' && has['k:хдф'])) b.cat.sheetWorks.push(w); });
+			b.cat.v2 = 1;
+		}
 		b.orders.forEach(function (o) { O.fixOrder(b, o); });
 		return b;
 	};
@@ -85,7 +127,11 @@
 	O.addClient = function (b, c) { var x = { id: O.id('c'), name: String(c.name || '').trim() || 'Клиент', phone: c.phone || '', email: c.email || '', note: c.note || '' }; b.clients.push(x); return x; };
 	O.order = function (b, id) { for (var i = 0; i < b.orders.length; i++) if (b.orders[i].id === id) return b.orders[i]; return null; };
 	O.byNo = function (b, no) { var n = low(no).trim(); if (!n) return null; for (var i = 0; i < b.orders.length; i++) if (low(b.orders[i].no).trim() === n) return b.orders[i]; return null; };
-	O.byItem = function (b, path) { var p = low(path); for (var i = 0; i < b.orders.length; i++) for (var j = 0; j < b.orders[i].items.length; j++) if (low(b.orders[i].items[j].path) === p) return b.orders[i]; return null; };
+	/* заказ по файлу изделия: копия в папке заказа или файл, из которого её сделали (туда выгружает БАЗИС) */
+	O.byItem = function (b, path) { var p = low(path); for (var i = 0; i < b.orders.length; i++) for (var j = 0; j < b.orders[i].items.length; j++) { var it = b.orders[i].items[j]; if (low(it.path) === p || (it.src && low(it.src) === p)) return b.orders[i]; } return null; };
+	O.itemOf = function (o, path) { var p = low(path); for (var j = 0; j < o.items.length; j++) { var it = o.items[j]; if (low(it.path) === p || (it.src && low(it.src) === p)) return it; } return null; };
+	/* имя папки заказа: «номер клиент», без знаков, которых не бывает в именах файлов */
+	O.dirName = function (b, o) { var c = O.client(b, o.clientId); return (String(o.no || 'Заказ') + (c ? ' ' + c.name : '')).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80).replace(/[. ]+$/, '') || 'Заказ'; };
 	O.addOrder = function (b, o) {
 		var x = O.fixOrder(b, { id: O.id('o'), no: o.no || O.nextNo(b), date: O.today(), clientId: o.clientId || '', status: 'calc', note: o.note || '', items: [], payments: [], svc: {}, terms: {} });
 		b.orders.unshift(x);
@@ -93,8 +139,7 @@
 	};
 	/* изделие (файл проекта) в заказ; уже есть — обновить сводку */
 	O.putItem = function (o, path, snap) {
-		var p = low(path), it = null;
-		o.items.forEach(function (x) { if (low(x.path) === p) it = x; });
+		var it = O.itemOf(o, path);
 		if (!it) { it = { path: path, title: '', snap: null }; o.items.push(it); }
 		if (snap) { it.snap = snap; it.title = it.title || snap.title || ''; }
 		return it;
@@ -113,11 +158,16 @@
 
 	/* ---------------------------- сводка изделия ----------------------------- */
 	/* вид работы листа: первый, у которого слово из «match» есть в названии материала; иначе — первый без условий */
-	O.workFor = function (cat, matName) {
-		var n = low(matName), def = null;
+	/* толщина: «от» и «до» (мм, пусто — любая); слова и толщина вместе — оба условия */
+	O.workFor = function (cat, matName, th) {
+		var n = low(matName), def = null, t = num(th);
 		for (var i = 0; i < cat.sheetWorks.length; i++) {
 			var w = cat.sheetWorks[i], keys = String(w.match || '').split(/[,;]+/).map(function (s) { return low(s).trim(); }).filter(Boolean);
-			if (!keys.length) { if (!def) def = w; continue; }
+			var lo = w.thMin === '' || w.thMin === undefined || w.thMin === null ? null : num(w.thMin), hi = w.thMax === '' || w.thMax === undefined || w.thMax === null ? null : num(w.thMax);
+			var thOk = (lo === null || (t && t >= lo - 0.01)) && (hi === null || (t && t <= hi + 0.01));
+			if (!keys.length && lo === null && hi === null) { if (!def) def = w; continue; }
+			if (!thOk) continue;
+			if (!keys.length) return w;
 			for (var k = 0; k < keys.length; k++) if (n.indexOf(keys[k]) >= 0) return w;
 		}
 		return def || cat.sheetWorks[0] || null;
@@ -128,7 +178,7 @@
 		sm.mats.forEach(function (x) {
 			var n = (x.std || 0) + (x.rem || 0);
 			if (!n) return;
-			var w = O.workFor(cat, x.mat.name);
+			var w = O.workFor(cat, x.mat.name, x.mat.th);
 			sheets.push({ mat: P.matTitle ? P.matTitle(x.mat) : x.mat.name, name: x.mat.name, th: x.mat.th, n: n, work: w ? w.id : '' });
 		});
 		var by = (st.holes && st.holes.by) || {};
@@ -155,7 +205,7 @@
 		var byWork = {}, totalSheets = 0, totalParts = 0, sEdge = 0, sDrill = 0, mat = 0, fit = 0;
 		items.forEach(function (x) {
 			var s = x.snap;
-			s.sheets.forEach(function (sh) { var wid = (O.workFor(cat, sh.name) || {}).id || sh.work; (byWork[wid] = byWork[wid] || { n: 0, mats: {} }); byWork[wid].n += sh.n; byWork[wid].mats[sh.name] = 1; totalSheets += sh.n; });
+			s.sheets.forEach(function (sh) { var wid = (O.workFor(cat, sh.name, sh.th) || {}).id || sh.work; (byWork[wid] = byWork[wid] || { n: 0, mats: {} }); byWork[wid].n += sh.n; byWork[wid].mats[sh.name] = 1; totalSheets += sh.n; });
 			totalParts += s.parts; sEdge += s.smallEdge; sDrill += s.smallDrill; mat += s.mat; fit += s.fit;
 		});
 		lines = [];
@@ -181,6 +231,14 @@
 		});
 		(o.extra || []).forEach(function (x, k) { var q = num(x.qty, 1), p = num(x.price); lines.push({ key: 'x:' + k, name: x.name || '', unit: x.unit || 'шт', price: p, qty: q, sum: r2(p * q), extra: 1 }); });
 		blocks.push({ id: 'svc', title: 'Услуги к заказу', lines: lines });
+		/* доп. работы, фасады, фрезеровка — количество вписывают в заказе (шт, м², м.п.) */
+		(cat.groups || []).forEach(function (g) {
+			var gl = (g.rows || []).map(function (r) {
+				var ov = o.svc['g:' + r.id] || {}, price = ov.price !== undefined && ov.price !== '' ? num(ov.price) : num(r.price), qty = ov.qty !== undefined && ov.qty !== '' ? num(ov.qty) : 0;
+				return { key: 'g:' + r.id, name: r.name, unit: r.unit || 'шт', price: price, qty: qty, sum: r2(price * qty), opt: 1 };
+			});
+			blocks.push({ id: 'g:' + g.id, title: g.title, note: g.note || '', lines: gl, opt: 1 });
+		});
 		var serv = 0;
 		blocks.forEach(function (bk) { bk.sum = r2(bk.lines.reduce(function (a, l) { return a + (l.sum || 0); }, 0)); serv += bk.sum; });
 		serv = r2(serv);
@@ -194,23 +252,26 @@
 		];
 		var mats = r2(matLines[0].sum + matLines[1].sum);
 		/* проценты от суммы (безнал) — к услугам */
-		var base = servD + mats, pctSum = 0;
+		/* срочный заказ: % к услугам (без материалов) */
+		var urgent = o.urgent ? r2(servD * num(cat.urgentPct, 30) / 100) : 0;
+		var base = servD + urgent + mats, pctSum = 0;
 		pct.forEach(function (p) { p.qty = p.on ? 1 : 0; p.sum = p.on ? r2(base * p.price / 100) : 0; p.check = 1; pctSum += p.sum; });
 		blocks[2].lines = blocks[2].lines.concat(pct);
-		var servAll = r2(servD + pctSum), total = r2(servAll + mats);
+		var servAll = r2(servD + urgent + pctSum), total = r2(servAll + mats);
 		var adv = r2(servAll * num(cat.advance.serv) / 100 + mats * num(cat.advance.mat) / 100);
 		var paid = r2(o.payments.reduce(function (a, p) { return a + num(p.amount); }, 0));
 		var sheetsList = {};
 		items.forEach(function (x) { x.snap.sheets.forEach(function (sh) { var key = sh.name + '|' + sh.th; (sheetsList[key] = sheetsList[key] || { name: sh.name, th: sh.th, n: 0 }).n += sh.n; }); });
 		return {
-			blocks: blocks, matLines: matLines, serv: serv, discount: discount, servD: servD, pctSum: r2(pctSum), servAll: servAll, mats: mats, total: total,
+			blocks: blocks, matLines: matLines, serv: serv, discount: discount, servD: servD, urgent: urgent, pctSum: r2(pctSum), servAll: servAll, mats: mats, total: total,
 			advance: Math.min(adv, total), rest: r2(total - Math.min(adv, total)), paid: paid, debt: r2(total - paid),
 			sheets: totalSheets, parts: totalParts, smallEdge: sEdge, smallDrill: sDrill, matList: Object.keys(sheetsList).map(function (k2) { return sheetsList[k2]; }), warn: warn
 		};
 	};
 	/* текст условий с подстановкой */
 	O.termsText = function (b, o, q) {
-		var t = Object.assign({}, b.cat.terms, o.terms || {}), ld = (O.LOADS.filter(function (x) { return x[0] === t.load; })[0] || ['', 'средняя'])[1];
+		var t = Object.assign({}, b.cat.terms, o.terms || {}); if (o.urgent) t.days = num(b.cat.urgentDays, 3);
+		var ld = (O.LOADS.filter(function (x) { return x[0] === t.load; })[0] || ['', 'средняя'])[1];
 		var adv = b.cat.advance.serv + '% за услуги и ' + b.cat.advance.mat + '% за материалы при приобретении через нас';
 		return String(t.text || '').replace(/\{аванс\}/g, adv).replace(/\{загрузка\}/g, ld).replace(/\{срок\}/g, t.days).replace(/\{день\}/g, (num(t.freeDays) + 1) + '-го').replace(/\{хранение\}/g, t.storage)
 			.split(/\n+/).filter(function (s) { return s.trim(); });

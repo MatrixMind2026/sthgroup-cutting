@@ -16,6 +16,7 @@
 		} catch (e) { U.error(e); }
 	}
 	window.STH = { installScript: installScript };
+	BM.est.noWorks = true;   // работы считаются в заказе (раздел «Заказы»), в смете — только материалы, фурнитура, фасады, прочее
 		['bScript', 'wScript'].forEach(function (id) { var b0 = document.getElementById(id); if (b0) b0.onclick = installScript; });
 })();
 

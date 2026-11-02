@@ -29,5 +29,12 @@ let n = 0; const ok = (name) => { n++; console.log('ок     ' + name); };
   const base2 = 'http://127.0.0.1:' + s2.port, H2 = { 'X-BM-Token': s2.token };
   r = await (await fetch(base2 + '/api/upd/check', { method: 'POST', headers: H2 })).json(); assert.strictEqual(r.status, 'none'); assert.strictEqual(r.current, '9.9.9'); ok('принудительная проверка идёт в оболочку');
   r = await (await fetch(base2 + '/api/upd/state', { headers: H2 })).json(); assert.strictEqual(r.current, '9.9.9'); assert.strictEqual(r.checked, 123); assert.strictEqual(r.repo, 'o/r'); ok('состояние обновлений — от оболочки');
+  {
+    const src = path.join(dir, 'Кухня.bmk'), dst = path.join(dir, 'Заказы', 'STH-0001 Иванов', 'Кухня.bmk');
+    fs.writeFileSync(src, '{"format":"benchmark-project"}'); fs.writeFileSync(path.join(dir, 'Кухня.glb'), 'glb');
+    r = await (await fetch(base2 + '/api/sth/copy', { method: 'POST', headers: Object.assign({ 'Content-Type': 'application/json' }, H2), body: JSON.stringify({ src: src, dst: dst }) })).json();
+    assert.ok(r.ok && fs.readFileSync(dst, 'utf8') === '{"format":"benchmark-project"}' && fs.existsSync(path.join(path.dirname(dst), 'Кухня.glb')));
+    ok('модель копируется в папку заказа (с файлами рядом, если проект не одним файлом)');
+  }
   s2.close(); console.log('проверок ' + n + ' | ошибок нет');
 })().catch((e) => { console.error(e); process.exit(1); });

@@ -500,7 +500,7 @@
 		$('eCard').innerHTML = h;
 		autoSize($('eCard'));
 		var t = '<div class="sec">Итог</div><div class="tbody"><div class="eSum" title="Итог сметы со скидкой"><span class="odo" id="eOdo"></span><small>руб.</small></div><div class="eKv">';
-		E.GROUPS.forEach(function (g) { if (g === E.DOP && !R.groups[g]) return; t += '<span>' + headName(g) + '</span><b>' + E.money(R.groups[g] || 0) + '</b>'; });
+		E.GROUPS.forEach(function (g) { if (g === E.DOP && !R.groups[g]) return; if (E.noWorks && g === 'РАБОТЫ') return;   /* STHGroup */ t += '<span>' + headName(g) + '</span><b>' + E.money(R.groups[g] || 0) + '</b>'; });
 		if (R.discSum) t += '<span>Всего</span><b>' + E.money(R.sub) + '</b>';
 		t += '<span class="in">Скидка, % <input type="text" id="eDisc" value="' + val(R.disc) + '" title="Скидка считается от всей суммы и идёт отдельной строкой перед ИТОГО"></span><b>' + (R.discSum ? '− ' + E.money(R.discSum) : '—') + '</b>' +
 			'<h4 title="Наценка спрятана в ценах строк: в документах печатается цена уже с ней. Хранится в прайсе">Наценка в ценах, %</h4>' +

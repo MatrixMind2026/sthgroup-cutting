@@ -1,6 +1,8 @@
 /* STHGroup — оболочка Electron вокруг окна (копия окна BazisReborn в папке web).
    Окно общается с программой по локальному адресу /api/* (server.js) — так же, как с программой BazisReborn.
-   Обновления — как раньше: GitHub Releases этого репозитория через electron-updater. */
+   Обновления — как раньше: GitHub Releases этого репозитория через electron-updater.
+   Принудительная проверка — кнопка «Проверить обновления» в настройках: окно зовёт /api/upd/check,
+   сервер передаёт вызов сюда (hooks.updCheck), а проверяет и качает electron-updater. */
 'use strict';
 const { app, BrowserWindow, dialog, shell, Menu } = require('electron');
 const path = require('path');
@@ -9,6 +11,22 @@ const server = require('./server');
 
 const APP_NAME = 'STHGroup';
 let win = null, srv = null;
+
+// ---- обновления: что знает оболочка (показывается в настройках, вкладка «Обновления») ----
+const upd = { status: 'idle', latest: '', checked: 0, problem: '' };
+let updChecking = false; // принудительная проверка уже идёт — вторую не запускаем
+
+function updRepo() { // репозиторий выпусков из package.json — для подсказки в настройках
+  try { const p = require('./package.json'); const pub = p.build && p.build.publish && p.build.publish[0]; if (pub && pub.owner && pub.repo) return pub.owner + '/' + pub.repo; } catch (e) { /* нет */ }
+  return '';
+}
+function updErrText(e) {
+  const m = String((e && e.message) || e || '');
+  if (/ENOTFOUND|EAI_AGAIN|ECONNREFUSED|ECONNRESET|ETIMEDOUT|net::|network|timed out/i.test(m)) return 'Нет связи с сервером обновлений. Проверьте интернет и попробуйте ещё раз.';
+  if (/\b404\b/.test(m)) return 'Сервер обновлений ответил: выпусков не найдено.';
+  if (/\b(401|403)\b/.test(m)) return 'Сервер обновлений отказал в доступе.';
+  return m.slice(0, 300);
+}
 
 // файл проекта из командной строки (скрипт выгрузки STHGroup открывает программу с файлом .bmk)
 function fileArg(argv) {
@@ -62,7 +80,39 @@ const hooks = {
   zoom: function (z) { if (win) win.webContents.setZoomFactor(z); },
   title: function (t) { if (win) win.setTitle(String(t).replace(/BazisReborn/g, APP_NAME)); },
   quit: function () { app.quit(); },
-  toFront: function () { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } }
+  toFront: function () { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } },
+  // состояние обновлений для вкладки «Обновления» в настройках
+  updState: function () {
+    return { current: app.getVersion(), edition: 'sth', hasKey: app.isPackaged, keySrc: '', problem: upd.problem, repo: updRepo(), checked: upd.checked, seen: upd.latest, publisher: null, status: upd.status, packaged: app.isPackaged };
+  },
+  // принудительная проверка: кнопка «Проверить обновления». Новая версия качается сама (autoDownload),
+  // по готовности показывается окно «Доступна новая версия» из setupAutoUpdate.
+  updCheck: async function () {
+    if (!app.isPackaged) return { status: 'dev', current: app.getVersion() };
+    if (updChecking) return { status: 'checking', current: app.getVersion() };
+    updChecking = true;
+    try {
+      const { autoUpdater } = require('electron-updater');
+      return await new Promise(function (resolve) {
+        let settled = false;
+        const timer = setTimeout(function () { done({ status: 'error', current: app.getVersion(), message: 'Сервер обновлений не ответил. Проверьте интернет и попробуйте ещё раз.' }); }, 40000);
+        function done(r) {
+          if (settled) return; settled = true; clearTimeout(timer);
+          upd.checked = Date.now(); // «проверено …» на вкладке «Обновления»
+          autoUpdater.removeListener('update-available', onA); autoUpdater.removeListener('update-not-available', onN); autoUpdater.removeListener('error', onE);
+          resolve(r);
+        }
+        function onA(info) { done({ status: 'available', current: app.getVersion(), version: (info && info.version) || '' }); }
+        function onN() { done({ status: 'none', current: app.getVersion() }); }
+        function onE(e) { done({ status: 'error', current: app.getVersion(), message: updErrText(e) }); }
+        autoUpdater.on('update-available', onA);
+        autoUpdater.on('update-not-available', onN);
+        autoUpdater.on('error', onE);
+        try { autoUpdater.checkForUpdates().catch(onE); } catch (e) { onE(e); }
+      });
+    } catch (e) { return { status: 'error', current: app.getVersion(), message: updErrText(e) }; }
+    finally { updChecking = false; }
+  }
 };
 
 // Дополнительные команды STHGroup: вход на сайт магазина и чтение страницы товара под этим входом.
@@ -128,13 +178,19 @@ function setupAutoUpdate() {
   try {
     const { autoUpdater } = require('electron-updater');
     autoUpdater.autoDownload = true;
+    autoUpdater.on('update-available', function (info) { upd.status = 'available'; upd.latest = (info && info.version) || ''; upd.problem = ''; });
+    autoUpdater.on('update-not-available', function () { upd.status = 'none'; upd.checked = Date.now(); upd.problem = ''; });
     autoUpdater.on('update-downloaded', function (info) {
+      upd.status = 'downloaded'; upd.latest = (info && info.version) || upd.latest; upd.checked = Date.now();
       const r = dialog.showMessageBoxSync({ type: 'info', buttons: ['Перезапустить сейчас', 'Позже'], defaultId: 0,
         title: APP_NAME, message: 'Доступна новая версия ' + info.version, detail: 'Обновление скачано. Установится при перезапуске.' });
       if (r === 0) autoUpdater.quitAndInstall();
     });
-    autoUpdater.on('error', function () {}); // нет сети или выпуска — молча
-    autoUpdater.checkForUpdates().catch(function () {});
+    autoUpdater.on('error', function (e) { upd.status = 'error'; upd.problem = updErrText(e); }); // нет сети или выпуска — молча, запись видна в настройках
+    // проверка при запуске — молча; выключается в настройках: «Обновления» → «проверять обновления при запуске»
+    let on = true;
+    try { const set = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'settings.json'), 'utf8')); if (set.updateOnline === 0) on = false; } catch (e) { /* настроек ещё нет */ }
+    if (on) autoUpdater.checkForUpdates().catch(function () {});
   } catch (e) { /* без обновлений */ }
 }
 

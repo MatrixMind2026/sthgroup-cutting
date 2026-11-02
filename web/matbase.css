@@ -89,3 +89,8 @@ button.icon { min-width: 24px; padding: 2px 5px; }
 .mbCard .tabs.sub button { padding: 4px 10px; font-size: 12.5px; }
 .vr { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px 14px; }
 .vr .fl input[type=checkbox] { align-self: flex-start; }
+/* STHGroup: перестройка базы по структуре */
+.sthRe input.rt { background: var(--panel2, #2a2c30); color: var(--text, #e6e6e6); border: 1px solid var(--line, #4a4d52); border-radius: 4px; padding: 3px 6px; min-width: 380px; }
+.sthRe td { vertical-align: middle; }
+.sthRe .warn { color: #f3b15a; }
+.mbCard .sthPackRow .ck { display: flex; gap: 6px; align-items: center; }

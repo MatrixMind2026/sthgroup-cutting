@@ -1,0 +1,34 @@
+// Перестройка базы по структуре STHGroup (core/sth_restruct.js): пути групп, поля из «Примечания», упаковка, чистка
+//   node test/t_restruct.js
+require('../web/core/sth_restruct.js');
+const assert = require('assert'), R = BM.sthRe;
+let n = 0; const ok = (name) => { n++; console.log('ок     ' + name); };
+const g = (grp, name) => R.mapGroup(grp, name || '');
+assert.strictEqual(g('01. Листовые материалы/01. ЛДСП/01. Egger/ЛДСП 16 мм').path, '01. Листовые материалы/01. ЛДСП/Egger/ЛДСП 16 мм');
+assert.strictEqual(g('01. Листовые материалы/02. МДФ и ХДФ/Egger/Белый', 'ХДФ Белый 3 мм').path, '01. Листовые материалы/03. ХДФ и ДВП/Egger/Белый');
+assert.ok(/02\. МДФ/.test(g('01. Листовые материалы/02. МДФ и ХДФ/Egger/PerfectSense Premium мат', 'МДФ PerfectSense').path) && g('01. Листовые материалы/02. МДФ и ХДФ/Egger/PerfectSense Premium мат').cls[0] === 'PerfectSense');
+ok('листовые: ЛДСП, МДФ и ХДФ раздельно, номер у производителя снят, PerfectSense — класс');
+const e = g('02. Кромочные материалы/02. Кромка АБС/Egger/Для столешниц, поперечный рисунок', 'Кромка АБС 43х2, Дуб');
+assert.strictEqual(e.path, '02. Кромка/02. АБС/Egger/43х2 мм'); assert.deepStrictEqual(e.cls, ['Для столешниц', 'Поперечный рисунок']);
+assert.strictEqual(g('02. Кромочные материалы/02. Кромка АБС/Egger/19х0,8 мм').path, '02. Кромка/02. АБС/Egger/19х0,8 мм');
+ok('кромка: признаки — классами, размер — из названия');
+const f = g('04. Фурнитура/01. МДМ/01. Крепежная и соединительная фурнитура/01. Метизы/Винты');
+assert.ok(f.path === '04. Фурнитура/01. Крепёж/Метизы/Винты' && f.sup === 'МДМ');
+assert.strictEqual(g('04. Фурнитура/01. МДМ/02. Системы для открывания фасадов/01. Петли').path, '04. Фурнитура/02. Петли');
+assert.strictEqual(g('04. Фурнитура/01. МДМ/04. Лицевая фурнитура/05. Системы алюминиевых профилей GOLA').path, '03. Погонные материалы/04. Профили/GOLA');
+assert.strictEqual(g('04. Фурнитура/01. МДМ/07. Кухонные комплектующие/18. Кухонные ножки').path, '04. Фурнитура/06. Опоры и ножки/Кухонные ножки');
+assert.strictEqual(g('04. Фурнитура/01. МДМ/09. Рамочный профиль для фасадов').path, '03. Погонные материалы/04. Профили/Рамочный');
+assert.ok(g('04. Фурнитура/01. МДМ/04. Лицевая фурнитура/08. Экспозиторы и образцы').drop);
+assert.ok(R.SKELETON.every(s => s[0].split('/').length <= 4) && R.typeOf('04. Фурнитура/02. Петли') === 'fit' && R.typeOf('02. Кромка/02. АБС/Egger') === 'edge');
+ok('фурнитура по виду: поставщик — в карточку, GOLA и ножки — одной группой, не глубже 4 уровней');
+assert.deepStrictEqual(R.packOf('Шкант калиброванный мебельный 8 Х 30 (5000 шт.)'), { n: 5000, unit: 'шт' });
+assert.strictEqual(R.packOf('Винт 4х16 100 шт/уп').n, 100); assert.strictEqual(R.packOf('Шкант (5 000 шт.)').n, 5000);
+assert.strictEqual(R.packOf('Конфирмат 7х50'), null); assert.strictEqual(R.packOf('Саморез 3x40, 500 штук').n, 500);
+ok('упаковка из названия: (5000 шт.), 100 шт/уп, 5 000, «штук»; размер 7х50 — не упаковка');
+let x = R.fixRec({ ITEMNAME: 'Профиль', GRP_NAME: '04. Фурнитура/01. МДМ/10. Замки', UNITNAME: 'шт', PRICE: 300, COMMENT: 'Товар продаётся хлыстами/Длина хлыста 3м', SIGN: '90/1' });
+assert.ok(x.rec.LENGTH === 3000 && x.rec.UNITNAME === 'м.п.' && x.rec.ROUNDMODE === 2 && x.extra.roundTo === 3 && x.rec.SIGN === '');
+x = R.fixRec({ ITEMNAME: 'Саморез 3x40, 500 штук', GRP_NAME: '', UNITNAME: 'упаковка', PRICE: 626.69, COMMENT: 'Цена указана за упаковку/В упаковке 500шт.' });
+assert.ok(x.extra.pack === 500 && x.extra.packPrice === 626.69 && Math.abs(x.rec.PRICE - 1.2534) < 1e-4 && x.rec.UNITNAME === 'шт');
+x = R.fixRec({ ITEMNAME: 'Кромка', GRP_NAME: '', UNITNAME: 'м', PRICE: 10, COMMENT: 'Egger' }); assert.ok(x.rec.UNITNAME === 'м.п.' && x.rec.COMMENT === '');
+ok('«Примечание» → поля: хлыст → длина и округление, цена за упаковку → за штуку, «м» → «м.п.», «90/1» и «Egger» убраны');
+console.log('проверок ' + n + ' | ошибок нет');

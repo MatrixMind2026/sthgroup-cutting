@@ -1006,6 +1006,8 @@
 			for (var qw = ROWS.length - 1; qw >= 0; qw--) if (ROWS[qw].group === 'РАБОТЫ') ROWS.splice(qw, 1);
 			for (qw = 0; qw < ROWS.length; qw++) ROWS[qw].i = qw;
 		}
+		/* STHGroup: комплекты — разделить строку на части, объединить строки в комплект (ui/sth_kits.js) */
+		if (typeof E.sthKits === 'function') { try { E.sthKits({ rows: ROWS, mk: mkRow, we: we, pl: pl }); } catch (eK) { if (typeof console !== 'undefined') console.warn(eK); } for (var qk = 0; qk < ROWS.length; qk++) ROWS[qk].i = qk; }
 
 		/* ---------------- прочее: строки прайса и свои строки заказа ---------------- */
 		var xrows = [];

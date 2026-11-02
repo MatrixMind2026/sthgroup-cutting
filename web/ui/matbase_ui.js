@@ -115,7 +115,7 @@
 		['Справочники', [['Классы материалов', function () { W.classes(); }], ['Единицы измерения', function () { W.units(); }], ['Альтернативные валюты', function () { W.currencies(); }], null, ['Поставщики', function () { W.suppliers(); }]]],
 		['Склад', [['Приход…', function () { W.doc('in'); }], ['Корректировка остатков…', function () { W.doc('adj'); }], null, ['Документы', function () { W.docs(); }], ['Деловые обрезки', function () { W.offcutsWin(); }]]],
 		['Инструменты', [['Обновление цен', function () { W.prices(false); }], ['Установить наценку', function () { W.prices(true); }], ['Групповое редактирование параметров…', function () { W.bulk(); }], ['Переименовать выделенные…', function () { W.rename(); }], ['Обновить цены по ссылкам…', function () { if (window.STHShop) window.STHShop.updateAll(S.b, W.changed); }], null,
-			['Поиск дубликатов в базе', function () { W.dups(); }], ['Создать резервную копию базы…', function () { W.backup(); }]]],
+			['Поиск дубликатов в базе', function () { W.dups(); }], ['Перестроить базу по структуре STHGroup…', function () { if (window.STHRe) window.STHRe.run(); }], ['Создать резервную копию базы…', function () { W.backup(); }]]],
 		['Настройки', [['В группе показывать все материалы подгрупп', function () { S.b.set.showSub = S.b.set.showSub ? 0 : 1; W.changed(); }, function () { return S.b.set.showSub; }],
 			['Сохранять сортировку материалов в подгруппах', function () { S.b.set.keepSort = S.b.set.keepSort ? 0 : 1; W.changed(); }, function () { return S.b.set.keepSort; }], null,
 			['Столбцы таблицы…', function () { W.colsWin(); }], ['Папка базы…', function () { W.chooseFolder(); }], ['Параметры', function () { W.params(); }]]],
@@ -266,6 +266,8 @@
 			'<div class="row">' + sel('mUnit', 'Единица измерения', units, m.unit, 200) + inp('mKs', 'Коэф-т пересчёта расчётной единицы измерения в смете (кв.м, м, шт)', m.kSmeta, 460) + '</div>' +
 			'<div class="row">' + inp('mMass', 'Масса ед. изм.', m.mass, 200) + '</div>' +
 			'<div class="row">' + inp('mPrice', 'Цена в базовой валюте', m.price, 200) + '</div>' +
+			/* STHGroup: упаковка — цена за упаковку, продажа поштучно или целыми упаковками */
+			'<div class="row sthPackRow">' + inp('mPack', 'Упаковка: сколько ед. в ней', m.pack || '', 200) + inp('mPackP', 'Цена за упаковку', m.packPrice || '', 200) + '<label class="ck" style="align-self:flex-end;margin-bottom:6px"><input type="checkbox" id="mPackW"' + (m.packWhole ? ' checked' : '') + '> Продавать целыми упаковками</label><span class="mute sm" id="mPackH" style="align-self:flex-end;margin-bottom:6px"></span></div>' +
 			'<div class="row">' + sel('mCur', 'Альтернативная валюта', curs, m.altCur, 200) + inp('mAlt', 'Цена в альт. валюте', m.altPrice, 200) + '</div>' +
 			'<label class="fl">Примечание<textarea id="mNote" rows="2">' + esc(m.note) + '</textarea></label>' +
 			'<div class="row"><div class="photoBox"><div class="swatch" id="mSw" title="Фото материала или фурнитуры: щёлкните, чтобы выбрать картинку (или вставьте из буфера — Ctrl+V)"></div><div class="row tight"><button id="mPhoto">Фото…</button><button id="mPhotoX" class="icon" title="Убрать фото">✕</button></div></div><fieldset><legend>Способ округления количества</legend>' + MB.ROUND.map(function (r) { return '<label class="rd"><input type="radio" name="mRound" value="' + r[0] + '"' + (m.round === r[0] ? ' checked' : '') + '> ' + esc(r[1]) + '</label>'; }).join('') +
@@ -306,6 +308,14 @@
 				el.querySelector('.tabs').onclick = function (e) { var t = e.target.closest('button'); if (t) show(t.dataset.t); };
 				el.querySelector('.tabs.sub').onclick = function (e) { var t = e.target.closest('button'); if (!t) return; el.querySelectorAll('.tabs.sub button').forEach(function (x) { x.classList.toggle('on', x === t); }); el.querySelectorAll('[data-sp]').forEach(function (x) { x.hidden = x.dataset.sp !== t.dataset.st; }); };
 				var setPhoto = function (d) { m.photo = d || ''; preview(); };
+				/* STHGroup: упаковка — цена за единицу считается сама; число упаковки подсказывается из названия */
+				var pkRe = function () {
+					var n = MB.num(el.querySelector('#mPack').value), pp = MB.num(el.querySelector('#mPackP').value), h = el.querySelector('#mPackH');
+					if (n > 1 && pp > 0) { el.querySelector('#mPrice').value = String(Math.round(pp / n * 10000) / 10000).replace('.', ','); h.textContent = '→ ' + String(Math.round(pp / n * 10000) / 10000).replace('.', ',') + ' за ' + (el.querySelector('#mUnit').value || 'ед.'); }
+					else h.textContent = n > 1 ? 'впишите цену за упаковку — цена за единицу посчитается сама' : '';
+				};
+				['#mPack', '#mPackP', '#mUnit'].forEach(function (q) { var x = el.querySelector(q); if (x) x.addEventListener('input', pkRe); });
+				if (!m.pack && BM.sthRe) { var pg = BM.sthRe.packOf(m.name); if (pg) { el.querySelector('#mPack').value = pg.n; el.querySelector('#mPackH').textContent = 'упаковка ' + pg.n + ' — из названия, проверьте'; } }
 				el.sthSetPhoto = setPhoto; el.sthHasPhoto = function () { return !!m.photo; };   // STHGroup: фото по ссылке на товар
 				var pickPhoto = async function () { var p = await U.pick({ kind: 'open', title: 'Фото материала', filters: [{ name: 'Картинки', ext: ['jpg', 'jpeg', 'png', 'bmp', 'webp'] }] }); if (!p) return; try { setPhoto(await W.photoOf(new Blob([await U.api.readBytes(p)]))); } catch (er) { U.toast('Картинку не удалось прочитать: ' + er.message, { bad: true }); } };
 				el.querySelector('#mPhoto').onclick = pickPhoto; el.querySelector('#mSw').onclick = pickPhoto;
@@ -347,6 +357,8 @@
 			var v = function (id) { return el.querySelector('#' + id).value; }, r = m;
 			r.name = v('mName'); r.art = v('mArt'); r.group = v('mGroup'); r.k = MB.num(v('mK'), 1); r.tex = el.querySelector('#mTex').checked ? 1 : 0; r.noStock = el.querySelector('#mNo').checked ? 1 : 0;
 			r.unit = v('mUnit'); r.kSmeta = MB.num(v('mKs'), 1); r.mass = MB.num(v('mMass')); r.price = MB.num(v('mPrice')); r.altCur = v('mCur'); r.altPrice = MB.num(v('mAlt')); r.note = v('mNote');
+			r.pack = MB.num(v('mPack')) > 1 ? MB.num(v('mPack')) : 0; r.packPrice = r.pack ? MB.num(v('mPackP')) : 0; r.packWhole = r.pack && el.querySelector('#mPackW').checked ? 1 : 0;   // STHGroup
+			if (r.pack && r.packPrice > 0) r.price = Math.round(r.packPrice / r.pack * 10000) / 10000;
 			r.round = Number(el.querySelector('[name=mRound]:checked').value); r.roundTo = MB.num(v('mRoundTo'), 1); r.unique = el.querySelector('[name=mUni]:checked').value; r.sync = v('mSync').trim();
 			r.th = MB.num(v('mTh')); r.maxL = MB.num(v('mL')); r.maxW = MB.num(v('mW')); r.sign = v('mSign'); r.kCut = MB.num(v('mKc'), 1); r.kind = v('mKind'); r.overhang = MB.num(v('mOver'));
 			r.look = { mode: el.querySelector('[name=mLook]:checked').value, color: v('mColor'), tex: v('mTexF').trim(), dx: MB.num(v('mDx')), dy: MB.num(v('mDy')), sx: MB.num(v('mSx'), 1000), sy: MB.num(v('mSy'), 1000),

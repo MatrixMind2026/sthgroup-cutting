@@ -61,4 +61,7 @@ assert.ok(R.rows.some(w => w.group === 'РАБОТЫ') && !Rn.rows.some(w => w.g
 ok('смета STHGroup без работ: распил, кромкование, пазы и прочие работы — в заказе');
 o.lineOrder = { svc: ['kit', 'up'] }; const q6 = O.calc(b, o), sv = q6.blocks[2].lines.map(l => l.key);
 assert.ok(sv[0] === 'kit' && sv[1] === 'up' && sv.indexOf('pack') > 1); delete o.lineOrder; ok('порядок строк, заданный перетаскиванием, — в расчёте и КП');
+assert.strictEqual(O.words(59428.05), 'Пятьдесят девять тысяч четыреста двадцать восемь рублей 05 копеек');
+assert.strictEqual(O.words(1021001.31), 'Один миллион двадцать одна тысяча один рубль 31 копейка'); assert.strictEqual(O.words(2), 'Два рубля 00 копеек');
+ok('сумма прописью');
 console.log('проверок ' + n + ' | ошибок нет');

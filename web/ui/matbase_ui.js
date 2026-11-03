@@ -297,7 +297,7 @@
 		};
 		var supTab = '<div class="row">' + sel('mSup', 'Поставщик', [['', '—']].concat(b.suppliers.map(function (s) { return [s.id, s.name]; })), m.sup, 300) + '<button id="mSupNew" style="align-self:flex-end">Новый поставщик…</button></div>' +
 			'<div class="row">' + inp('mSupArt', 'Артикул у поставщика', m.supArt, 300) + '</div><div class="row">' + inp('mUrl', 'Ссылка на товар', m.url, 560) + '<button id="mUrlGo" style="align-self:flex-end" title="Открыть ссылку в браузере">Открыть</button></div>' +
-			(window.STHShop ? '<div class="row"><button id="mUrlFill" class="primary" title="Цена, наличие, артикул, название, размеры, поставщик — со страницы товара">Заполнить по ссылке</button><button id="mShopLogin" title="Окно сайта магазина: войдите один раз — дальше цены берутся под вашим входом">Войти на сайт</button></div>' : '');          // STHGroup
+			(window.STHShop ? '<div class="row"><button id="mUrlFill" class="primary" title="Цена, наличие, артикул, название, размеры, поставщик — со страницы товара">Заполнить по ссылке</button><button id="mBrw" title="Найти товар во встроенном браузере и взять ссылку">Браузер…</button><button id="mShopLogin" title="Окно сайта магазина: войдите один раз — дальше цены берутся под вашим входом">Войти на сайт</button></div>' : '');          // STHGroup
 		var body = '<div class="tabs">' + tabs.map(function (t) { return '<button data-t="' + t[0] + '"' + ((tab || 'gen') === t[0] ? ' class="on"' : '') + '>' + t[1] + '</button>'; }).join('') + '</div>' +
 			'<div class="pg" data-p="gen">' + gen + '</div><div class="pg" data-p="add">' + add + '</div><div class="pg" data-p="tex">' + tex + '</div><div class="pg" data-p="stock">' + stockTab() + '</div><div class="pg" data-p="sup">' + supTab + '</div>';
 		var res = await U.modal({ title: 'Материал: ' + (m.name || 'новый'), width: 820, cls: 'mbCard', body: body,
@@ -321,7 +321,15 @@
 				el.querySelector('#mPhoto').onclick = pickPhoto; el.querySelector('#mSw').onclick = pickPhoto;
 				el.querySelector('#mPhotoX').onclick = function () { setPhoto(''); };
 				el.addEventListener('paste', async function (e) { var it = (e.clipboardData && e.clipboardData.items) || [], f = null; for (var i = 0; i < it.length; i++) if (!f && it[i].kind === 'file' && /^image\//.test(it[i].type)) f = it[i].getAsFile(); if (!f) return; e.preventDefault(); try { setPhoto(await W.photoOf(f)); } catch (er) { U.error(er); } });
-				if (window.STHShop) { el.querySelector('#mUrlFill').onclick = function () { window.STHShop.fillCard(el, b); }; el.querySelector('#mShopLogin').onclick = function () { window.STHShop.login(el.querySelector('#mUrl').value); }; }          // STHGroup
+				if (window.STHShop) { el.querySelector('#mUrlFill').onclick = function () { window.STHShop.fillCard(el, b); }; el.querySelector('#mShopLogin').onclick = function () { window.STHShop.login(el.querySelector('#mUrl').value); };
+					/* STHGroup: встроенный браузер — из окна программы (база открыта внутри неё); нашли товар → ссылка и «Заполнить по ссылке» */
+					el.querySelector('#mBrw').onclick = async function () {
+						var BR = window.STHBrowser || (window.parent !== window && window.parent.STHBrowser) || (window.opener && window.opener.STHBrowser);
+						if (!BR) { U.toast('Браузер доступен, когда база открыта внутри программы.'); return; }
+						var u = await BR.open({ url: el.querySelector('#mUrl').value, query: (el.querySelector('#mName') || {}).value || '' });
+						if (!u) return;
+						el.querySelector('#mUrl').value = u; window.STHShop.fillCard(el, b);
+					}; }          // STHGroup
 				el.querySelector('#mUrlGo').onclick = function () { var u = el.querySelector('#mUrl').value.trim(); if (!u) { U.toast('Ссылки нет'); return; } if (!/^https?:\/\//i.test(u)) u = 'https://' + u; U.api.openUrl(u).catch(U.error); };
 				var chips = function () {
 					el.querySelector('#mCls').innerHTML = m.cls.map(function (c, i) { return '<span class="chip">' + esc(c + ' — ' + MB.className(b, c)) + '<b data-ci="' + i + '">✕</b></span>'; }).join('') || '<span class="mute">нет</span>';

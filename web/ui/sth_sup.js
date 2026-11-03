@@ -40,7 +40,7 @@
 		var res = await U.modal({ title: 'Поставщик', width: 560, cls: 'supDlg sthSup',
 			body: '<p class="mute" style="margin-top:0">' + esc(name) + '</p><div class="sthMb"><div class="mute sm" style="margin-bottom:5px">Материал в базе</div>' + head + '</div>' +
 				'<div class="form" style="margin-top:12px"><label>Ссылка</label><div><input type="text" id="sUrl" maxlength="400" value="' + esc(st.url) + '" placeholder="https://… — вставьте ссылку на товар"></div>' +
-				'<label></label><div class="row"><button id="spFill" class="primary">Заполнить по ссылке</button><button id="spLogin">Войти на сайт</button><span class="mute sm">цена, артикул, фото, наличие</span></div>' +
+				'<label></label><div class="row"><button id="spFill" class="primary">Заполнить по ссылке</button><button id="spBrw" title="Найти товар во встроенном браузере и взять ссылку">Браузер…</button><button id="spLogin">Войти на сайт</button><span class="mute sm">цена, артикул, фото, наличие</span></div>' +
 				'<label>Цена, ₽</label><div class="row"><input type="text" id="spPrice" value="' + esc(val(st.price)) + '" style="width:120px" placeholder="0"><span class="mute" id="spWas">' + esc(unit ? 'за ' + unit : '') + '</span></div>' +
 				'<label>Поставщик</label><div><input type="text" id="sShop" maxlength="80" list="spShops" value="' + esc(st.shop) + '" placeholder="выберите из «Базы» или впишите нового"><datalist id="spShops">' + shops + '</datalist></div>' +
 				'<label>Артикул</label><div><input type="text" id="spArt" maxlength="60" value="' + esc(st.art) + '" style="width:200px"></div>' +
@@ -57,6 +57,14 @@
 				prev(el);
 				el.querySelector('#spMatch').onclick = function () { close({ match: 1 }); };
 				el.querySelector('#spLogin').onclick = function () { T.login(el.querySelector('#sUrl').value); };
+				/* STHGroup: встроенный браузер — нашли товар, «Взять эту ссылку» → ссылка в поле и сразу «Заполнить по ссылке» */
+				el.querySelector('#spBrw').onclick = async function () {
+					if (!window.STHBrowser) return;
+					var u = await window.STHBrowser.open({ url: el.querySelector('#sUrl').value, query: name });
+					if (!u) return;
+					el.querySelector('#sUrl').value = u;
+					el.querySelector('#spFill').click();
+				};
 				el.querySelector('#spFill').onclick = async function () {
 					var btn = this, url = normUrl(el.querySelector('#sUrl').value);
 					if (!url) { U.toast('Вставьте ссылку на товар.'); return; }

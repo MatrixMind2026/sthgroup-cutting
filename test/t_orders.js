@@ -70,4 +70,5 @@ assert.ok(!pl.sections.some(x => x.id === 'g:mill') && pl.sections.some(x => x.i
 ok('прайс для клиента: разделы справочника, примечание из названия, скидка −10%, скрытые разделы, условия');
 { const c2 = E.conf(st.set); c2.edgeMode = 'mm'; c2.edgeMm = 30; const R2 = E.build(st, c2, E.newList('x'), st.work.est), e0 = R.rows.find(w => w.kind === 'edge'), e2 = R2.rows.find(w => w.title === e0.title);
   assert.ok(e2.calc > Number(e0.note.replace(/[^\d.]/g, '')) && e2.calc < e0.calc && /мм ×/.test(e2.unit)); ok('запас кромки «мм на сторону»: длина по модели + свес на каждую облицованную сторону'); }
+{ const ob = O.fix({ format: O.FORMAT, v: 1, orders: [], clients: [], cat: { terms: { days: 5 } } }); assert.strictEqual(ob.cat.terms.title, 'Важно знать'); assert.strictEqual(O.empty().cat.terms.title, 'Важно знать'); ok('заголовок условий: по умолчанию «Важно знать», старый справочник получает его сам'); }
 console.log('проверок ' + n + ' | ошибок нет');

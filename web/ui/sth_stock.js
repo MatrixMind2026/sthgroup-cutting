@@ -184,3 +184,37 @@
 	};
 	X.show = function () { X.init(); window.MatBase.refresh().then(X.render).catch(U.error); X.render(); };
 })();
+
+/* шаг 2: склад в смете — в строке материала из базы «склад: есть N, свободно M» или «докупить X»;
+   у дробного листа — подходящий свободный обрезок со склада */
+(function () {
+	'use strict';
+	var Es = window.Est, MB = BM.mb, SK = BM.stock;
+	if (!Es || !Es.build || !SK) return;
+	function n(v) { return String(Math.round((v || 0) * 1000) / 1000).replace('.', ','); }
+	var b0 = Es.build;
+	Es.build = function () {
+		var R = b0.apply(this, arguments), b = MB.cur, K = window.MatBase;
+		if (!R || !b || !K) return R;
+		try {
+			SK.fix(b);
+			R.rows.forEach(function (w) {
+				if (!w.mb || !b.mats[w.mb.id] || w.off || w.info) return;
+				var m = b.mats[w.mb.id], bal = MB.balance(b, m.id), res = SK.reserved(b, m.id), free = Math.round((bal - res) * 1e6) / 1e6, add = [];
+				if (bal || res) {
+					var same = K.unitOf(m.unit) === K.unitOf(w.unit), need = w.val > 0 ? w.val : 0;
+					var t = 'склад: есть ' + n(bal) + (res ? ', свободно ' + n(free) : '') + (same ? '' : ' ' + m.unit);
+					if (same && need > free) t += ' — докупить ' + n(Math.max(0, need - Math.max(0, free)));
+					add.push(t);
+					w.stockFree = free;
+				}
+				if (w.part) {
+					var oc = SK.findOff(b, m.id, w.part.L, w.part.W)[0];
+					if (oc) { var cell = b.stock.cells[m.id]; add.push('на складе обрезок ' + oc.L + '×' + oc.W + (cell ? ', ячейка ' + cell : '')); w.stockOff = oc.id; }
+				}
+				if (add.length) w.note = (w.note ? w.note + ' · ' : '') + add.join(' · ');
+			});
+		} catch (e) { console.warn(e); }
+		return R;
+	};
+})();

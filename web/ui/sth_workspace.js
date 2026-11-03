@@ -3,7 +3,7 @@
 	'use strict';
 	var U = window.UI, A = window.App, O = BM.sth; if (!U || !A || !O) return;
 	var esc = U.esc, X = window.STHWorkspace = { notes: [], unread: 0, seq: 0 };
-	var NAMES = { today: 'Сегодня', orders: 'Заказы', clients: 'Клиенты', stock: 'Склад', model: 'Модель', cut: 'Раскрой', est: 'Смета', base: 'База' };
+	var NAMES = { today: 'Сегодня', orders: 'Заказы', clients: 'Клиенты', stock: 'Склад', model: 'Модель', cut: 'Раскрой', est: 'Смета', base: 'База', mbase: 'База материалов', crm: 'CRM' };
 	var host = document.createElement('section'); host.id = 'today';
 	var progress = document.createElement('div'); progress.className = 'sthProgress'; progress.hidden = true;
 	var noticeBtn = document.createElement('button'); noticeBtn.id = 'sthNotify'; noticeBtn.title = 'Центр уведомлений';

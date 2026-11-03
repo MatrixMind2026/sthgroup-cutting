@@ -112,10 +112,10 @@
 	};
 
 	/* Переключение разделов программы. */
-	var SEC_ORDER = ['today', 'orders', 'stock', 'model', 'cut', 'detail', 'drill', 'asm', 'est', 'base', 'clients'];
+	var SEC_ORDER = ['today', 'orders', 'stock', 'model', 'cut', 'detail', 'drill', 'asm', 'est', 'base', 'mbase', 'clients', 'crm'];
 	Dl.section = function (sec) {
 		var A = window.App, S = A.S, was = S.section;
-		if (sec !== 'today' && sec !== 'model' && sec !== 'cut' && sec !== 'est' && sec !== 'base' && sec !== 'orders' && sec !== 'clients' && sec !== 'stock') return;          // STHGroup: без «Деталировки», «Присадки», «Сборки»
+		if (sec !== 'today' && sec !== 'model' && sec !== 'cut' && sec !== 'est' && sec !== 'base' && sec !== 'orders' && sec !== 'clients' && sec !== 'stock' && sec !== 'mbase' && sec !== 'crm') return;          // STHGroup: без «Деталировки», «Присадки», «Сборки»
 		if (was === sec) return;
 		if (was === 'drill') Dl.saveNote();
 		var act = document.activeElement;
@@ -130,6 +130,8 @@
 		var main = $('main');
 		main.classList.remove('goR', 'goL');
 		if (U.animOn()) { void main.offsetWidth; main.classList.add(SEC_ORDER.indexOf(sec) > SEC_ORDER.indexOf(was) ? 'goR' : 'goL'); setTimeout(function () { main.classList.remove('goR', 'goL'); }, 260); }
+		if (window.STHEmbed) window.STHEmbed.leave(was);          // STHGroup: уходя из базы — сохранить и пересчитать
+		if (sec === 'mbase' || sec === 'crm') { if (window.STHEmbed) window.STHEmbed.show(sec); return; }          // STHGroup: база материалов и CRM внутри программы
 		if (sec === 'today') { if (window.STHWorkspace) window.STHWorkspace.render(); return; } // STHGroup 2.0: рабочий экран — без проекта
 		if (sec === 'stock') { if (window.STHStock) window.STHStock.show(); return; }          // STHGroup: склад — без проекта
 		if (sec === 'orders' || sec === 'clients') { if (window.STHO) window.STHO.render(); return; }          // STHGroup: заказы и клиенты — без проекта
@@ -142,7 +144,8 @@
 			var b = e.target.closest('[data-s]');
 			if (!b) return;
 			if (b.classList.contains('soon')) { U.toast('Раздел «' + b.dataset.n + '» ещё в разработке — появится в одном из следующих обновлений.'); return; }
-			if (b.dataset.s === 'base' && window.MatBase) { window.MatBase.open(); return; }          // с 2.2 — отдельное окно «База материалов»; прежняя «База» — из настроек
+			if (b.dataset.s === 'orders' && window.STHO && window.STHO.resetView) { window.STHO.resetView(); if (window.App.S.section === 'orders') window.STHO.render(); }          // STHGroup: кнопка «Заказы» — как выбрано в настройках (по умолчанию карточками)
+			if (b.dataset.s === 'base' && window.MatBase) { Dl.section('mbase'); return; }          // с 2.2 — отдельное окно «База материалов»; прежняя «База» — из настроек
 			Dl.section(b.dataset.s);
 		});
 		$('dMode').addEventListener('click', function (e) {

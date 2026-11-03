@@ -54,8 +54,9 @@
 			<button data-s="model" title="Изделие целиком в 3D: найти деталь, проверить модель, схема сборки"><svg width="26" height="20" viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"><path d="M13 1.5l9 4v9l-9 4-9-4v-9zM4 5.5l9 4 9-4M13 9.5v9"/></svg>Модель</button>
 			<button data-s="cut" title="Раскрой листовых материалов"><svg width="26" height="20" viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="1" y="1" width="24" height="18"/><path d="M10 1v18M10 10h15"/></svg>Раскрой</button>
 			<button data-s="est" title="Смета по модели: материал, работы, фурнитура"><svg width="26" height="20" viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="5" y="1" width="16" height="18"/><path d="M8 6h10M8 10h10M8 14h6"/></svg>Смета</button>
-			<button data-s="base" title="База материалов и комплектующих — отдельное окно: группы, карточки, цены, поставщики, склад. Общая для всех проектов"><svg width="26" height="20" viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="13" cy="4" rx="8" ry="2.6"/><path d="M5 4v12c0 1.4 3.6 2.6 8 2.6s8-1.2 8-2.6V4M5 10c0 1.4 3.6 2.6 8 2.6s8-1.2 8-2.6"/></svg>База</button>
+			<button data-s="mbase" title="База материалов и комплектующих — внутри программы: группы, карточки, цены, поставщики, склад. Общая для всех проектов"><svg width="26" height="20" viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="13" cy="4" rx="8" ry="2.6"/><path d="M5 4v12c0 1.4 3.6 2.6 8 2.6s8-1.2 8-2.6V4M5 10c0 1.4 3.6 2.6 8 2.6s8-1.2 8-2.6"/></svg>База</button>
 			<button data-s="clients" title="Клиенты: контакты, заказы, долги"><svg width="26" height="20" viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="13" cy="7" r="4"/><path d="M5 19c0-4.4 3.6-7 8-7s8 2.6 8 7"/></svg>Клиенты</button>
+			<button data-s="crm" title="CRM — открыта внутри программы, вход запоминается"><svg width="26" height="20" viewBox="0 0 26 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="3" width="20" height="14" rx="2"/><path d="M7 8h6M7 12h12"/><circle cx="18" cy="8" r="1.5"/></svg>CRM</button>
 		</nav>
 		<aside id="left" data-pane="left" data-side="l">
 			<div class="sec">Материалы</div>
@@ -196,6 +197,7 @@
 		</section>
 		<section id="orders"></section>
 		<section id="stock"></section>  <!-- STHGroup: склад -->
+		<section id="mbase"></section><section id="crm"></section>  <!-- STHGroup: база материалов и CRM внутри программы -->
 		<section id="base">
 			<div class="bar1"><b>База</b><span id="bTabs" class="mseg"></span><button id="bBzLoad" title="Материалы и фурнитура из базы материалов БАЗИСа (.dbf)">Загрузить из БАЗИСа…</button><div class="grow"></div><input type="search" id="bSearch" placeholder="Поиск по названию, артикулу…" autocomplete="off"></div>
 			<div id="bBody"></div>
@@ -288,6 +290,7 @@
 <script src="ui/sth_cut_simple.js"></script><!-- STHGroup 2.0: простой раскрой -->
 <script src="core/sth_stock.js"></script>
 <script src="ui/sth_stock.js"></script>
+<script src="ui/sth_embed.js"></script>
 <script src="core/sth_restruct.js"></script><!-- STHGroup: упаковка из названия -->
 <script src="core/linkparse.js"></script><!-- STHGroup -->
 <script src="ui/sth_shop.js"></script><!-- STHGroup -->

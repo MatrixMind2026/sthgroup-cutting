@@ -85,6 +85,7 @@
 			return '<div class="form">' +
 				'<label>Тема окна</label><div><select id="sTheme">' + BM.THEMES.map(function (t) { return '<option value="' + t.id + '"' + (BM.theme(set.theme).id === t.id ? ' selected' : '') + '>' + esc(t.name) + '</option>'; }).join('') + '</select></div>' +
 					'<label>Плотность интерфейса</label><div><select id="sDensity"><option value="compact"' + (set.sthDensity === 'compact' ? ' selected' : '') + '>Компактно — больше строк на экране</option><option value="normal"' + (!set.sthDensity || set.sthDensity === 'normal' ? ' selected' : '') + '>Обычно</option><option value="comfortable"' + (set.sthDensity === 'comfortable' ? ' selected' : '') + '>Просторно — крупнее поля и кнопки</option></select></div>' +
+				'<label>Заказы открывать</label><div><select id="sOrderView"><option value="board"' + (set.sthOrderView !== 'list' ? ' selected' : '') + '>Карточками по этапам</option><option value="list"' + (set.sthOrderView === 'list' ? ' selected' : '') + '>Списком</option></select></div>' +          // STHGroup
 				'<label>Масштаб окна</label><div class="zRow"><button type="button" id="sZm" title="Мельче на 5 %">−</button><input type="range" id="sZ" min="50" max="200" step="5" value="' + Math.round((set.zoom || 1) * 100) + '"><button type="button" id="sZp" title="Крупнее на 5 %">+</button><b id="sZv">' + Math.round((set.zoom || 1) * 100) + '%</b><button type="button" id="sZ0">Сбросить</button></div>' +
 				'<div class="hint" id="sZh"></div>' +
 				'<label class="chk full"><input type="checkbox" id="sAnim"' + chk(set.anim !== 0) + '> Анимации: заставка при запуске, плавное появление окон, движение деталей на карте</label>' +
@@ -584,7 +585,7 @@
 			if (CutSet.has(cur)) {
 				CutSet.read(cur, m, p, set);
 			} else if (cur === 'look') {
-				set.theme = g('sTheme').value; set.sthDensity = g('sDensity').value; set.anim = g('sAnim').checked ? 1 : 0; set.sound = g('sSound').checked ? 1 : 0; set.org = g('sOrg').value.trim(); set.author = g('sAuthor').value.trim(); set.phone = g('sPhone').value.trim();
+				set.theme = g('sTheme').value; set.sthDensity = g('sDensity').value; if (g('sOrderView')) { set.sthOrderView = g('sOrderView').value; if (window.STHO) window.STHO.view = set.sthOrderView; } set.anim = g('sAnim').checked ? 1 : 0; set.sound = g('sSound').checked ? 1 : 0; set.org = g('sOrg').value.trim(); set.author = g('sAuthor').value.trim(); set.phone = g('sPhone').value.trim();
 			} else if (cur === 'cpdf') {
 				var cp = set.pdf;
 				cp.color = Number(g('cColor').value) ? 1 : 0; cp.big = Number(g('cBig').value) ? 1 : 0; cp.summary = g('cSum').checked ? 1 : 0; cp.maps = g('cMaps').checked ? 1 : 0; cp.list = g('cList').checked ? 1 : 0; cp.offcuts = g('cOff').checked ? 1 : 0;

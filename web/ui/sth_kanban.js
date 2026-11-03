@@ -5,8 +5,11 @@
 	var U = window.UI, O = BM.sth, X = window.STHO; if (!U || !O || !X) return;
 	var esc = U.esc, host = document.getElementById('orders'); if (!host) return;
 	function S() { return window.App.S; }
-	X.view = (S().set && S().set.sthOrderView) || 'list';
-	function saveView(v) { X.view = v; S().set.sthOrderView = v; if (window.App.saveSettings) window.App.saveSettings(); }
+	/* как открывать заказы — из настроек (по умолчанию карточками); переключение кнопками — только сейчас, настройку не меняет */
+	function pref() { var s = S(); return s && s.set && s.set.sthOrderView === 'list' ? 'list' : 'board'; }
+	X.view = pref();
+	function saveView(v) { X.view = v; }
+	X.resetView = function () { X.view = pref(); };
 	function sum(o) { try { return O.calc(X.book, o); } catch (e) { return { total: 0, paid: 0, debt: 0 }; } }
 	function filtered() {
 		var q = String(X.q || '').toLowerCase().replace(/ё/g, 'е');

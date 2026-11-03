@@ -183,14 +183,26 @@ function shopRoutes() {
   };
 }
 
+/* STHGroup: ссылки «в новой вкладке» внутри встроенной CRM открываются там же, не в браузере */
+app.on('web-contents-created', function (e, contents) {
+  if (contents.getType() !== 'webview') return;
+  contents.setWindowOpenHandler(function (d) { if (/^https?:/i.test(d.url)) contents.loadURL(d.url); return { action: 'deny' }; });
+});
+
 function createWindow(url) {
   Menu.setApplicationMenu(null);
   win = new BrowserWindow({
     width: 1440, height: 900, minWidth: 1000, minHeight: 640, title: APP_NAME, backgroundColor: '#f3f1ec',
     icon: path.join(__dirname, 'assets', 'icon.png'),
-    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true }
+    webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, webviewTag: true }   // STHGroup: webview — CRM внутри программы
   });
   const origin = new URL(url).origin;
+  /* STHGroup: встроенный сайт (CRM) — только http(s), без доступа к компьютеру, своё хранилище входа */
+  win.webContents.on('will-attach-webview', function (e, wp, params) {
+    delete wp.preload; delete wp.preloadURL;
+    wp.nodeIntegration = false; wp.contextIsolation = true; wp.sandbox = true; wp.webSecurity = true;
+    if (!/^https?:\/\//i.test(params.src || '')) e.preventDefault();
+  });
   // окно «База материалов» открывается через window.open — пускаем только свои страницы
   win.webContents.setWindowOpenHandler(function (d) {
     if (d.url.indexOf(origin + '/') === 0) {

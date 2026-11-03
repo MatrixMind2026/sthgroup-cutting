@@ -1348,3 +1348,14 @@ input:not([type]):focus { outline: none; border-color: var(--accent); }
 #orders a.soItL { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); }
 /* STHGroup: переключателя «Цены и количества / Как на бумаге» нет — документы смотрятся в предпросмотре перед сохранением */
 #eView { display: none !important; }
+
+/* STHGroup: база материалов и CRM внутри программы */
+body:not([data-sec="mbase"]) #mbase, body:not([data-sec="crm"]) #crm { display: none; }
+body[data-sec="mbase"] #welcome, body[data-sec="crm"] #welcome, body[data-sec="mbase"] .noDrill, body[data-sec="crm"] .noDrill, body[data-sec="mbase"] #docDd, body[data-sec="crm"] #docDd { display: none !important; }
+#mbase, #crm { flex: 1 1 auto; display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+#mbase iframe { flex: 1; border: 0; width: 100%; background: var(--bg); }
+#crm .crmBar { display: flex; gap: 6px; align-items: center; padding: 6px 10px; border-bottom: 1px solid var(--line); background: var(--panel); }
+#crm .crmBar .crmUrl { flex: 1; color: var(--mute); font-size: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+#crm .crmView { flex: 1; display: flex; min-height: 0; }
+#crm webview, #crm iframe { flex: 1; border: 0; width: 100%; height: 100%; background: #fff; }
+#crm .crmEmpty { margin: auto; text-align: center; color: var(--mute); max-width: 520px; line-height: 1.6; }

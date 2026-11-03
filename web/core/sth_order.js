@@ -15,6 +15,46 @@
 	O.FILE = 'STHGroup — заказы.json';
 	O.FORMAT = 'sthgroup-orders';
 	O.STATUSES = [['calc', 'Расчёт'], ['agreed', 'Согласован'], ['work', 'В работе'], ['ready', 'Готов'], ['shipped', 'Отгружен'], ['closed', 'Закрыт']];
+	/* STHGroup 2.1: этапы настраиваются — свои названия и свои колонки (книга: cat.stages [{id, name}]);
+	   шесть основных не удаляются, свои колонки — обычные этапы без автоматики. */
+	O.BASE_STAGES = O.STATUSES.map(function (s) { return s[0]; });
+	O.stages = function (b) {
+		var cat = b && b.cat;
+		if (cat && !Array.isArray(cat.stages)) cat.stages = O.STATUSES.map(function (s) { return { id: s[0], name: s[1] }; });
+		var src = cat && Array.isArray(cat.stages) ? cat.stages : [];
+		return src.length ? src.map(function (s) { return [s.id, s.name]; }) : O.STATUSES.slice();
+	};
+	O.stageName = function (b, s) {
+		var f = O.stages(b).filter(function (x) { return x[0] === s; })[0];
+		return f ? f[1] : s;
+	};
+	O.renameStage = function (b, id, name) {
+		name = String(name || '').trim().slice(0, 40); if (!b || !b.cat || !name) return false;
+		O.stages(b);
+		var st = b.cat.stages.filter(function (s) { return s.id === id; })[0];
+		if (!st) return false;
+		st.name = name; return true;
+	};
+	/* своя колонка встаёт перед «Закрыт» — закрытые всегда в конце доски */
+	O.addStage = function (b, name) {
+		name = String(name || '').trim().slice(0, 40); if (!b || !b.cat || !name) return null;
+		O.stages(b);
+		var st = { id: O.id('u'), name: name }, arr = b.cat.stages, i = -1;
+		arr.forEach(function (s, k) { if (s.id === 'closed') i = k; });
+		if (i >= 0) arr.splice(i, 0, st); else arr.push(st);
+		return st;
+	};
+	/* удалить можно только свою пустую колонку */
+	O.removeStage = function (b, id) {
+		if (!b || !b.cat) return { ok: false, reason: 'empty' };
+		if (O.BASE_STAGES.indexOf(id) >= 0) return { ok: false, reason: 'base' };
+		O.stages(b);
+		if (b.orders.some(function (o) { return o.status === id; })) return { ok: false, reason: 'used' };
+		var i = -1;
+		b.cat.stages.forEach(function (s, k) { if (s.id === id) i = k; });
+		if (i < 0) return { ok: false, reason: 'empty' };
+		b.cat.stages.splice(i, 1); return { ok: true };
+	};
 	O.UNITS = [['order', 'за заказ'], ['sheet', 'за лист'], ['item', 'за изделие'], ['part', 'за деталь'], ['pct', '% от суммы']];
 	O.LOADS = [['low', 'низкая'], ['mid', 'средняя'], ['high', 'высокая']];
 
@@ -128,8 +168,9 @@
 	O.order = function (b, id) { for (var i = 0; i < b.orders.length; i++) if (b.orders[i].id === id) return b.orders[i]; return null; };
 	O.byNo = function (b, no) { var n = low(no).trim(); if (!n) return null; for (var i = 0; i < b.orders.length; i++) if (low(b.orders[i].no).trim() === n) return b.orders[i]; return null; };
 	/* STHGroup 2.0: единый переход карточки по этапам; неизвестный этап не принимаем. */
-	O.moveStatus = function (o, status, at) {
-		if (!o || !O.STATUSES.some(function (s) { return s[0] === status; })) return { changed: false, from: o && o.status || '', to: status || '' };
+	O.moveStatus = function (o, status, at, b) {
+		var known = b ? O.stages(b) : O.STATUSES;
+		if (!o || !known.some(function (s) { return s[0] === status; })) return { changed: false, from: o && o.status || '', to: status || '' };
 		var from = o.status || 'calc'; if (from === status) return { changed: false, from: from, to: status };
 		o.status = status; o.statusAt = at || new Date().toISOString();
 		o.sthFlow = Array.isArray(o.sthFlow) ? o.sthFlow : [];
@@ -327,6 +368,6 @@
 		var s = parts.join(' ').replace(/\s+/g, ' ').trim();
 		return s.charAt(0).toUpperCase() + s.slice(1) + ' ' + form(rub, ['рубль', 'рубля', 'рублей']) + ' ' + (kop < 10 ? '0' : '') + kop + ' ' + form(kop, ['копейка', 'копейки', 'копеек']);
 	};
-	O.statusName = function (s) { return (O.STATUSES.filter(function (x) { return x[0] === s; })[0] || ['', s])[1]; };
+	O.statusName = function (s, b) { return b ? O.stageName(b, s) : (O.STATUSES.filter(function (x) { return x[0] === s; })[0] || ['', s])[1]; };
 	O.money = function (v) { return r2(v).toLocaleString('ru-RU', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).replace(/ /g, ' '); };
 })(typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : this));

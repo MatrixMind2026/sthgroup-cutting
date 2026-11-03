@@ -61,10 +61,11 @@
 			if (w.own || w.sthSplit || w.sthInKit) return;
 			var inf = null; try { inf = K.rowInfo(w); } catch (e) { inf = null; }
 			var m = inf && b.mats[inf.id]; if (!m || !(num(m.pack) > 1)) return;
+			if (w.sthReplace && K.unitOf(m.unit) !== K.unitOf(w.unit)) return;   // STHGroup: упаковка только в совпадающей единице
 			var pk = num(m.pack), packs = Math.ceil(w.val / pk - 1e-9);
-			if (m.packWhole && !w.manual && w.val > 0) { w.val = packs * pk; w.sum = (w.off || w.info) ? 0 : Math.round(w.val * w.price * (1 + w.mk / 100)); }
+			if (m.packWhole && !w.manual && w.val > 0 && (!w.sthReplace || w.sthReplace.mode === 'base')) { w.val = packs * pk; w.sum = (w.off || w.info) ? 0 : Math.round(w.val * w.price * (1 + w.mk / 100)); }
 			if (w.val > 0) w.utail = (w.utail || '') + ' (' + packs + ' уп. по ' + val(pk) + ')';
-			w.sthPack = { pack: pk, packs: packs, whole: !!m.packWhole };
+			w.sthPack = { pack: pk, packs: packs, whole: !!m.packWhole && (!w.sthReplace || w.sthReplace.mode === 'base') };
 		});
 		/* порядок: части — сразу под комплектом, комплект — над первой своей строкой */
 		after.forEach(function (a) {

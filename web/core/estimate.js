@@ -1183,8 +1183,8 @@
 		var offList = [];
 		if (!cfg.showFast) offList.push('фурнитура');
 		if (!cfg.showProf) offList.push('профили');
-		if (!cfg.showCuts) offList.push('пазы');
-		if (!cfg.showHoles) offList.push('отверстия');
+		if (!cfg.showCuts && !E.noWorks) offList.push('пазы');          // STHGroup: работ в смете нет — пазы и отверстия не упоминать
+		if (!cfg.showHoles && !E.noWorks) offList.push('отверстия');
 		if (offList.length) R.warns.push('Отключено: ' + offList.join(', ') + ' — в смету и в количества не входит.');
 		if (R.manual) R.warns.push('Есть количества, заданные вручную.');
 		if ((st.work.sets || 1) != 1) R.warns.push('Комплектов (изделий): ' + st.work.sets + '.');

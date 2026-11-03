@@ -127,6 +127,16 @@
 	O.addClient = function (b, c) { var x = { id: O.id('c'), name: String(c.name || '').trim() || 'Клиент', phone: c.phone || '', email: c.email || '', note: c.note || '' }; b.clients.push(x); return x; };
 	O.order = function (b, id) { for (var i = 0; i < b.orders.length; i++) if (b.orders[i].id === id) return b.orders[i]; return null; };
 	O.byNo = function (b, no) { var n = low(no).trim(); if (!n) return null; for (var i = 0; i < b.orders.length; i++) if (low(b.orders[i].no).trim() === n) return b.orders[i]; return null; };
+	/* STHGroup 2.0: единый переход карточки по этапам; неизвестный этап не принимаем. */
+	O.moveStatus = function (o, status, at) {
+		if (!o || !O.STATUSES.some(function (s) { return s[0] === status; })) return { changed: false, from: o && o.status || '', to: status || '' };
+		var from = o.status || 'calc'; if (from === status) return { changed: false, from: from, to: status };
+		o.status = status; o.statusAt = at || new Date().toISOString();
+		o.sthFlow = Array.isArray(o.sthFlow) ? o.sthFlow : [];
+		o.sthFlow.push({ from: from, to: status, at: o.statusAt });
+		if (o.sthFlow.length > 100) o.sthFlow.splice(0, o.sthFlow.length - 100);
+		return { changed: true, from: from, to: status };
+	};
 	/* заказ по файлу изделия: копия в папке заказа или файл, из которого её сделали (туда выгружает БАЗИС) */
 	O.byItem = function (b, path) { var p = low(path); for (var i = 0; i < b.orders.length; i++) for (var j = 0; j < b.orders[i].items.length; j++) { var it = b.orders[i].items[j]; if (low(it.path) === p || (it.src && low(it.src) === p)) return b.orders[i]; } return null; };
 	O.itemOf = function (o, path) { var p = low(path); for (var j = 0; j < o.items.length; j++) { var it = o.items[j]; if (low(it.path) === p || (it.src && low(it.src) === p)) return it; } return null; };

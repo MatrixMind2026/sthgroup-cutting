@@ -282,8 +282,8 @@ for (let i = 0; i < 70; i++) E.addOwnRow(stB.work.est, 'Дополнительн
 const dB = O.estHtml(build(stB, plB), stB, { kind: 'client' });
 fs.writeFileSync(outDir + '/длинная.html', dB.html);
 cp.execFileSync('/opt/pw-browsers/chromium', ['--headless', '--no-sandbox', '--disable-gpu', '--no-pdf-header-footer', '--print-to-pdf=' + outDir + '/длинная.pdf', 'file://' + outDir + '/длинная.html'], { stdio: 'ignore' });
-const pB = Number(/Pages:\s+(\d+)/.exec(cp.execSync('pdfinfo "' + outDir + '/длинная.pdf"').toString())[1]), tB = cp.execSync('pdftotext -layout "' + outDir + '/длинная.pdf" -').toString();
-ok(pB === dB.pages && pB >= 2 && [1, 35, 70].every(i => tB.indexOf('Дополнительная работа номер ' + i) >= 0), 'длинная смета: листов ' + pB + ', строки на месте', [pB, dB.pages]);
+const pB = Number(/Pages:\s+(\d+)/.exec(cp.execSync('pdfinfo "' + outDir + '/длинная.pdf"').toString())[1]), tB = cp.execSync('pdftotext -layout "' + outDir + '/длинная.pdf" -').toString(), flatB = tB.replace(/\s+/g, ' ');
+ok(pB === dB.pages && pB >= 2 && (tB.match(/Дополнительная работа номер/g) || []).length === 70 && Array.from({ length: 70 }, (_, k) => k + 100).every(sum => flatB.indexOf(sum + ' р.') >= 0), 'длинная смета: листов ' + pB + ', все 70 строк и их суммы на месте, перенос названия не считается потерей', [pB, dB.pages]);
 // Excel
 const x = O.estXlsx(R3, st, { kind: 'full' });
 fs.writeFileSync(outDir + '/полная.xlsx', Buffer.from(x));

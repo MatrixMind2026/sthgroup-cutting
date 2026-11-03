@@ -1,0 +1,26 @@
+// Автоматические резервные копии базы материалов.   node test/t_backup.js
+const fs = require('fs'), path = require('path');
+const { backupFile } = require('../sth_backup.js');
+let bad = 0, n = 0;
+const ok = (c, text, extra) => { n++; if (!c) { bad++; console.log('НЕ ТАК', text, extra === undefined ? '' : '→ ' + JSON.stringify(extra)); } };
+const dir = path.join(__dirname, 'out', 'backup-v2');
+fs.rmSync(dir, { recursive: true, force: true }); fs.mkdirSync(dir, { recursive: true });
+const file = path.join(dir, 'materials.json');
+fs.writeFileSync(file, '{"version":1}');
+let now = Date.now();
+const first = backupFile(file, { now: () => now, keep: 2 });
+ok(first.ok && !first.skipped && fs.readFileSync(first.path, 'utf8') === '{"version":1}', 'перед записью создаётся точная копия');
+const again = backupFile(file, { now: () => now + 1000, keep: 2 });
+ok(again.skipped && again.path === first.path, 'частые сохранения не создают одинаковые копии');
+fs.writeFileSync(file, '{"version":2}');
+now += 31 * 60 * 1000;
+const second = backupFile(file, { now: () => now, keep: 2 });
+fs.writeFileSync(file, '{"version":3}');
+now += 31 * 60 * 1000;
+const third = backupFile(file, { now: () => now, keep: 2 });
+const copies = fs.readdirSync(path.join(dir, '.sth-backups')).filter(x => x.endsWith('.bak'));
+ok(!second.skipped && !third.skipped && copies.length === 2, 'старые копии автоматически ротируются', copies);
+ok(fs.readFileSync(file, 'utf8') === '{"version":3}', 'основной файл не изменяется резервированием');
+ok(fs.readFileSync(third.path, 'utf8') === '{"version":3}', 'последняя копия содержит состояние до следующей записи');
+console.log('проверок', n, '|', bad ? 'ОШИБОК: ' + bad : 'ошибок нет');
+process.exit(bad ? 1 : 0);

@@ -7,7 +7,7 @@
 	function num(v, d) { var n = Number(String(v === undefined || v === null ? '' : v).replace(',', '.').replace(/\s/g, '')); return isFinite(n) && String(v).trim() !== '' ? n : (d || 0); }
 	function low(s) { return String(s || '').toLowerCase().replace(/ё/g, 'е').trim(); }
 	function r6(v) { return Math.round(v * 1e6) / 1e6; }
-	K.TABS = [['sheet', 'Листы'], ['off', 'Обрезки'], ['lin', 'Кромка, погонаж'], ['fit', 'Фурнитура'], ['moves', 'Движения']];
+	K.TABS = [['sheet', 'Листы'], ['off', 'Обрезки'], ['lin', 'Кромка, погонаж'], ['fit', 'Фурнитура'], ['moves', 'Движения'], ['history', 'История']];
 
 	K.fix = function (b) {
 		if (!b.stock || typeof b.stock !== 'object') b.stock = { docs: [], offcuts: [] };
@@ -15,6 +15,14 @@
 		if (!b.stock.cells || typeof b.stock.cells !== 'object' || Array.isArray(b.stock.cells)) b.stock.cells = {};
 		b.stock.res = b.stock.res.filter(function (r) { return r && b.mats[r.mat] && r.qty > 0; });
 		return b;
+	};
+	/* Единая человекочитаемая история базы: замены, сопоставления и действия склада. */
+	K.log = function (b, type, title, details, extra) {
+		b.sthHistory = Array.isArray(b.sthHistory) ? b.sthHistory : [];
+		var h = Object.assign({ id: MB.newId('h'), at: new Date().toISOString(), type: type, title: title, details: details || '' }, extra || {});
+		b.sthHistory.push(h);
+		if (b.sthHistory.length > 500) b.sthHistory.splice(0, b.sthHistory.length - 500);
+		return h;
 	};
 	/* вкладка материала: кромка и погонный — «Кромка, погонаж»; лист — «Листы»; остальное — «Фурнитура» */
 	K.tabOf = function (b, m) {
@@ -33,16 +41,27 @@
 		if (!b.mats[mat] || !order || !order.id) return null;
 		qty = r6(num(qty));
 		var r = b.stock.res.filter(function (x) { return x.mat === mat && x.order === order.id; })[0];
-		if (!(qty > 0)) { if (r) b.stock.res.splice(b.stock.res.indexOf(r), 1); return null; }
+		if (!(qty > 0)) {
+			if (r) { b.stock.res.splice(b.stock.res.indexOf(r), 1); K.log(b, 'stock', 'Резерв снят', b.mats[mat].name + ' · заказ № ' + (order.no || ''), { mat: mat, order: order.id }); }
+			return null;
+		}
 		if (!r) { r = { id: MB.newId('r'), mat: mat, order: order.id }; b.stock.res.push(r); }
 		r.qty = qty; r.no = String(order.no || ''); r.date = MB.today();
+		K.log(b, 'stock', 'Резерв изменён', b.mats[mat].name + ' — ' + qty + ' ' + b.mats[mat].unit + ' · заказ № ' + (order.no || ''), { mat: mat, order: order.id });
 		return r;
 	};
-	K.unreserve = function (b, id) { K.fix(b); var n = b.stock.res.length; b.stock.res = b.stock.res.filter(function (r) { return r.id !== id; }); return n !== b.stock.res.length; };
+	K.unreserve = function (b, id) {
+		K.fix(b); var old = b.stock.res.filter(function (r) { return r.id === id; })[0];
+		b.stock.res = b.stock.res.filter(function (r) { return r.id !== id; });
+		if (old) K.log(b, 'stock', 'Резерв снят', (b.mats[old.mat] ? b.mats[old.mat].name : '') + ' · заказ № ' + (old.no || ''), { mat: old.mat, order: old.order });
+		return !!old;
+	};
 	K.unreserveOrder = function (b, orderId) {
-		K.fix(b);
-		b.stock.res = b.stock.res.filter(function (r) { return r.order !== orderId; });
-		b.stock.offcuts.forEach(function (o) { if (o.res === orderId) { delete o.res; delete o.resNo; } });
+		K.fix(b); var n = b.stock.res.length, no = '';
+		b.stock.res = b.stock.res.filter(function (r) { if (r.order === orderId) no = r.no; return r.order !== orderId; });
+		var off = 0;
+		b.stock.offcuts.forEach(function (o) { if (o.res === orderId) { off++; delete o.res; delete o.resNo; } });
+		if (n !== b.stock.res.length || off) K.log(b, 'stock', 'Резервы заказа сняты', 'Заказ № ' + no + ' · материалов: ' + (n - b.stock.res.length) + ', обрезков: ' + off, { order: orderId });
 	};
 
 	/* ------------------------------ строки вкладок ------------------------------ */
@@ -63,7 +82,10 @@
 		});
 		return out.sort(function (x, y) { return x.m.name.localeCompare(y.m.name, 'ru'); });
 	};
-	K.setCell = function (b, mat, cell) { K.fix(b); cell = String(cell || '').trim(); if (cell) b.stock.cells[mat] = cell; else delete b.stock.cells[mat]; };
+	K.setCell = function (b, mat, cell) {
+		K.fix(b); cell = String(cell || '').trim(); if (cell) b.stock.cells[mat] = cell; else delete b.stock.cells[mat];
+		K.log(b, 'stock', 'Ячейка изменена', (b.mats[mat] ? b.mats[mat].name : mat) + ' — ' + (cell || 'без ячейки'), { mat: mat });
+	};
 
 	/* ----------------------------- приход и расход ------------------------------ */
 	/* kind 'in' | 'out'; o: { price, note, order: { id, no } } — расход по заказу уменьшает резерв этого заказа */
@@ -76,6 +98,7 @@
 			d.order = o.order.id;
 			if (kind === 'out') { var r = K.resOf(b, mat).filter(function (x) { return x.order === o.order.id; })[0]; if (r) K.reserve(b, mat, r.qty - qty, o.order); }
 		}
+		if (d) K.log(b, 'stock', kind === 'out' ? 'Расход со склада' : 'Приход на склад', b.mats[mat].name + ' — ' + qty + ' ' + b.mats[mat].unit + (o.order ? ' · заказ № ' + o.order.no : ''), { mat: mat, order: o.order && o.order.id, doc: d.id });
 		return d;
 	};
 
@@ -95,9 +118,10 @@
 		var o = b.stock.offcuts.filter(function (x) { return x.id === id; })[0];
 		if (!o) return false;
 		if (order && order.id) { o.res = order.id; o.resNo = String(order.no || ''); } else { delete o.res; delete o.resNo; }
+		K.log(b, 'stock', order ? 'Обрезок зарезервирован' : 'Резерв обрезка снят', o.L + '×' + o.W + (order ? ' · заказ № ' + (order.no || '') : ''), { mat: o.mat, order: order && order.id });
 		return true;
 	};
-	K.dropOff = function (b, id) { var o = b.stock.offcuts.filter(function (x) { return x.id === id; })[0]; if (!o) return false; o.gone = 1; return true; };
+	K.dropOff = function (b, id) { var o = b.stock.offcuts.filter(function (x) { return x.id === id; })[0]; if (!o) return false; o.gone = 1; K.log(b, 'stock', 'Обрезок удалён', o.L + '×' + o.W, { mat: o.mat }); return true; };
 
 	/* -------------------------------- движения --------------------------------- */
 	K.KIND = { 'in': 'Приход', out: 'Расход', adj: 'Корректировка' };
@@ -107,5 +131,29 @@
 			if (!ql) return true;
 			return low(d.project).indexOf(ql) >= 0 || low(d.note).indexOf(ql) >= 0 || d.lines.some(function (l) { var m = b.mats[l.mat]; return m && low(m.name).indexOf(ql) >= 0; });
 		});
+	};
+	K.history = function (b, q, type) {
+		K.fix(b); var out = [];
+		(b.sthHistory || []).forEach(function (h) { if (!type || type === 'all' || h.type === type || (type === 'replace' && /^(replace|restore|link|unlink)$/.test(h.type))) out.push(h); });
+		if (!type || type === 'all' || type === 'stock') b.stock.docs.forEach(function (d) {
+			out.push({ id: 'doc-' + d.id, at: d.at || d.date || '', type: 'stock', title: (K.KIND[d.kind] || 'Движение') + ' № ' + d.no + (d.off ? ' (отменён)' : ''),
+				details: d.lines.map(function (l) { var m = b.mats[l.mat]; return (m ? m.name : '?') + ' — ' + l.qty + ' ' + (m ? m.unit : ''); }).join('; '), project: d.project || d.note || '', doc: d.id });
+		});
+		var ql = low(q);
+		return out.filter(function (h) { return !ql || low([h.title, h.details, h.from, h.to, h.project].join(' ')).indexOf(ql) >= 0; })
+			.sort(function (a, z) { return String(z.at || '').localeCompare(String(a.at || '')); });
+	};
+	/* Предварительная проверка списания заказа. Ничего не записывает. */
+	K.orderPreview = function (b, order, result) {
+		K.fix(b); var project = 'Заказ ' + order.no, prev = b.stock.docs.filter(function (d) { return d.kind === 'out' && !d.off && d.project === project; });
+		var rows = (result.need || []).map(function (x) {
+			var m = b.mats[x.mat], old = 0;
+			prev.forEach(function (d) { d.lines.forEach(function (l) { if (l.mat === x.mat) old += l.qty; }); });
+			var available = r6(MB.balance(b, x.mat) + old), after = r6(available - x.qty);
+			return { mat: x.mat, name: m ? m.name : x.mat, unit: m ? m.unit : '', need: x.qty, available: available, previous: old, after: after, shortage: Math.max(0, -after) };
+		});
+		var lim = b.set.offMin || [300, 200], good = (result.offcuts || []).filter(function (x) { var L = Math.max(x.L, x.W), W = Math.min(x.L, x.W); return L >= Math.max(lim[0], lim[1]) && W >= Math.min(lim[0], lim[1]); });
+		return { rows: rows, previous: prev, offcuts: good.length, used: (result.used || []).length, miss: result.miss || [], bad: result.bad || [],
+			shortage: rows.reduce(function (s, r) { return s + (r.shortage > 0 ? 1 : 0); }, 0), canWrite: rows.length > 0 };
 	};
 })();

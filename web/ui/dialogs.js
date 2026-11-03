@@ -84,6 +84,7 @@
 		function tabLook() {
 			return '<div class="form">' +
 				'<label>Тема окна</label><div><select id="sTheme">' + BM.THEMES.map(function (t) { return '<option value="' + t.id + '"' + (BM.theme(set.theme).id === t.id ? ' selected' : '') + '>' + esc(t.name) + '</option>'; }).join('') + '</select></div>' +
+					'<label>Плотность интерфейса</label><div><select id="sDensity"><option value="compact"' + (set.sthDensity === 'compact' ? ' selected' : '') + '>Компактно — больше строк на экране</option><option value="normal"' + (!set.sthDensity || set.sthDensity === 'normal' ? ' selected' : '') + '>Обычно</option><option value="comfortable"' + (set.sthDensity === 'comfortable' ? ' selected' : '') + '>Просторно — крупнее поля и кнопки</option></select></div>' +
 				'<label>Масштаб окна</label><div class="zRow"><button type="button" id="sZm" title="Мельче на 5 %">−</button><input type="range" id="sZ" min="50" max="200" step="5" value="' + Math.round((set.zoom || 1) * 100) + '"><button type="button" id="sZp" title="Крупнее на 5 %">+</button><b id="sZv">' + Math.round((set.zoom || 1) * 100) + '%</b><button type="button" id="sZ0">Сбросить</button></div>' +
 				'<div class="hint" id="sZh"></div>' +
 				'<label class="chk full"><input type="checkbox" id="sAnim"' + chk(set.anim !== 0) + '> Анимации: заставка при запуске, плавное появление окон, движение деталей на карте</label>' +
@@ -359,6 +360,7 @@
 				row('pScripts', 'Скрипт для БАЗИСа', set.sthScripts || '', 'Папка скриптов БАЗИС-Мебельщика: туда ставится STHGroup_Export (при каждом запуске программа его обновляет).', '<button data-pp="scripts">Выбрать и установить…</button><button data-po="pScripts">Папка</button>') +
 				row('pData', 'Настройки программы', S.boot && S.boot.dataDir, 'Настройки, прайсы сметы, вход на сайты магазинов. Менять не нужно.', '<button data-po="pData">Папка</button>') + '</div>';
 		}
+		function tabCrmSth() { return window.STHCRM ? window.STHCRM.settingsHtml() : '<p class="mute">Модуль CRM не загружен.</p>'; } // STHGroup 2.0
 		function tabUpdSth() {
 			var us = Upd.state;
 			return '<div class="form"><label>Версия</label><div style="display:flex;align-items:center;gap:10px"><b>' + esc(us.current || S.boot.version) + '</b>' +
@@ -569,6 +571,7 @@
 		if (!Fb.state.tester && isAuthor && !isTab) { SECS[0].tabs.push(['fb', 'Отзывы', tabFb]); SECS[0].tabs.push(['tst', 'Пользователи', tabTst]); SECS[0].tabs.push(['regs', 'Ключи регистрации', tabRegs]); }
 		var isSth = !!(S.boot && S.boot.edition === 'sth');             // STHGroup: обновления — у оболочки, регистрации нет
 		if (!isTab && !isSth) SECS[0].tabs.push(['upd', 'Обновления', tabUpd]);
+		if (isSth) SECS[0].tabs.push(['crm', 'CRM', tabCrmSth]); // STHGroup 2.0
 		if (isSth) SECS[0].tabs.push(['paths', 'Папки и файлы', tabPathsSth]);
 		if (isSth) SECS[0].tabs.push(['upd', 'Обновления', tabUpdSth]);   // STHGroup: своя вкладка — версия и «Проверить обновления»
 		if (isUser && !isSth) SECS[0].tabs.push(['reg', 'Регистрация', tabReg]);
@@ -581,7 +584,7 @@
 			if (CutSet.has(cur)) {
 				CutSet.read(cur, m, p, set);
 			} else if (cur === 'look') {
-				set.theme = g('sTheme').value; set.anim = g('sAnim').checked ? 1 : 0; set.sound = g('sSound').checked ? 1 : 0; set.org = g('sOrg').value.trim(); set.author = g('sAuthor').value.trim(); set.phone = g('sPhone').value.trim();
+				set.theme = g('sTheme').value; set.sthDensity = g('sDensity').value; set.anim = g('sAnim').checked ? 1 : 0; set.sound = g('sSound').checked ? 1 : 0; set.org = g('sOrg').value.trim(); set.author = g('sAuthor').value.trim(); set.phone = g('sPhone').value.trim();
 			} else if (cur === 'cpdf') {
 				var cp = set.pdf;
 				cp.color = Number(g('cColor').value) ? 1 : 0; cp.big = Number(g('cBig').value) ? 1 : 0; cp.summary = g('cSum').checked ? 1 : 0; cp.maps = g('cMaps').checked ? 1 : 0; cp.list = g('cList').checked ? 1 : 0; cp.offcuts = g('cOff').checked ? 1 : 0;
@@ -681,6 +684,7 @@
 			var g = function (id) { return m.querySelector('#' + id); };
 			body.querySelector('.tabs').onclick = function (e) { var b = e.target.closest('button'); if (!b) return; read(m); cur = b.dataset.t; show(m); };
 			body.querySelector('.snav').onclick = function (e) { var b = e.target.closest('button[data-s]'); if (!b) return; read(m); var sx = SECS.filter(function (x) { return x.id === b.dataset.s; })[0]; cur = last[sx.id] || sx.tabs[0][0]; show(m); };
+			if (cur === 'crm' && window.STHCRM) window.STHCRM.bindSettings(m); // STHGroup 2.0
 			if (cur === 'dDraw') g('qMode').onchange = function () { g('qModeHint').textContent = MODE_HINT[this.value] || ''; };
 			if (CutSet.has(cur)) CutSet.bind(body);
 			if (cur === 'cgen' && g('sMine')) g('sMine').onclick = function () { var mp = P.paramsFrom(set); for (var k in mp) if (mp.hasOwnProperty(k) && k !== 'quality') p[k] = mp[k]; differ = false; mine = true; show(m); };

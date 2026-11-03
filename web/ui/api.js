@@ -28,6 +28,14 @@
 		boot: function () { return call('GET', '/api/boot'); },
 		settings: function () { return call('GET', '/api/settings'); },
 		saveSettings: function (s) { return call('PUT', '/api/settings', s); },
+		/* STHGroup 2.0: CRM — пароль отправляется только в локальную серверную часть программы. */
+		crm: {
+			state: function () { return call('GET', '/api/sth/crm/state'); },
+			connect: function (o) { return call('POST', '/api/sth/crm/connect', o); },
+			test: function () { return call('POST', '/api/sth/crm/test', {}); },
+			sync: function () { return call('POST', '/api/sth/crm/sync', {}); },
+			disconnect: function () { return call('POST', '/api/sth/crm/disconnect', {}); }
+		},
 		readText: async function (path) { var r = await call('GET', '/api/file?path=' + q(path), undefined, true); var t = await r.text(); return t.charCodeAt(0) === 0xFEFF ? t.substring(1) : t; },
 		/* Текст в любой из кодировок, которыми пишут программы Windows: UTF-16 (с меткой), UTF-8, а иначе — Windows-1251. */
 		readAnyText: async function (path) {

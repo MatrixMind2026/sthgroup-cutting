@@ -4,8 +4,8 @@
 	var U = window.UI, P = BM.project, $ = U.$;
 	var S = { boot: null, set: BM.defaults(), path: '', doc: null, st: null, matKey: '', si: 0, sel: -1, selType: '', view: 'sheet', zoom: 1, holes: false,
 			  listMode: 'sheet', undo: [], redo: [], jobs: {}, queue: [], running: null, saveTimer: 0, setTimer: 0, savedAt: null, saveErr: '', variant: {}, keepAll: {}, dirty: false, mtime: 0, conflict: false,
-			  section: 'model', drillKey: '', drillZoom: 1, detailKey: '', detailZoom: 1, asmKey: '', asmZoom: 1, prices: null, estRow: '' };
-	/* раздел при запуске — «Модель»; адрес окна может назвать другой (?sec=cut) */
+			  section: 'today', drillKey: '', drillZoom: 1, detailKey: '', detailZoom: 1, asmKey: '', asmZoom: 1, prices: null, estRow: '' };
+	/* STHGroup 2.0: раздел при запуске — «Сегодня»; адрес окна может назвать другой (?sec=cut) */
 	(function () { var q = /[?&]sec=(model|cut|drill|est|base)\b/.exec(location.search); if (q) S.section = q[1]; })();
 	var A = window.App = { S: S };
 

@@ -234,7 +234,7 @@
 	O.urlText = urlText;
 	var EM = 9 * 0.3528, NAME_W = 186 - 3.2 - 34 - 34 - 27, NAME_W_NP = 186 - 3.2 - 34;
 	var MAT_W = 186 - 3.2 - 17 - 27 - 62;
-	function fitLines(text, widthMm, pt) { var w = D.textW(text) * (pt || 9) * 0.3528; return w <= widthMm ? 1 : 2; }
+	function fitLines(text, widthMm, pt) { var w = D.textW(text) * (pt || 9) * 0.3528 * 1.08; return w <= widthMm ? 1 : 2; } // STHGroup: запас на метрики Chromium — не заменять конец названия многоточием
 	/* со столбцом «Артикул» количество, цена и сумма идут плотнее — название не должно сжиматься вдвое */
 	function nameW(doc) {
 		if (doc.sup) return 186 - 3.2 - 24 - (doc.noPrice ? 0 : 23 + 21) - (doc.art ? doc.artW : 0) - SUP_W - (doc.img ? IMG_W : 0);

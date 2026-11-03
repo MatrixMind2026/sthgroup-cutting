@@ -50,5 +50,12 @@ ok(mv.length === 3 && mv[0].kind === 'out' && SK.moves(b, 'мдм').length === 1
 const again = MB.fix(JSON.parse(JSON.stringify(b)));
 SK.fix(again);
 ok(again.stock.res.length === b.stock.res.length && again.stock.cells[ld.id] === 'А-1', 'резервы и ячейки сохраняются в файле базы');
+const hist = SK.history(b, '', 'all');
+ok(hist.length >= 10 && hist.some(h => h.title === 'Ячейка изменена') && hist.some(h => h.title === 'Резерв изменён'), 'понятная история содержит действия с ячейкой и резервом', hist.slice(0, 3));
+ok(SK.history(b, 'ячейка', 'stock').length >= 1 && SK.history(b, '', 'replace').length === 0, 'поиск и отбор истории по типу');
+const beforePreview = MB.balance(b, ld.id);
+const preview = SK.orderPreview(b, o1, { need: [{ mat: ld.id, qty: 20 }], offcuts: [{ L: 700, W: 400 }], used: ['x'], miss: [], bad: [] });
+ok(preview.rows[0].need === 20 && preview.rows[0].shortage > 0 && preview.offcuts === 1 && preview.used === 1 && preview.previous.length === 2, 'проверка показывает нехватку, прежнее списание и последствия', preview);
+ok(MB.balance(b, ld.id) === beforePreview && b.stock.docs.length === 3, 'предварительная проверка ничего не записывает');
 console.log('проверок', n, '|', bad ? 'ОШИБОК: ' + bad : 'ошибок нет');
 process.exit(bad ? 1 : 0);

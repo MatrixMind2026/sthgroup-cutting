@@ -4,10 +4,12 @@
    Принудительная проверка — кнопка «Проверить обновления» в настройках: окно зовёт /api/upd/check,
    сервер передаёт вызов сюда (hooks.updCheck), а проверяет и качает electron-updater. */
 'use strict';
-const { app, BrowserWindow, dialog, shell, Menu, session } = require('electron');
+const { app, BrowserWindow, dialog, shell, Menu, session, safeStorage } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const server = require('./server');
+const backupRoutes = require('./sth_backup'); // STHGroup 2.0
+const crmRoutes = require('./sth_crm'); // STHGroup 2.0
 
 const APP_NAME = 'STHGroup';
 let win = null, srv = null;
@@ -236,7 +238,7 @@ app.whenReady().then(async function () {
   }
   srv = await server.start({
     webDir: path.join(__dirname, 'web'), dataDir: dataDir, version: app.getVersion(), bazisDir: path.join(__dirname, 'bazis'), exePath: process.execPath,
-    file: fileArg(process.argv), hooks: hooks, extraRoutes: shopRoutes
+    file: fileArg(process.argv), hooks: hooks, extraRoutes: function (token) { return Object.assign(shopRoutes(token), backupRoutes(token), crmRoutes({ dataDir: dataDir, safeStorage: safeStorage })); }
   });
   createWindow(srv.url);
   setupAutoUpdate();

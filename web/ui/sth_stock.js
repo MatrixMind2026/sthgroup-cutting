@@ -25,7 +25,7 @@
 		var O = BM.sth, H = window.STHO; if (!H) return [];
 		var bk = await H.load(); if (!bk) return [];
 		return bk.orders.slice().sort(function (a, c) { var x = /shipped|closed/.test(a.status) ? 1 : 0, y = /shipped|closed/.test(c.status) ? 1 : 0; return x - y || String(c.date).localeCompare(String(a.date)); })
-			.map(function (o) { var cl = O.client(bk, o.clientId); return { id: o.id, no: o.no, title: o.no + (cl ? ' · ' + cl.name : '') + ' · ' + O.statusName(o.status) }; });
+			.map(function (o) { var cl = O.client(bk, o.clientId); return { id: o.id, no: o.no, title: o.no + (cl ? ' · ' + cl.name : '') + ' · ' + O.statusName(o.status, bk) }; });
 	}
 	function orderOpts(list, cur, none) { return (none ? '<option value="">' + esc(none) + '</option>' : '') + list.map(function (o) { return '<option value="' + esc(o.id) + '"' + (o.id === cur ? ' selected' : '') + '>' + esc(o.title) + '</option>'; }).join(''); }
 	function matOpts(b, tab) {
@@ -334,7 +334,7 @@
 		if (cur) return cur;
 		var O = BM.sth, list = bk.orders.filter(function (o) { return o.items.length; });
 		if (!list.length) { U.toast('Ни в одном заказе нет изделий.'); return null; }
-		var v = await U.modal({ title: title, width: 480, cls: 'skDlg', body: '<label class="fld wide">Заказ <select id="skO">' + list.map(function (o) { var c = O.client(bk, o.clientId); return '<option value="' + esc(o.id) + '">' + esc(o.no + (c ? ' · ' + c.name : '') + ' · ' + O.statusName(o.status)) + '</option>'; }).join('') + '</select></label>',
+		var v = await U.modal({ title: title, width: 480, cls: 'skDlg', body: '<label class="fld wide">Заказ <select id="skO">' + list.map(function (o) { var c = O.client(bk, o.clientId); return '<option value="' + esc(o.id) + '">' + esc(o.no + (c ? ' · ' + c.name : '') + ' · ' + O.statusName(o.status, bk)) + '</option>'; }).join('') + '</select></label>',
 			buttons: [{ label: 'Отмена', value: null }, { label: 'Дальше', primary: true, run: function (el) { return el.querySelector('#skO').value; } }] });
 		return v ? O.order(bk, v) : null;
 	}

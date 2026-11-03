@@ -14,9 +14,22 @@ let st = load('est.bmk'), pl = E.newList('Розница'), R = build(st, pl);
 ok(R.rows.length >= 40, 'строк в таблице', R.rows.length);
 ok(row(R, 'panel', /Nordeco/) && row(R, 'panel', /Nordeco/).unit === 'листов', 'плита считается листами');
 const sm = P.summary(st), nordeco = sm.mats.find(x => /Nordeco/.test(x.mat.name));
-ok(row(R, 'panel', /Nordeco/).calc === nordeco.std, 'листы берутся из раскроя программы', [row(R, 'panel', /Nordeco/).calc, nordeco.std]);
-ok(row(R, 'cut', /^Распил$/).calc === R.rows.filter(w => w.kind === 'panel' && !w.sqm && !/ХДФ/.test(w.label)).reduce((a, w) => a + w.calc, 0), 'распил — сумма листов без ХДФ');
-ok(row(R, 'cut', /ХДФ/) && row(R, 'cut', /ХДФ/).calc === row(R, 'panel', /ХДФ/).calc, 'распил ХДФ — отдельной строкой');
+{	/* STHGroup: последний лист — дробью; «листы целыми» — как раскрой */
+	const w = row(R, 'panel', /Nordeco/);
+	ok(w.part && w.calc === Math.round((nordeco.std - 1 + w.part.f) * 100) / 100 && w.calc < nordeco.std && /кусок 0,\d л\.: \d+×\d+ — поискать в цеху/.test(w.note), 'листы из раскроя, последний — дробью', [w.calc, nordeco.std, w.part, w.note]);
+	const plW = E.newList('ц'); E.setUnit(R, w, 4, plW, st.work.est); const RW = build(st, plW), ww = row(RW, 'panel', /Nordeco/);
+	ok(plW.WHOLE[w.gkey] === 1 && ww.calc === nordeco.std && !ww.part && E.unitChoice(RW, ww).value === 4 && /целыми листами/.test(ww.note), '«листы целыми» — целые листы раскроя', [ww.calc, ww.note]);
+	E.setUnit(RW, ww, 0, plW, st.work.est); ok(!plW.WHOLE[w.gkey], 'снова «листы» — дробь');
+	const sh = { L: 2800, W: 2070, recs: [{ x: 0, y: 0, a: 690, b: 2050 }] }, f = E.lastFrac(sh, 10);
+	ok(f.f === 0.3 && f.pL === 710 && f.pW === 2070, 'деталь 690 мм по длине на всю ширину → 0,3 листа, кусок 710×2070', f);
+	const f2 = E.lastFrac({ L: 2800, W: 2070, recs: [{ x: 0, y: 0, a: 2780, b: 300 }] }, 10);
+	ok(f2.f === 0.2 && f2.pL === 2800 && f2.pW === 320, 'полоса вдоль листа — режем поперёк: 0,2, кусок 2800×320', f2);
+	const f3 = E.lastFrac({ L: 2800, W: 2070, recs: [{ x: 0, y: 0, a: 2780, b: 2050 }] }, 10);
+	ok(f3.f === 1, 'полный лист — целый', f3);
+}
+const ceilSum = re => R.rows.filter(w => w.kind === 'panel' && !w.sqm && re(w.label)).reduce((a, w) => a + Math.ceil(w.calc), 0);
+ok(row(R, 'cut', /^Распил$/).calc === ceilSum(l => !/ХДФ/.test(l)), 'распил — сумма целых листов без ХДФ');
+ok(row(R, 'cut', /ХДФ/) && row(R, 'cut', /ХДФ/).calc === Math.ceil(row(R, 'panel', /ХДФ/).calc), 'распил ХДФ — отдельной строкой');
 ok(row(R, 'fastener', /Петля/).priceDef === 350 && row(R, 'fastener', /Конфирмат/).priceDef === 0, 'петля получает цену петли по умолчанию');
 ok(row(R, 'fastener', /Направляющие/).unit === 'компл.' && row(R, 'fastener', /Направляющие/).calc === 4 && row(R, 'fastener', /Направляющие/).note === '8 шт', 'комплект из двух частей — комплектами', row(R, 'fastener', /Направляющие/));
 ok(row(R, 'fastener', /Ручка/).unit === 'шт' && row(R, 'fastener', /Ручка/).calc === 12, 'комплект из одной части — штуками');

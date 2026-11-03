@@ -113,6 +113,7 @@
 			P: {},                           // цены строк: ключ → цена
 			OFF: {}, REF: {},                // «не считать» и «справочно»
 			SQM: {}, FUNIT: {}, CUNIT: {}, EUNIT: {}, PLEN: {}, XMODE: {},     // единицы строк
+			WHOLE: {},                       // STHGroup: листы этого материала — целыми, без дроби последнего листа
 			ART: {}, NAME: {},               // артикул и наименование строки, вписанные вручную: ключ строки → текст
 			MERGE: {}, NOMERGE: {},          // объединённые позиции: ключ строки → ключ строки, в которую она влита; «оставить обе»: «ключ\nключ» → 1
 			LEG: {},                         // фурнитура с ценой из старого файла скрипта (без единиц)
@@ -615,8 +616,19 @@
 
 	/* Сколько листов группы материала и какая длина реза — по раскрою программы. Детали, которые
 	   раскрой не разложил (не влезли, лежат в буфере), и материалы без раскроя — по площади. */
-	function sheetsOf(st, g, sm) {
-		var o = { n: 0, rem: 0, saw: 0, byArea: 0, lost: 0, laid: 0, L: 0, W: 0 }, q;
+	/* STHGroup: доля последнего (самого пустого) листа — большая из «по длине» (от края до последней детали,
+	   по той стороне, где отрезать выгоднее) и «по площади деталей», вверх до 0,1. Кусок — сколько найти в цеху. */
+	E.lastFrac = function (sh, margin) {
+		var m = margin >= 0 ? margin : 10, L = sh.L, W = sh.W, x0 = Infinity, x1 = 0, y0 = Infinity, y1 = 0, ar = 0;
+		if (!(L > 0) || !(W > 0) || !sh.recs || !sh.recs.length) return null;
+		sh.recs.forEach(function (r) { x0 = Math.min(x0, r.x); x1 = Math.max(x1, r.x + r.a); y0 = Math.min(y0, r.y); y1 = Math.max(y1, r.y + r.b); ar += r.a * r.b; });
+		var useL = L - Math.max(0, x0, L - 2 * m - x1), useW = W - Math.max(0, y0, W - 2 * m - y1);
+		var fL = useL / L, fW = useW / W, byL = fL <= fW, fLen = byL ? fL : fW, f = Math.max(fLen, ar / (L * W));
+		f = Math.min(1, Math.max(0.1, Math.ceil(f * 10 - 1e-6) / 10));
+		return { f: f, pL: Math.round(byL ? useL : L), pW: Math.round(byL ? W : useW) };
+	};
+	function sheetsOf(st, g, sm, whole) {
+		var o = { n: 0, nW: 0, rem: 0, saw: 0, byArea: 0, lost: 0, laid: 0, L: 0, W: 0, part: null }, q, mg = st.work && st.work.params && st.work.params.margin;
 		for (q = 0; q < g.mats.length; q++) {
 			var m = g.mats[q], row = sm[m.key], f = P.fmtOf(m), A = f.L * f.W, lay = st.work.layout[m.key], ar = g.byMat[m.key].area;
 			if (!o.L) { o.L = f.L; o.W = f.W; }
@@ -624,13 +636,21 @@
 			if (row && row.on && lay) {
 				var lost = 0, list = (lay.unplaced || []).concat(lay.buf || []);
 				for (var z = 0; z < list.length; z++) { var t = st.typeBy[list[z].t]; if (t) lost += t.L * t.W; }
-				o.n += row.std; o.rem += row.rem; o.saw += row.saw; o.laid += row.std + row.rem;
-				if (lost > 0) { o.n += Math.max(1, Math.ceil(lost / A - 0.001)); o.lost += list.length; }
+				o.n += row.std; o.nW += row.std; o.rem += row.rem; o.saw += row.saw; o.laid += row.std + row.rem;
+				if (lost > 0) { var nl = Math.max(1, Math.ceil(lost / A - 0.001)); o.n += nl; o.nW += nl; o.lost += list.length; }
+				/* STHGroup: последний лист — дробью (если не «целыми листами» и нет неразложенных деталей) */
+				else if (!whole && row.std > 0) {
+					var lo = null; (lay.sheets || []).forEach(function (s) { if (s.rem || !s.recs || !s.recs.length) return; var a = 0; s.recs.forEach(function (r) { a += r.a * r.b; }); if (!lo || a < lo.a) lo = { s: s, a: a }; });
+					var fr = lo && E.lastFrac(lo.s, mg);
+					if (fr && fr.f < 1) { o.n -= 1 - fr.f; o.part = { f: fr.f, L: fr.pL, W: fr.pW }; }
+				}
 			} else {
-				o.n += Math.max(1, Math.ceil(ar / A - 0.001));
+				var na = Math.max(1, Math.ceil(ar / A - 0.001));
+				o.n += na; o.nW += na;
 				o.byArea = 1;
 			}
 		}
+		o.n = Math.round(o.n * 100) / 100;
 		return o;
 	}
 
@@ -774,27 +794,28 @@
 			if (areaM2 <= 0) continue;
 			var pid = panelPriceId(cfg, g.mat, g.th), sqm = isSqm(g.key), title = groupTitle(g);
 			var isOff = (has(pl.OFF, 'P:' + g.key) && pl.OFF['P:' + g.key]) ? 1 : 0;
-			var sh = sheetsOf(st, g, sm), thin = isThinSheet(cfg, g.mat, g.th);
+			var whole = pl.WHOLE && pl.WHOLE[g.key] ? 1 : 0, sh = sheetsOf(st, g, sm, whole), thin = isThinSheet(cfg, g.mat, g.th);
 			g.sheets = sh; g.thin = thin;
 			if (!isOff) {
 				if (!sqm) {
-					totalSheets += sh.n;
+					totalSheets += sh.nW;
 					var pm = g.perim / 1000, sw = sh.saw / 1000;
-					if (thin) { thinSheets += sh.n; thinPerim += pm; thinSaw += sw; }
-					else { cutSheets += sh.n; cutPerim += pm; cutSaw += sw; }
+					if (thin) { thinSheets += sh.nW; thinPerim += pm; thinSaw += sw; }
+					else { cutSheets += sh.nW; cutPerim += pm; cutSaw += sw; }
 					unplaced += sh.lost; byArea += sh.byArea; laid += sh.laid;
 				}
 				packArea += areaM2;
 				if (sqm) sqmUsed = 1;
 			}
-			var shNote = sh.byArea ? 'по площади' : ('раскрой: ' + sh.n + ' л.' + (sh.rem ? ' + ' + sh.rem + ' ост.' : ''));
+			var shNote = sh.byArea ? 'по площади' : ('раскрой: ' + sh.nW + ' л.' + (sh.rem ? ' + ' + sh.rem + ' ост.' : ''));
 			if (sqm) {
 				mkRow({ kind: 'panel', head: 'ПЛИТНЫЙ МАТЕРИАЛ', label: title, akey: g.mat, gkey: g.key, sqm: 1, u0: 'листы', u1: 'кв.м', offKey: 'P:' + g.key, infoKey: 'P:' + g.key,
 						qtyKey: 'P:' + g.key, calc: Math.round(areaM2 * 100) / 100, unit: 'кв.м', priceId: 'Q:' + g.key, priceAlt: g.alt ? 'Q:' + g.alt : '', priceDef: clsM2(pid), punit: 'руб./кв.м', note: shNote });
 			} else {
 				mkRow({ kind: 'panel', head: 'ПЛИТНЫЙ МАТЕРИАЛ', label: title, akey: g.mat, gkey: g.key, sqm: 0, u0: 'листы', u1: 'кв.м', offKey: 'P:' + g.key, infoKey: 'P:' + g.key,
-						qtyKey: 'P:' + g.key, calc: sh.n, unit: 'листов', priceId: 'S:' + g.key, priceAlt: g.alt ? 'S:' + g.alt : '', priceDef: clsSheet(pid), punit: 'руб./лист',
-						note: f2(areaM2) + ' кв.м' + (sh.rem ? ' · остатков ' + sh.rem : '') + (sh.byArea ? ' · по площади' : '') });
+						qtyKey: 'P:' + g.key, calc: sh.n, unit: 'листов', whole: whole, part: sh.part, priceId: 'S:' + g.key, priceAlt: g.alt ? 'S:' + g.alt : '', priceDef: clsSheet(pid), punit: 'руб./лист',
+						note: f2(areaM2) + ' кв.м' + (sh.rem ? ' · остатков ' + sh.rem : '') + (sh.byArea ? ' · по площади' : '') +
+						(sh.part ? ' · кусок ' + String(sh.part.f).replace('.', ',') + ' л.: ' + sh.part.L + '×' + sh.part.W + ' — поискать в цеху' : '') + (whole ? ' · целыми листами' : '') });
 			}
 		}
 
@@ -1197,10 +1218,12 @@
 		else if (w.kind == 'own') { o = [['on', 'да'], ['off', 'не считать']]; cur = w.off ? 'off' : 'on'; }
 		else if (w.kind == 'extra') { o = [['sum', 'суммой'], ['sqm', 'за кв.м'], ['pct', '% от сметы'], ['off', 'не считать']]; cur = w.off ? 'off' : w.xmode; }
 		else if (w.gkey) {
-			o = [[0, w.u0 || 'листы'], [1, w.u1 || 'кв.м']];
+			o = [[0, w.u0 || 'листы']];
+			if (w.kind == 'panel') o.push([4, 'листы целыми']);      // STHGroup
+			o.push([1, w.u1 || 'кв.м']);
 			if (w.infoKey) o.push([3, 'справочно']);
 			o.push([2, 'не считать']);
-			cur = w.off ? 2 : (w.info ? 3 : (w.sqm ? 1 : 0));
+			cur = w.off ? 2 : (w.info ? 3 : (w.sqm ? 1 : (w.whole && !w.sqm ? 4 : 0)));
 		} else if (w.kind == 'edge') { o = [[0, 'да'], [2, 'справочно'], [1, 'не считать']]; cur = w.off ? 1 : (w.info ? 2 : 0); }
 		else { o = [[0, 'да'], [1, 'не считать']]; cur = w.off ? 1 : 0; }
 		return { options: o, value: cur };
@@ -1234,6 +1257,7 @@
 		} else if (w.gkey) {
 			setFlag(pl.OFF, w.offKey, num == 2);
 			if (w.infoKey) setFlag(pl.REF, w.infoKey, num == 3);
+			if (w.kind == 'panel' && num != 2 && num != 3) { pl.WHOLE = pl.WHOLE || {}; if ((num == 4) != !!w.whole) changed = true; setFlag(pl.WHOLE, w.gkey, num == 4); }      // STHGroup
 			if (num != 2 && num != 3) {
 				var now = num == 1 ? 1 : 0;
 				if (now != (w.sqm ? 1 : 0)) changed = true;

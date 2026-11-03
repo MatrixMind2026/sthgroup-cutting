@@ -656,7 +656,7 @@
 		cfg.scriptFile = path;
 		if (to.conf) for (var k in imp.conf) if (has(imp.conf, k)) cfg[k] = imp.conf[k];
 		var target = pl.name;
-		if (to.to === 'cur') ['P', 'OFF', 'REF', 'SQM', 'FUNIT', 'CUNIT', 'EUNIT', 'PLEN', 'LEG', 'def', 'cls'].forEach(function (f) { pl[f] = imp.list[f]; });
+		if (to.to === 'cur') ['P', 'OFF', 'REF', 'SQM', 'FUNIT', 'CUNIT', 'EUNIT', 'PLEN', 'LEG', 'WHOLE', 'def', 'cls'].forEach(function (f) { pl[f] = imp.list[f]; });
 		else {
 			var nm = imp.list.name, q = 2;
 			while (E.listBy(store, imp.list.name)) imp.list.name = nm + ' (' + (q++) + ')';

@@ -98,6 +98,7 @@
 		if (!K.has()) return R;
 		var px = null, hasP = function (id) { return Object.prototype.hasOwnProperty.call(pl.P || {}, id); };
 		R.rows.forEach(function (w) {
+			if (w.sthReplace) return;   // STHGroup: у замены цена уже из выбранного материала базы
 			var inf = K.rowInfo(w);
 			if (!inf || !w.priceId || hasP(w.priceId) || (w.priceAlt && hasP(w.priceAlt))) return;
 			var p = priceIn(inf, w.unit);
@@ -105,6 +106,7 @@
 		});
 		if (px) { R = E.build(st, cfg, px, we, sup); R.pl = pl.name; }
 		R.rows.forEach(function (w) {
+			if (w.sthReplace) return;   // STHGroup: не перезаписывать замену прежним сопоставлением
 			var inf = K.rowInfo(w);
 			if (!inf) return;
 			w.mb = { id: inf.id, stock: inf.stock, unit: inf.unit, price: px && px.P[w.priceId] !== undefined && !hasP(w.priceId) };

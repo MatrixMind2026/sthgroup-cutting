@@ -51,7 +51,7 @@
 				if (p !== '' && !(num(p) >= 0)) { U.toast('Цена — число не меньше нуля.', { bad: true }); return false; }
 				var nw = el.querySelector('#spNew');
 				return { url: el.querySelector('#sUrl').value.trim(), price: p === '' ? null : num(p), shop: el.querySelector('#sShop').value.trim(), art: el.querySelector('#spArt').value.trim(),
-						 img: st.img, stock: st.stock, note: st.note, make: !m && nw && nw.checked, grp: el.querySelector('#spGrp') ? el.querySelector('#spGrp').value : '' };
+						 img: st.img, stock: st.stock, note: st.note, pack: st.pack || 0, packPrice: st.packPrice || 0, make: !m && nw && nw.checked, grp: el.querySelector('#spGrp') ? el.querySelector('#spGrp').value : '' };
 			} }],
 			onOpen: function (el, close) {
 				prev(el);
@@ -67,6 +67,8 @@
 					btn.disabled = false; btn.textContent = 'Заполнить по ссылке';
 					if (!f) return;
 					var got = [], pr = el.querySelector('#spPrice'), was = pr.value.trim();
+					var pk = f.priceBuy ? T.packFor({ name: name, pack: m ? m.pack : 0 }, f) : 0;
+					if (pk > 1) { st.pack = pk; st.packPrice = f.priceBuy; got.push('упаковка ' + pk + ' шт по ' + val(f.priceBuy) + ' ₽ → за штуку'); f = Object.assign({}, f, { priceBuy: Math.round(f.priceBuy / pk * 10000) / 10000 }); }
 					if (f.priceBuy) { pr.value = val(f.priceBuy); got.push('цена ' + val(f.priceBuy) + ' ₽'); el.querySelector('#spWas').textContent = (unit ? 'за ' + unit : '') + (was && num(was) !== f.priceBuy ? ' · было ' + was : ''); }
 					if (f.article) { el.querySelector('#spArt').value = f.article; got.push('артикул ' + f.article); }
 					var shop = f.supplier || host(url); if (shop && !el.querySelector('#sShop').value.trim()) el.querySelector('#sShop').value = shop;
@@ -122,6 +124,7 @@
 		var sp2 = supByName(b, res.shop, url); mm.sup = sp2 ? sp2.id : '';
 		mm.photo = res.img || '';
 		if (res.stock !== undefined) mm.noStock = res.stock ? 0 : 1;
+		if (res.pack > 1) { mm.pack = res.pack; mm.packPrice = res.packPrice; }
 		if (res.note) mm.note = String(mm.note || '').replace(/\n?\[сайт\][^\n]*/g, '').trim() + (mm.note ? '\n' : '') + '[сайт] ' + res.note;
 		if (made) {
 			var r = MB.saveMat(b, mm);
@@ -159,12 +162,18 @@
 					var f = await T.read(m.url);
 					if (!f.priceBuy) { bad.push(m.name); continue; }
 					var cur = b.mats[m.id] || m, was = cur.price, wasNo = cur.noStock;
-					cur.price = f.priceBuy; if (f.inStock !== undefined) cur.noStock = f.inStock ? 0 : 1;
-					if (was !== cur.price || wasNo !== cur.noStock) ch.push({ name: cur.name, was: was, now: cur.price, stock: cur.noStock !== wasNo ? (cur.noStock ? 'нет в наличии' : 'в наличии') : '' });
+					T.setPrice(cur, f.priceBuy, f); if (f.inStock !== undefined) cur.noStock = f.inStock ? 0 : 1;   // упаковка — в цену за штуку
+					if (was !== cur.price || wasNo !== cur.noStock) ch.push({ id: cur.id, name: cur.name + (cur.pack > 1 ? ' (упаковка ' + cur.pack + ' по ' + val(cur.packPrice) + ' ₽)' : ''), was: was, now: cur.price, stock: cur.noStock !== wasNo ? (cur.noStock ? 'нет в наличии' : 'в наличии') : '' });
 				} catch (e) { bad.push(m.name); }
 				if (i < list.length - 1) await new Promise(function (r) { setTimeout(r, 1500); });
 			}
-			if (ch.length) { await K.saveBase(); if (K.changed) await K.changed(); }
+			if (ch.length) {
+				await K.saveBase(); if (K.changed) await K.changed();
+				/* своя цена строки в прайсе сметы перебивала бы базу — у обновлённых строк убираем её, цена теперь из базы */
+				var pl = Es.pl(), touched = false, ids = {}; ch.forEach(function (c) { ids[c.id] = 1; });
+				R.rows.forEach(function (w) { var mm = (KIND[w.kind] && !w.own) ? matOf(w) : null; if (mm && ids[mm.id] && pl && pl.P && w.priceId && Object.prototype.hasOwnProperty.call(pl.P, w.priceId)) { delete pl.P[w.priceId]; touched = true; } });
+				if (touched) Es.saveStore(true);
+			}
 		} finally { busy = false; }
 		Es.render();
 		await U.modal({ title: 'Цены по ссылкам обновлены', width: 640,

@@ -30,6 +30,19 @@
 		if (f.image) { try { f.image = new URL(f.image, r.url || normUrl(url)).href; } catch (e) { f.image = ''; } }
 		return f;
 	};
+	/* цена с сайта → в материал: если товар продаётся упаковкой (поле «упаковка» или число в названии: «2000 штук», «(5000 шт.)»),
+	   цена с сайта — за упаковку, в материал — за единицу; возвращает { pack, perUnit } */
+	T.packFor = function (m, f) {
+		var pk = m && Number(m.pack) > 1 ? Number(m.pack) : 0, R = BM.sthRe;
+		if (!pk && R) { var a = R.packOf(m && m.name) || R.packOf(f && f.name); if (a && a.n > 1) pk = a.n; }
+		return pk;
+	};
+	T.setPrice = function (m, price, f) {
+		var pk = T.packFor(m, f);
+		if (pk > 1) { m.pack = pk; m.packPrice = price; m.price = Math.round(price / pk * 10000) / 10000; }
+		else m.price = price;
+		return { pack: pk, perUnit: m.price };
+	};
 	/* фото с сайта — картинкой (data:), чтобы хранилось в базе и печаталось без интернета */
 	T.image = async function (url, shrink) {
 		try {
@@ -60,7 +73,12 @@
 		try { f = await T.read(url); } catch (e) { U.error(e); return; }
 		var got = [];
 		var put = function (id, v, onlyEmpty) { var x = g(id); if (!x || v === undefined || v === '' || v === null) return false; if (onlyEmpty && String(x.value).trim() !== '' && String(x.value).trim() !== '0') return false; x.value = String(v).replace('.', ','); return true; };
-		if (put('mPrice', f.priceBuy)) got.push('цена ' + String(f.priceBuy).replace('.', ',') + ' ₽');
+		var pk0 = T.packFor({ name: g('mName').value, pack: g('mPack') ? g('mPack').value.replace(',', '.') : 0 }, f);
+		if (pk0 > 1 && g('mPack') && g('mPackP')) {
+			g('mPack').value = pk0; g('mPackP').value = String(f.priceBuy).replace('.', ','); put('mPrice', Math.round(f.priceBuy / pk0 * 10000) / 10000);
+			g('mPackP').dispatchEvent(new Event('input', { bubbles: true }));
+			got.push('цена за упаковку ' + String(f.priceBuy).replace('.', ',') + ' ₽ (' + pk0 + ' шт) → за штуку');
+		} else if (put('mPrice', f.priceBuy)) got.push('цена ' + String(f.priceBuy).replace('.', ',') + ' ₽');
 		if (put('mName', f.name, true)) got.push('название');
 		if (put('mArt', f.article, true)) got.push('артикул');
 		if (put('mTh', f.thickness, true)) got.push('толщина');
@@ -94,7 +112,7 @@
 				if (f.priceBuy) {
 					done++;
 					var was = m.price, wasNo = m.noStock;
-					m.price = f.priceBuy; if (f.inStock !== undefined) m.noStock = f.inStock ? 0 : 1;
+					T.setPrice(m, f.priceBuy, f); if (f.inStock !== undefined) m.noStock = f.inStock ? 0 : 1;
 					m.note = noteWith(m.note, f);
 					if (was !== m.price || wasNo !== m.noStock) diff++;
 				} else bad.push(m.name);

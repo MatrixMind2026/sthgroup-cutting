@@ -137,6 +137,14 @@
 		window.App.save(); Es.render(); U.toast('Строка из модели возвращена.');
 	}
 
+	/* Смета вызывает комплекты до итогов и документов: заменяем строки непосредственно перед ними. */
+	var kits0 = E.sthKits;
+	E.sthKits = function (c) {
+		try { E.sthReplace(c); }
+		catch (e) { if (typeof console !== 'undefined') console.warn(e); }
+		return kits0 ? kits0.apply(this, arguments) : undefined;
+	};
+
 	/* ------------------------------ таблица сметы ----------------------------- */
 	var btn0 = STH.mbBtn;
 	STH.mbBtn = function (w, i) {

@@ -347,6 +347,18 @@
 		}
 		function updRepoUrl(r) { return 'https://github.com/' + r + '/releases'; }
 		/* STHGroup: обновления — у оболочки (GitHub, electron-updater) */
+		/* STHGroup: «Папки и файлы» — где лежат база материалов, заказы, документы, скрипт БАЗИСа, данные программы; меняется сразу */
+		function tabPathsSth() {
+			var K = window.MatBase, X = window.STHO, row = function (id, label, val, hint, btns) {
+				return '<label>' + label + '</label><div><div class="pathrow"><input type="text" id="' + id + '" value="' + esc(val || '') + '" readonly placeholder="не выбрано">' + btns + '</div>' + (hint ? '<div class="hint">' + hint + '</div>' : '') + '</div>';
+			};
+			return '<div class="form">' +
+				row('pBase', 'База материалов (файл)', K && K.path, 'Один файл — все материалы, цены, ссылки, комплекты. Можно положить в общую папку (Яндекс Диск, сеть).', '<button data-pp="base">Выбрать…</button><button data-po="pBase">Папка</button>') +
+				row('pOrders', 'Папка заказов', X ? X.folder() : (set.sthOrdersDir || ''), 'Здесь «STHGroup — заказы.json» и папки заказов «Заказы\\<номер клиент>» с моделями. По умолчанию — папка базы материалов.', '<button data-pp="orders">Выбрать…</button><button data-po="pOrders">Папка</button>') +
+				row('pDocs', 'Документы (PDF, Excel)', set.sthDocsDir || '', 'Куда сохранять сметы, КП, счета, прайс. Пусто — КП и счёт в папку заказа, смета — рядом с моделью.', '<button data-pp="docs">Выбрать…</button><button data-pc="docs">Очистить</button><button data-po="pDocs">Папка</button>') +
+				row('pScripts', 'Скрипт для БАЗИСа', set.sthScripts || '', 'Папка скриптов БАЗИС-Мебельщика: туда ставится STHGroup_Export (при каждом запуске программа его обновляет).', '<button data-pp="scripts">Выбрать и установить…</button><button data-po="pScripts">Папка</button>') +
+				row('pData', 'Настройки программы', S.boot && S.boot.dataDir, 'Настройки, прайсы сметы, вход на сайты магазинов. Менять не нужно.', '<button data-po="pData">Папка</button>') + '</div>';
+		}
 		function tabUpdSth() {
 			var us = Upd.state;
 			return '<div class="form"><label>Версия</label><div style="display:flex;align-items:center;gap:10px"><b>' + esc(us.current || S.boot.version) + '</b>' +
@@ -557,6 +569,7 @@
 		if (!Fb.state.tester && isAuthor && !isTab) { SECS[0].tabs.push(['fb', 'Отзывы', tabFb]); SECS[0].tabs.push(['tst', 'Пользователи', tabTst]); SECS[0].tabs.push(['regs', 'Ключи регистрации', tabRegs]); }
 		var isSth = !!(S.boot && S.boot.edition === 'sth');             // STHGroup: обновления — у оболочки, регистрации нет
 		if (!isTab && !isSth) SECS[0].tabs.push(['upd', 'Обновления', tabUpd]);
+		if (isSth) SECS[0].tabs.push(['paths', 'Папки и файлы', tabPathsSth]);
 		if (isSth) SECS[0].tabs.push(['upd', 'Обновления', tabUpdSth]);   // STHGroup: своя вкладка — версия и «Проверить обновления»
 		if (isUser && !isSth) SECS[0].tabs.push(['reg', 'Регистрация', tabReg]);
 		function secOf(t) { for (var i = 0; i < SECS.length; i++) for (var j = 0; j < SECS[i].tabs.length; j++) if (SECS[i].tabs[j][0] === t) return SECS[i]; return null; }
@@ -824,6 +837,29 @@
 				g('sZp').onclick = function () { A.zoomStep(0.05); };
 				g('sZ0').onclick = function () { A.setZoom(1); };
 				document.addEventListener('brzoom', zSync); zSync();
+			}
+			if (cur === 'paths' && isSth) {
+				m.querySelectorAll('[data-po]').forEach(function (b) { b.onclick = function () { var v = g(b.dataset.po).value; if (!v) return; U.api.open(b.dataset.po === 'pBase' ? U.dirOf(v) : v).catch(U.error); }; });
+				m.querySelectorAll('[data-pc]').forEach(function (b) { b.onclick = function () { delete set.sthDocsDir; S.set.sthDocsDir = ''; window.App.saveSettings(true); show(m); }; });
+				m.querySelectorAll('[data-pp]').forEach(function (b) { b.onclick = async function () {
+					var k = b.dataset.pp, K = window.MatBase, X = window.STHO;
+					try {
+						if (k === 'base') {
+							var f = await U.pick({ kind: 'open', title: 'Файл базы материалов (.json)', dir: K && K.path ? U.dirOf(K.path) : S.boot.docs, filters: [{ name: 'База материалов', ext: ['json'] }] });
+							if (!f) return;
+							await U.api.write(U.join(S.boot.dataDir, 'matbase.json'), JSON.stringify({ file: f })); await K.refresh(); if (K.changed) await K.changed();
+							U.toast('База материалов: ' + U.baseOf(f));
+						} else if (k === 'orders') {
+							var d = await U.pick({ kind: 'folder', title: 'Папка заказов', dir: X ? X.folder() : '' }); if (!d) return;
+							var keep = X && X.book; S.set.sthOrdersDir = d; set.sthOrdersDir = d; window.App.saveSettings(true);
+							if (X) { var nb = await X.load(true); if (nb && !nb.orders.length && keep && keep.orders.length) { X.book = keep; X.path = U.join(d, BM.sth.FILE); X.save(true); U.toast('Заказы перенесены в новую папку.'); } else U.toast('Папка заказов: ' + d); }
+						} else if (k === 'docs') {
+							var d2 = await U.pick({ kind: 'folder', title: 'Папка для документов', dir: set.sthDocsDir || S.boot.docs }); if (!d2) return;
+							S.set.sthDocsDir = d2; set.sthDocsDir = d2; window.App.saveSettings(true);
+						} else if (k === 'scripts') { if (window.STH && window.STH.installScript) await window.STH.installScript(); }
+					} catch (e) { U.error(e); }
+					if (m.isConnected) show(m);
+				}; });
 			}
 			if (cur === 'upd' && isSth) {
 				g('uCheckSth').onclick = async function () { read(m); var b = this; b.disabled = true; b.textContent = 'Проверяю…'; try { await Dg.checkSth(); await Dg.updRefresh(); } finally { if (cur === 'upd' && m.isConnected) show(m); } };
@@ -1097,7 +1133,7 @@
 	Dg.fileStem = fileStem;
 	function outDir() {
 		var S = window.App.S;
-		return S.st.work.outDir || U.join(U.dirOf(S.path), U.stemOf(S.path) + ' — раскрой');
+		return S.st.work.outDir || (S.set.sthDocsDir ? U.join(S.set.sthDocsDir, U.stemOf(S.path)) : U.join(U.dirOf(S.path), U.stemOf(S.path) + ' — раскрой'));   // STHGroup: папка документов из «Папки и файлы»
 	}
 	function ready() {
 		var A = window.App, S = A.S;

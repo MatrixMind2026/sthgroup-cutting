@@ -510,7 +510,7 @@
 			buttons: [{ label: 'Закрыть', value: null }, { label: 'Сохранить в PDF', primary: true, value: 1 }],
 			onOpen: function (m) { m.querySelector('#soPrev').srcdoc = html; } });
 		if (!go) return;
-		var dir = o.items[0] ? U.dirOf(o.items[0].path) : (S().set.lastDir || S().boot.docs);
+		var dir = S().set.sthDocsDir || o.dir || (o.items[0] ? U.dirOf(o.items[0].path) : (S().set.lastDir || S().boot.docs));   // папка документов, иначе папка заказа
 		var p = await U.pick({ kind: 'save', title: kind === 'inv' ? 'Счёт в PDF' : 'КП в PDF', dir: dir, name: name.replace(/[\\/:*?"<>|]+/g, ' ') + '.pdf', filters: [{ name: 'PDF', ext: ['pdf'] }] });
 		if (!p) return;
 		if (!/\.pdf$/i.test(p)) p += '.pdf';
@@ -566,7 +566,7 @@
 			buttons: [{ label: 'Закрыть', value: null }, { label: 'Сохранить в PDF', primary: true, value: 1 }],
 			onOpen: function (m) { m.querySelector('#soPrev').srcdoc = html; } });
 		if (!go) return;
-		var p = await U.pick({ kind: 'save', title: 'Прайс в PDF', dir: X.folder() || S().set.lastDir || S().boot.docs, name: ('Прайс ' + (cat.company.name || 'STHGroup') + ' ' + O.ruDate(pl.date)).replace(/[\\/:*?"<>|«»]+/g, ' ').replace(/\s+/g, ' ').trim() + '.pdf', filters: [{ name: 'PDF', ext: ['pdf'] }] });
+		var p = await U.pick({ kind: 'save', title: 'Прайс в PDF', dir: S().set.sthDocsDir || X.folder() || S().set.lastDir || S().boot.docs, name: ('Прайс ' + (cat.company.name || 'STHGroup') + ' ' + O.ruDate(pl.date)).replace(/[\\/:*?"<>|«»]+/g, ' ').replace(/\s+/g, ' ').trim() + '.pdf', filters: [{ name: 'PDF', ext: ['pdf'] }] });
 		if (!p) return;
 		if (!/\.pdf$/i.test(p)) p += '.pdf';
 		try { await U.api.pdf(html, p); U.toast('Готово: ' + U.baseOf(p), { actions: [{ label: 'Открыть', run: function () { U.api.open(p).catch(U.error); } }, { label: 'Папка', run: function () { U.api.open(U.dirOf(p)).catch(U.error); } }] }); } catch (e) { U.error(e); }

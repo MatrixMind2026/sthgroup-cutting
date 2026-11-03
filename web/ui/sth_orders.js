@@ -140,7 +140,7 @@
 		});
 		return list.map(function (o) {
 			var c = O.client(b, o.clientId), t = orderSum(o);
-			return '<div class="soIt' + (o.id === X.cur ? ' on' : '') + '" data-o="' + o.id + '"><span class="soTag ' + (STAT_CLS[o.status] || '') + '">' + esc(O.statusName(o.status)) + '</span><b>' + esc(o.no) + '</b> · ' + esc(c ? c.name : 'без клиента') +
+			return '<div class="soIt' + (o.id === X.cur ? ' on' : '') + '" data-o="' + o.id + '"><span class="soTag ' + (STAT_CLS[o.status] || '') + '">' + esc(O.statusName(o.status, b)) + '</span><b>' + esc(o.no) + '</b> · ' + esc(c ? c.name : 'без клиента') +
 				'<small>' + esc(o.items.map(function (i) { return i.title || U.stemOf(i.path); }).join(', ') || 'нет изделий') + ' · ' + money(t.total) + ' ₽' + (t.debt > 0.009 && t.paid > 0 ? ' · долг ' + money(t.debt) : '') + '</small></div>';
 		}).join('') || '<p class="mute">Заказов нет. Выгрузите модель скриптом STHGroup_Export — заказ появится сам — или нажмите «+ Новый заказ».</p>';
 	}
@@ -223,12 +223,12 @@
 		if (!O.order(X.book, X.cur)) X.cur = X.book.orders[0] ? X.book.orders[0].id : '';
 		var o = O.order(X.book, X.cur), b = X.book;
 		var left = '<aside class="soL"><div class="sec">Заказы</div><button class="primary soNew" id="soNew">+ Новый заказ</button>' +
-			'<input type="search" id="soQ" placeholder="Поиск: номер, клиент, изделие" value="' + esc(X.q) + '"><select id="soSt"><option value="">все статусы</option>' + opt(O.STATUSES, X.st) + '</select><div id="soList">' + listHtml() + '</div></aside>';
+			'<input type="search" id="soQ" placeholder="Поиск: номер, клиент, изделие" value="' + esc(X.q) + '"><select id="soSt"><option value="">все статусы</option>' + opt(O.stages(X.book), X.st) + '</select><div id="soList">' + listHtml() + '</div></aside>';
 		if (!o) { host.innerHTML = left + '<section class="soC"><div class="soEmpty">Выберите заказ или создайте новый.</div></section><aside class="soS"><div class="soBtns"><button id="soCat">Справочник и цены…</button><button id="soPrice">Прайс для клиента</button></div><p class="mute sm">Файл заказов: ' + esc(X.path) + '</p></aside>'; return; }
 		var q = O.calc(b, o), c = O.client(b, o.clientId);
 		var clients = '<option value="">— клиент —</option>' + b.clients.map(function (x) { return '<option value="' + x.id + '"' + (x.id === o.clientId ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '<option value="__new">＋ новый клиент…</option>';
 		var tabs = [['calc', 'Расчёт'], ['items', 'Изделия (' + o.items.length + ')'], ['pay', 'Оплаты' + (o.payments.length ? ' (' + o.payments.length + ')' : '')]];
-		var center = '<section class="soC"><div class="soHead"><input id="soNo" class="soNo" value="' + esc(o.no) + '"><select id="soCl">' + clients + '</select><input type="date" id="soDate" value="' + esc(o.date) + '"><select id="soStat">' + opt(O.STATUSES, o.status) + '</select><button class="icon" id="soDel" title="Удалить заказ">✕</button></div>' +
+		var center = '<section class="soC"><div class="soHead"><input id="soNo" class="soNo" value="' + esc(o.no) + '"><select id="soCl">' + clients + '</select><input type="date" id="soDate" value="' + esc(o.date) + '"><select id="soStat">' + opt(O.stages(X.book), o.status) + '</select><button class="icon" id="soDel" title="Удалить заказ">✕</button></div>' +
 			'<div class="mute sm">' + esc(c ? [c.phone, c.email].filter(Boolean).join(' · ') : '') + '</div>' +
 			'<input id="soNote" class="soNote" placeholder="Комментарий к заказу" value="' + esc(o.note || '') + '">' +
 			'<div class="tabs soTabs">' + tabs.map(function (t) { return '<button data-tb="' + t[0] + '"' + (X.tab === t[0] ? ' class="on"' : '') + '>' + t[1] + '</button>'; }).join('') + '</div>' +
@@ -265,7 +265,7 @@
 			center = '<div class="soHead"><input id="scName" class="soNo" style="width:360px" value="' + esc(c.name) + '"><button class="icon" id="scDel" title="Удалить клиента">✕</button></div>' +
 				'<div class="soForm"><label>Телефон<input id="scPhone" value="' + esc(c.phone) + '"></label><label>Почта<input id="scEmail" value="' + esc(c.email) + '"></label><label class="w">Примечание<input id="scNote" value="' + esc(c.note) + '"></label></div>' +
 				'<div class="soBh">Заказы клиента</div><table class="grid soClO"><thead><tr><th>№</th><th>Дата</th><th>Изделия</th><th>Статус</th><th class="r">Сумма</th><th class="r">Оплачено</th><th class="r">Долг</th></tr></thead><tbody>' +
-				(os.map(function (o) { var t = orderSum(o); return '<tr class="hov" data-go="' + o.id + '"><td><b>' + esc(o.no) + '</b></td><td>' + esc(O.ruDate(o.date)) + '</td><td>' + (o.items.map(function (i, k) { return '<a href="#" class="soItL" data-go="' + o.id + '" data-gi="' + k + '" title="Открыть модель">' + esc(i.title || U.stemOf(i.path)) + '</a>'; }).join(', ') || '<span class="mute">нет</span>') + '</td><td>' + esc(O.statusName(o.status)) + '</td><td class="r">' + money(t.total) + '</td><td class="r">' + money(t.paid) + '</td><td class="r">' + money(t.debt) + '</td></tr>'; }).join('') || '<tr><td colspan="7" class="mute">Заказов нет</td></tr>') + '</tbody></table>' +
+				(os.map(function (o) { var t = orderSum(o); return '<tr class="hov" data-go="' + o.id + '"><td><b>' + esc(o.no) + '</b></td><td>' + esc(O.ruDate(o.date)) + '</td><td>' + (o.items.map(function (i, k) { return '<a href="#" class="soItL" data-go="' + o.id + '" data-gi="' + k + '" title="Открыть модель">' + esc(i.title || U.stemOf(i.path)) + '</a>'; }).join(', ') || '<span class="mute">нет</span>') + '</td><td>' + esc(O.statusName(o.status, b)) + '</td><td class="r">' + money(t.total) + '</td><td class="r">' + money(t.paid) + '</td><td class="r">' + money(t.debt) + '</td></tr>'; }).join('') || '<tr><td colspan="7" class="mute">Заказов нет</td></tr>') + '</tbody></table>' +
 				'<div class="soRow"><button id="scOrder" class="primary">+ Заказ для клиента</button></div>';
 		}
 		host.innerHTML = '<aside class="soL"><div class="sec">Клиенты</div><button class="primary soNew" id="scNew">+ Клиент</button><input type="search" id="soQ" placeholder="Поиск: имя, телефон" value="' + esc(X.q) + '"><div id="soList">' + list + '</div></aside><section class="soC">' + center + '</section>';

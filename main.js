@@ -238,7 +238,13 @@ app.whenReady().then(async function () {
   }
   srv = await server.start({
     webDir: path.join(__dirname, 'web'), dataDir: dataDir, version: app.getVersion(), bazisDir: path.join(__dirname, 'bazis'), exePath: process.execPath,
-    file: fileArg(process.argv), hooks: hooks, extraRoutes: function (token) { return Object.assign(shopRoutes(token), backupRoutes(token), crmRoutes({ dataDir: dataDir, safeStorage: safeStorage })); }
+    file: fileArg(process.argv), hooks: hooks, extraRoutes: function (token) {
+      /* STHGroup 2.0: копии и CRM — по отдельности; их ошибка не должна мешать запуску программы */
+      const r = shopRoutes(token);
+      try { Object.assign(r, backupRoutes(token)); } catch (e) { console.error('резервные копии не подключены', e); }
+      try { Object.assign(r, crmRoutes.routes({ dataDir: dataDir, safeStorage: safeStorage })); } catch (e) { console.error('CRM не подключена', e); }
+      return r;
+    }
   });
   createWindow(srv.url);
   setupAutoUpdate();

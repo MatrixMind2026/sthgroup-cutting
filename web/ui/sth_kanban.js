@@ -35,12 +35,44 @@
 		return '<div class="soViewBar"><div class="tabs"><button data-oview="list">Список</button><button class="on" data-oview="board">Карточки</button></div>' +
 			'<input type="search" id="soBoardQ" placeholder="Номер, клиент, изделие" value="' + esc(X.q || '') + '"><div class="grow"></div>' +
 			'<span class="mute sm">Перетащите карточку в нужный этап</span><button class="primary" id="soNew">+ Новый заказ</button></div>' +
-			'<div class="soBoard">' + O.STATUSES.map(function (s) {
+			'<div class="soBoard">' + O.stages(X.book).map(function (s) {
 				var rows = list.filter(function (o) { return o.status === s[0]; });
 				var total = rows.reduce(function (a, o) { return a + sum(o).total; }, 0);
-				return '<section class="soLane" data-stage="' + s[0] + '"><div class="soLaneTitle"><span>' + esc(s[1]) + ' <span class="soLaneCount">' + rows.length + '</span></span><small>' + O.money(total) + ' ₽</small></div>' +
+				var custom = O.BASE_STAGES.indexOf(s[0]) < 0;
+				return '<section class="soLane" data-stage="' + esc(s[0]) + '"><div class="soLaneTitle" data-rename="' + esc(s[0]) + '" title="Щелчок — переименовать этап"><span class="soLaneName">' + esc(s[1]) + ' <span class="soLaneCount">' + rows.length + '</span></span><small>' + O.money(total) + ' ₽</small>' +
+					(custom && !rows.length ? '<button class="soLaneDel" data-delstage="' + esc(s[0]) + '" title="Удалить пустую колонку">✕</button>' : '') + '</div>' +
 					'<div class="soLaneCards">' + (rows.map(card).join('') || '<div class="soLaneEmpty">Сюда можно перетащить заказ</div>') + '</div></section>';
-			}).join('') + '</div>';
+			}).join('') + '<button class="soLaneAdd" id="soStageAdd" title="Добавить свою колонку">+ Колонка</button></div>';
+	}
+	/* окно с одним полем — название этапа (добавление и переименование) */
+	async function askStageName(title, value) {
+		var inp = null;
+		var r = await U.modal({ title: title, width: 420, cls: 'sthStage',
+			body: '<label class="fld wide">Название<input type="text" id="stgN" maxlength="40" value="' + esc(value || '') + '" spellcheck="false"></label>',
+			buttons: [{ label: 'Отмена', value: null }, { label: 'Сохранить', primary: true, run: function () {
+				var v = inp ? inp.value.trim() : '';
+				if (!v) { U.toast('Впишите название.'); return false; }
+				return v;
+			} }],
+			onOpen: function (el) { inp = el.querySelector('#stgN'); if (inp) { inp.focus(); inp.select(); } } });
+		return r || null;
+	}
+	async function renameStageAsk(id) {
+		var name = await askStageName('Переименовать этап', O.stageName(X.book, id));
+		if (!name) return;
+		if (O.renameStage(X.book, id, name)) { X.save(true); X.render(); U.toast('Этап переименован — новое название видно везде.'); }
+	}
+	async function addStageAsk() {
+		var name = await askStageName('Новая колонка', '');
+		if (!name) return;
+		var st = O.addStage(X.book, name);
+		if (st) { X.save(true); X.render(); U.toast('Колонка «' + st.name + '» добавлена перед «Закрыт».'); }
+	}
+	async function delStageAsk(id) {
+		if (!(await U.confirm('Удалить колонку?', 'Колонка «' + O.stageName(X.book, id) + '» уберётся с доски. Заказов в ней нет.', 'Удалить'))) return;
+		var r = O.removeStage(X.book, id);
+		if (r.ok) { X.save(true); X.render(); U.toast('Колонка удалена.'); }
+		else U.toast(r.reason === 'used' ? 'В колонке есть заказы — сначала перетащите их.' : 'Эту колонку удалить нельзя.', { bad: true });
 	}
 	var render0 = X.render;
 	X.render = async function () {
@@ -60,6 +92,9 @@
 	}
 	host.addEventListener('click', function (e) {
 		var v = e.target.closest('[data-oview]'); if (v) { saveView(v.dataset.oview); X.render(); return; }
+		var add = e.target.closest('#soStageAdd'); if (add) { addStageAsk(); return; }
+		var del = e.target.closest('[data-delstage]'); if (del) { delStageAsk(del.dataset.delstage); return; }
+		var rn = e.target.closest('[data-rename]'); if (rn) { renameStageAsk(rn.dataset.rename); return; }
 		var c = e.target.closest('[data-ko]'); if (c) openOrder(c.dataset.ko);
 	});
 	host.addEventListener('keydown', function (e) {
@@ -89,9 +124,9 @@
 		var lane = e.target.closest('[data-stage]'); if (!lane) return;
 		e.preventDefault(); lane.classList.remove('dragover');
 		var id = e.dataTransfer && e.dataTransfer.getData('text/plain'), o = O.order(X.book, id); if (!o) return;
-		var moved = O.moveStatus(o, lane.dataset.stage); if (!moved.changed) return;
+		var moved = O.moveStatus(o, lane.dataset.stage, undefined, X.book); if (!moved.changed) return;
 		X.cur = o.id; X.save(true); X.render();
-		U.toast('Заказ ' + o.no + ': ' + O.statusName(moved.from) + ' → ' + O.statusName(moved.to));
+		U.toast('Заказ ' + o.no + ': ' + O.statusName(moved.from, X.book) + ' → ' + O.statusName(moved.to, X.book));
 		if (moved.to === 'work') document.dispatchEvent(new CustomEvent('sth:order-work', { detail: o }));
 	});
 })();

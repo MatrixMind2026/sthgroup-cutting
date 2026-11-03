@@ -4,8 +4,10 @@
 	var O = BM.sth, K = BM.sthWorkspace = {};
 	K.summary = function (book) {
 		var list = book && Array.isArray(book.orders) ? book.orders : [], out = { total: list.length, active: 0, work: 0, ready: 0, debt: 0, crm: 0, attention: [] };
+		/* свои колонки канбана — тоже активные заказы */
+		var custom = O.stages(book).map(function (s) { return s[0]; }).filter(function (id) { return O.BASE_STAGES.indexOf(id) < 0; });
 		list.forEach(function (o) {
-			var active = ['calc', 'agreed', 'work'].indexOf(o.status) >= 0;
+			var active = ['calc', 'agreed', 'work'].indexOf(o.status) >= 0 || custom.indexOf(o.status) >= 0;
 			if (active) { out.active++; out.attention.push(o); }
 			if (o.status === 'work') out.work++;
 			if (o.status === 'ready') out.ready++;

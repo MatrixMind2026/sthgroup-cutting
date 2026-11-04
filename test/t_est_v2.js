@@ -23,5 +23,13 @@ ok(C.rows(rows, 'stock', info).map(w => w.offKey).join() === 'p1,p2', 'со ск
 const counts = C.counts(rows, info);
 ok(counts.all === 6 && counts.problem === 2 && counts.replaced === 1 && counts.noPrice === 1 && counts.stock === 2, 'счётчики постоянных фильтров', counts);
 ok(rows.length === 6 && rows[0].price === 100, 'фильтрация не мутирует расчётные строки');
+const fs = require('fs');
+const ui = fs.readFileSync(__dirname + '/../web/ui/sth_est.js', 'utf8');
+ok(ui.includes('if (row && X.contextMenu(e, tr, row)) e.stopPropagation()'), 'полное меню перехватывает строку до штатного меню, не изменяя его резервный код');
+ok(ui.includes('X.contextMenu = function') && ui.includes('U.menu(e.clientX, e.clientY, rowActs(w))'), 'полное меню строки использует штатный UI.menu');
+ok(ui.includes('U.confirm(') && ui.includes("action('off')"), 'подтверждение массового исключения из расчёта сохранено');
+ok(ui.includes('Правая кнопка мыши — все действия') && ui.includes('data-setools'), 'подсказка и сворачиваемая панель действий');
+ok(ui.includes('else if (Es.R) Es.R.rows.forEach'), 'выбор всех строк имеет запасной путь без табличных галочек');
+['Es.supEdit', 'Es.ownCard', 'Es.importScript', 'window.STH.pickMaterial', 'E.unmerge', 'window.Dlg.estDoc', 'K.writeOff'].forEach(s => ok(ui.includes(s), 'меню вызывает существующую функцию: ' + s));
 console.log('проверок', n, '|', bad ? 'ОШИБОК: ' + bad : 'ошибок нет');
 process.exit(bad ? 1 : 0);

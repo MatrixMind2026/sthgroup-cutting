@@ -38,7 +38,7 @@
 		function metric(title, value, hint) { return '<div class="todayMetric"><span>' + title + '</span><b>' + value + '</b><small class="mute">' + hint + '</small></div>'; }
 		var orderRows = active.slice(0, 7).map(function (o) {
 			var c = O.client(book, o.clientId), q; try { q = O.calc(book, o); } catch (e) { q = { total: 0 }; }
-			return '<div class="todayItem"><div class="grow"><b>' + esc(o.no) + '</b><div class="mute sm">' + esc(c ? c.name : 'Без клиента') + ' · ' + esc(O.statusName(o.status)) + '</div></div><span>' + money(q.total) + '</span><button data-torder="' + esc(o.id) + '">Открыть</button></div>';
+			return '<div class="todayItem"><div class="grow"><b>' + esc(o.no) + '</b><div class="mute sm">' + esc(c ? c.name : 'Без клиента') + ' · ' + esc(O.statusName(o.status, book)) + '</div></div><span>' + money(q.total) + '</span><button data-torder="' + esc(o.id) + '">Открыть</button></div>';
 		}).join('') || '<div class="todayEmpty">Активных заказов нет.<br><button class="primary" data-tact="new">Создать первый заказ</button></div>';
 		var notes = X.notes.slice(0, 6).map(function (n) { return '<div class="todayItem"><div class="grow"><b>' + esc(n.title) + '</b><div class="mute sm">' + esc(n.text) + '</div></div><time>' + new Date(n.at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) + '</time></div>'; }).join('') || '<div class="todayEmpty">Сообщений пока нет.</div>';
 		host.innerHTML = '<div class="todayHead"><div><h2>Сегодня</h2><div class="mute">' + new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' }) + '</div></div><div class="grow"></div><button data-tact="open">Открыть модель…</button><button class="primary" data-tact="new">+ Новый заказ</button></div>' +

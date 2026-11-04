@@ -50,3 +50,37 @@ html[data-skin="sth-est-total"] #eBody tr.sthReplaced>td{background:#edf5ed}html
 html[data-skin^="sth-est-"] #eBody table.et thead th{background:var(--panel2);color:var(--mute)}html[data-skin^="sth-est-"] #eBody table.et tr.ghdr td{background:var(--panel2)}html[data-skin^="sth-est-"] .sthEstTools{box-shadow:0 1px 0 #00000005}
 html[data-skin="sth-est-light"] .eSum,html[data-skin="sth-est-graphite"] .eSum{background:var(--accent);color:#fff;border-radius:8px;padding:12px 14px}html[data-skin="sth-est-total"] .eSum{background:#23262b;color:#fff;border-left:4px solid #d95f16;border-radius:7px;padding:13px 14px}
 @media(max-width:900px){.todayCols{grid-template-columns:1fr}.sthEstBar{flex-wrap:wrap;gap:7px}.sthEstHint{order:3;width:100%}.sthEstShown{font-size:11px}.soBoard{padding:8px}.soLane{flex-basis:210px}.cutSimpleRow{grid-template-columns:minmax(150px,1fr) 80px 80px}}
+
+/* Компактная смета: старые поля каждой позиции раскрываются стрелкой. */
+#eBody table.sthCompact{table-layout:fixed}
+#eBody table.sthCompact .sthDetailCol{display:none!important}
+#eBody table.sthCompact tr.sthCompactRow>td{height:38px;background:var(--panel,#fff)}
+#eBody table.sthCompact tr.sthCompactRow.sthSelected>td{background:var(--sel,#e7f1ff)}
+#eBody table.sthCompact tr.sthCompactRow.sthOpen>td{border-bottom-color:transparent}
+#eBody table.sthCompact td.nm{display:flex;align-items:center;gap:7px;min-width:0;white-space:nowrap}
+/* data-ci сохраняет ширину именно колонки после её перетаскивания. */
+#eBody table.sthCompact thead th[data-ci="0"]{width:32px}#eBody table.sthCompact thead th[data-ci="1"]{width:34px}#eBody table.sthCompact thead th[data-ci="3"]{width:100%}#eBody table.sthCompact thead th[data-ci="5"]{width:150px}#eBody table.sthCompact thead th[data-ci="7"]{width:160px}#eBody table.sthCompact thead th[data-ci="8"]{width:84px}
+#eBody table.sthCompact input.pv{width:64px}
+#eBody table.sthCompact tr.ghdr td{overflow:hidden}
+#eBody table.sthCompact tr.addrow td{white-space:normal}#eBody table.sthCompact tr.addrow .mute{white-space:normal;overflow-wrap:anywhere}
+.sthRowToggle{flex:0 0 26px;width:26px;height:26px;min-height:26px;padding:4px;border:0;background:transparent;color:var(--mute,#68717c);border-radius:5px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+.sthRowToggle:hover,.sthRowToggle:focus-visible{background:var(--hover,#eef0f2);color:var(--accent,#175da7);outline:0}
+.sthRowToggle svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;transition:transform .14s ease}
+.sthOpen .sthRowToggle{color:var(--accent,#175da7)}.sthOpen .sthRowToggle svg{transform:rotate(90deg)}
+.sthRowName{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:550}
+.sthRowState{flex:0 0 auto;color:var(--mute,#68717c);font-size:11px;font-weight:400}
+#eBody table.sthCompact tr.sthDetail>td{padding:0 8px 10px 50px;white-space:normal;background:var(--panel,#fff);border-bottom:1px solid var(--line,#d8dce2)}
+#eBody table.sthCompact tr.sthDetail[hidden]{display:none!important}
+.sthDetailGrid{display:grid;min-width:0;width:100%;box-sizing:border-box;grid-template-columns:minmax(0,2fr) minmax(0,.8fr) minmax(0,.9fr) minmax(0,1fr);gap:10px 16px;padding:12px 14px;background:var(--panel2,#f5f7f9);border:1px solid var(--line2,#e5e8ec);border-radius:7px}
+.sthDetailField{min-width:0}.sthDetailName{grid-row:span 2}.sthDetailSupplier{grid-column:span 2}
+.sthDetailLabel{font-size:11px;line-height:1.2;color:var(--mute,#68717c);margin-bottom:5px;font-weight:600}
+.sthDetailBody{min-width:0;font-size:12px;line-height:1.4}.sthDetailBody:empty:after{content:'—';color:var(--mute,#68717c)}
+.sthDetailBody textarea.nv,.sthDetailBody input.xn,.sthDetailBody input.sv{background:var(--panel,#fff);border-color:var(--line,#d8dce2)}
+.sthDetailBody .calc{color:var(--mute,#68717c)}
+.sthDetailName img.eThumb{float:left;width:44px;height:44px;object-fit:cover;border-radius:4px;border:1px solid var(--line,#d8dce2);margin:0 8px 4px 0;cursor:pointer}
+.sthDetailName .sub,.sthDetailName .bad{padding-left:0;clear:both}.sthDetailName .dupC,.sthDetailName .mrgC{margin:4px 4px 0 0}
+.sthDetailSupplier b,.sthDetailSupplier a.supl{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.sthDetailSupplier a.supl{color:var(--accent,#175da7)}
+.sthDetail button.supE{opacity:1;margin-top:5px}.sthDetailActions{display:flex;align-items:center;gap:9px;flex-wrap:wrap;padding:8px 2px 0}.sthDetailActions button{padding:5px 9px;font-size:12px}.sthDetailActions span{color:var(--mute,#68717c);font-size:11px}
+@media(max-width:1400px){.sthDetailGrid{grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)}.sthDetailName{grid-row:auto}.sthDetailSupplier{grid-column:span 2}}
+@media(max-width:1150px){#eBody table.sthCompact input.qv,#eBody table.sthCompact input.pv{width:42px;padding-left:2px;padding-right:2px}#eBody table.sthCompact td.sm{min-width:60px}#eBody table.sthCompact thead th[data-ci="0"]{width:26px}#eBody table.sthCompact thead th[data-ci="1"]{width:26px}#eBody table.sthCompact thead th[data-ci="5"]{width:95px}#eBody table.sthCompact thead th[data-ci="7"]{width:90px}#eBody table.sthCompact thead th[data-ci="8"]{width:74px}#eBody table.sthCompact .sthSelHead,#eBody table.sthCompact .sthSelCell{padding:2px!important}#eBody table.sthCompact tr.sthCompactRow>td{padding-left:3px;padding-right:3px}#eBody table.sthCompact tr.sthCompactRow td:has(>input.qv)>.un,#eBody table.sthCompact tr.sthCompactRow td:has(>input.pv)>.un{display:block;text-align:right;font-size:9px}.sthDetailActions span{white-space:normal;min-width:0}}
+@media(max-width:1100px){.sthDetailGrid{grid-template-columns:minmax(0,1fr)}.sthDetailSupplier{grid-column:auto}#eBody table.sthCompact tr.sthDetail>td{padding-left:38px}}

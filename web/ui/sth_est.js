@@ -4,7 +4,7 @@
 	'use strict';
 	var U = window.UI, esc = U.esc, Es = window.Est, E = BM.est, C = BM.sthEst, K = window.MatBase;
 	if (!U || !Es || !E || !C || !K) return;
-	var X = window.STHEst = { sel: {}, last: '', toolsOpen: false };
+	var X = window.STHEst = { sel: {}, open: {}, last: '', toolsOpen: false };
 	function S() { return window.App.S; }
 	function key(w) { return C.rowKey(w); }
 	function info(w) { try { return K.rowInfo(w); } catch (e) { return null; } }
@@ -23,7 +23,7 @@
 		var h = host(); if (!h) return;
 		var counts = C.counts(R.rows, info), n = selected().length;
 		h.innerHTML = '<div class="sthEstBar"><button data-setools="1" class="sthEstMore" aria-expanded="' + (X.toolsOpen ? 'true' : 'false') + '">Фильтры и действия</button>' +
-			'<span class="sthEstHint">Правая кнопка мыши — все действия</span><div class="sthEstShown">Показано: ' + visible + ' из ' + R.rows.length + (n ? ' · выбрано: ' + n : '') + '</div></div>' +
+			'<span class="sthEstHint">Стрелка — старые поля · Правая кнопка мыши — все действия</span><div class="sthEstShown">Показано: ' + visible + ' из ' + R.rows.length + (n ? ' · выбрано: ' + n : '') + '</div></div>' +
 			'<div class="sthEstPanels"' + (X.toolsOpen ? '' : ' hidden') + '><div class="sthEstFilters" role="group" aria-label="Фильтр сметы">' + C.FILTERS.map(function (f) {
 				return '<button data-sef="' + f[0] + '" class="' + (filter() === f[0] ? 'on' : '') + '">' + f[1] + (counts[f[0]] ? ' <span>' + counts[f[0]] + '</span>' : '') + '</button>';
 			}).join('') + '</div><div class="sthEstBulk"><b>' + (n ? 'Выбрано: ' + n : 'Массовые действия') + '</b>' +
@@ -31,12 +31,78 @@
 			'<button data-seact="qty" title="Вернуть выбранным строкам количество из модели">Количество по модели</button><button data-seact="mat" class="primary" title="Выбрать один материал базы для всех выбранных строк">Материал из базы…</button>' +
 			'<button data-seact="clear" class="icon" title="Снять выделение">✕</button></div></div>';
 	}
+	function mainRow(k) {
+		var found = null;
+		document.querySelectorAll('#eBody table.et tbody > tr[data-k]').forEach(function (tr) {
+			if (!found && tr.dataset.k === k && !tr.classList.contains('sthDetail') && tr.querySelector('td.num')) found = tr;
+		});
+		return found;
+	}
+	function setOpen(k, value) {
+		X.open[k] = !!value;
+		var tr = mainRow(k); if (!tr) return;
+		var b = tr.querySelector('[data-seexpand]'), d = b && document.getElementById(b.getAttribute('aria-controls'));
+		tr.classList.toggle('sthOpen', !!value);
+		if (b) {
+			b.setAttribute('aria-expanded', value ? 'true' : 'false');
+			b.setAttribute('aria-label', (value ? 'Скрыть' : 'Показать') + ' старые поля и действия позиции');
+			b.title = (value ? 'Скрыть' : 'Показать') + ' артикул, режим расчёта, поставщика и остальные действия';
+		}
+		if (d) d.hidden = !value || tr.hidden;
+	}
+	X.setOpen = setOpen;
+	function detailField(label, cls) {
+		var box = document.createElement('div'); box.className = 'sthDetailField ' + (cls || '');
+		var title = document.createElement('div'); title.className = 'sthDetailLabel'; title.textContent = label;
+		var body = document.createElement('div'); body.className = 'sthDetailBody';
+		box.appendChild(title); box.appendChild(body); return { box: box, body: body };
+	}
+	function moveChildren(from, to) { while (from && from.firstChild) to.appendChild(from.firstChild); }
+	/* Компактная строка сохраняет все штатные элементы: они не дублируются, а переносятся в раскрываемую панель. */
+	function expandable(R, map) {
+		var body = document.getElementById('eBody'), table = body && body.querySelector('table.et');
+		if (!table) return;
+		table.classList.add('sthCompact');
+		var head = table.querySelector('thead tr'), cols = head ? head.cells.length : 10, seq = 0;
+		/* Артикул, режим, расчёт модели и поставщик остаются ячейками таблицы для совместимости с перестановкой столбцов, но видны только внутри. */
+		if (head) [2, 4, 6, 9].forEach(function (i) { if (head.cells[i]) head.cells[i].classList.add('sthDetailCol'); });
+		var list = Array.prototype.slice.call(table.querySelectorAll('tbody > tr[data-k]'));
+		list.forEach(function (tr) {
+			var k = tr.dataset.k, w = map[k], nm = tr.querySelector('td.nm');
+			if (!w || !nm || tr.classList.contains('mbar')) return;
+			var ar = tr.querySelector('td.ar'), calc = tr.querySelector('td.calc'), sup = tr.querySelector('td.sup');
+			var uv = tr.querySelector('select.uv'), unit = uv && uv.closest('td'); if (!unit) unit = tr.cells[4];
+			var detail = document.createElement('tr'); detail.className = 'sthDetail'; detail.dataset.k = k; detail.id = 'sthEstDetail' + (++seq);
+			var cell = document.createElement('td'); cell.colSpan = cols;
+			var grid = document.createElement('div'); grid.className = 'sthDetailGrid';
+			var name = detailField('Наименование, фото и материал из базы', 'sthDetailName');
+			moveChildren(nm, name.body); grid.appendChild(name.box);
+			var article = detailField('Артикул'); moveChildren(ar, article.body); grid.appendChild(article.box);
+			var mode = detailField('Режим расчёта'); moveChildren(unit, mode.body); grid.appendChild(mode.box);
+			var model = detailField('Данные модели'); moveChildren(calc, model.body); grid.appendChild(model.box);
+			var supplier = detailField('Поставщик и ссылка', 'sthDetailSupplier'); moveChildren(sup, supplier.body); grid.appendChild(supplier.box);
+			cell.appendChild(grid);
+			var actions = document.createElement('div'); actions.className = 'sthDetailActions';
+			actions.innerHTML = '<button type="button" data-semenu="' + esc(k) + '">Все действия со строкой</button><span>Здесь же: правка названия, фото, сопоставление, объединение и возврат количества по модели.</span>';
+			var del = tr.querySelector('button.del'); if (del) actions.insertBefore(del, actions.firstChild);
+			cell.appendChild(actions); detail.appendChild(cell);
+			[ar, unit, calc, sup].forEach(function (td) { if (td) td.classList.add('sthDetailCol'); });
+			tr.classList.add('sthCompactRow');
+			nm.innerHTML = '<button type="button" class="sthRowToggle" data-seexpand="' + esc(k) + '" aria-controls="' + detail.id + '" aria-expanded="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3l5 5-5 5"/></svg></button>' +
+				'<span class="sthRowName">' + esc(w.title || w.label || '') + '</span>' + (w.off ? '<small class="sthRowState">не считается</small>' : '');
+			tr.insertAdjacentElement('afterend', detail);
+			setOpen(k, !!X.open[k]);
+		});
+		/* Повторный вызов применяет сохранённый порядок уже к компактным строкам; скрытые ячейки переносятся вместе с видимыми. */
+		if (window.STHDrag && window.STHDrag.cols) window.STHDrag.cols(table, 'est', function () { Es.render(); });
+	}
 	function decorate(R) {
 		var body = document.getElementById('eBody'), table = body && body.querySelector('table.et');
 		if (!table) { toolbar(R, 0); return; }
 		var map = {}, visible = 0;
 		R.rows.forEach(function (w) { map[key(w)] = w; if (X.sel[key(w)] === undefined) return; });
 		Object.keys(X.sel).forEach(function (k) { if (!map[k]) delete X.sel[k]; });
+		Object.keys(X.open).forEach(function (k) { if (!map[k]) delete X.open[k]; });
 		var head = table.querySelector('thead tr');
 		if (head && !head.querySelector('.sthSelHead')) {
 			var th = document.createElement('th'); th.className = 'sthSelHead'; th.innerHTML = '<input type="checkbox" id="seAll" title="Выбрать все показанные строки" aria-label="Выбрать все показанные строки">'; head.insertBefore(th, head.firstChild);
@@ -84,8 +150,16 @@
 		try {
 			var R = Es.R, body = document.getElementById('eBody');
 			if (!R || !body || body.classList.contains('paper')) { if (h) h.hidden = true; return x; }
-			if (h) h.hidden = false; decorate(R);
+			if (h) h.hidden = false; decorate(R); expandable(R, (function () { var m = {}; R.rows.forEach(function (w) { m[key(w)] = w; }); return m; })());
 		} catch (e) { console.warn(e); }
+		return x;
+	};
+	var addRow0 = Es.addRow;
+	Es.addRow = function () {
+		var before = {}; rows().forEach(function (w) { before[key(w)] = true; });
+		var x = addRow0.apply(this, arguments), added = rows().filter(function (w) { return w.own && !before[key(w)]; })[0];
+		/* Новая своя строка сразу раскрывается: штатный код переводит фокус на её наименование. */
+		if (added) { setOpen(key(added), true); focusField(added, 'xn'); }
 		return x;
 	};
 	function need() { var r = selected(); if (!r.length) U.toast('Сначала отметьте строки галочками в первом столбце.'); return r; }
@@ -137,6 +211,7 @@
 		return found;
 	}
 	function focusField(w, cls) {
+		setOpen(key(w), true);
 		var x = field(w, cls); if (!x || x.readOnly || x.disabled) return false;
 		x.scrollIntoView({ block: 'nearest' }); x.focus({ preventScroll: true }); if (x.select) x.select(); return true;
 	}
@@ -253,6 +328,17 @@
 		U.menu(e.clientX, e.clientY, commonActs(head));
 	}, true);
 	document.addEventListener('click', function (e) {
+		var expand = e.target.closest && e.target.closest('[data-seexpand]');
+		if (expand) {
+			e.preventDefault(); e.stopPropagation();
+			setOpen(expand.dataset.seexpand, !X.open[expand.dataset.seexpand]); return;
+		}
+		var more = e.target.closest && e.target.closest('[data-semenu]');
+		if (more) {
+			e.preventDefault(); e.stopPropagation();
+			var w = rows().filter(function (x) { return key(x) === more.dataset.semenu; })[0];
+			if (w) { var r = more.getBoundingClientRect(); U.menu(r.left, r.bottom + 3, rowActs(w)); } return;
+		}
 		var tools = e.target.closest && e.target.closest('[data-setools]');
 		if (tools) {
 			e.preventDefault(); X.toolsOpen = !X.toolsOpen;

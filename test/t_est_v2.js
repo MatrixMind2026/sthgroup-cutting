@@ -30,6 +30,17 @@ ok(ui.includes('X.contextMenu = function') && ui.includes('U.menu(e.clientX, e.c
 ok(ui.includes('U.confirm(') && ui.includes("action('off')"), 'подтверждение массового исключения из расчёта сохранено');
 ok(ui.includes('Правая кнопка мыши — все действия') && ui.includes('data-setools'), 'подсказка и сворачиваемая панель действий');
 ok(ui.includes('else if (Es.R) Es.R.rows.forEach'), 'выбор всех строк имеет запасной путь без табличных галочек');
+ok(ui.includes("tbody > tr[data-k]") && ui.includes('data-seexpand'), 'стрелка создаётся у каждой расчётной позиции, не только у ЛДСП');
+ok(ui.includes("className = 'sthDetail'") && ui.includes('moveChildren(nm, name.body)') && ui.includes('moveChildren(ar, article.body)'), 'прежние поля переносятся в раскрытие без дублирования');
+ok(ui.includes('moveChildren(unit, mode.body)') && ui.includes('moveChildren(calc, model.body)') && ui.includes('moveChildren(sup, supplier.body)'), 'режим, модель и поставщик сохранены внутри позиции');
+ok(ui.includes('setOpen(key(w), true)') && ui.includes('d.hidden = !value || tr.hidden'), 'меню раскрывает скрытое поле, а фильтр скрывает и подробности строки');
+ok(ui.includes("window.STHDrag.cols(table, 'est'") && ui.includes('sthDetailCol'), 'компактная разметка учитывает перестановку столбцов');
+const css = fs.readFileSync(__dirname + '/../web/sth_v2.css', 'utf8');
+ok(css.includes('.sthRowToggle') && css.includes('tr.sthDetail[hidden]') && css.includes('.sthDetailGrid'), 'оформление стрелки, скрытия и сетки прежних полей');
+ok(css.includes('table-layout:fixed') && css.includes('th[data-ci="3"]') && css.includes('minmax(0,2fr)'), 'ширина таблицы и раскрытия не зависит от длинного содержимого');
+ok(css.includes('@media(max-width:1150px)') && css.includes('@media(max-width:1100px)') && css.includes('td:has(>input.pv)>.un'), 'узкие окна: компактные поля, перенос единиц и одноколоночная панель');
+const drag = fs.readFileSync(__dirname + '/../web/ui/sth_drag.js', 'utf8');
+ok(drag.includes("c.classList.contains('sthDetailCol')"), 'скрытые технические колонки не перехватывают перетаскивание видимых заголовков');
 ['Es.supEdit', 'Es.ownCard', 'Es.importScript', 'window.STH.pickMaterial', 'E.unmerge', 'window.Dlg.estDoc', 'K.writeOff'].forEach(s => ok(ui.includes(s), 'меню вызывает существующую функцию: ' + s));
 console.log('проверок', n, '|', bad ? 'ОШИБОК: ' + bad : 'ошибок нет');
 process.exit(bad ? 1 : 0);

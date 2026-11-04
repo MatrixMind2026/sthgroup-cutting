@@ -78,7 +78,7 @@
 			function move(ev) {
 				if (!started) { if (Math.abs(ev.clientX - x0) < 6) return; started = true; th.classList.add('sthColDrag'); document.body.classList.add('sthNoSel'); }
 				tgt = null;
-				cells.forEach(function (c) { var b = c.getBoundingClientRect(); if (ev.clientX >= b.left && ev.clientX <= b.right) { tgt = c; after = ev.clientX > b.left + b.width / 2; } });
+				cells.forEach(function (c) { if (c.classList.contains('sthDetailCol')) return; var b = c.getBoundingClientRect(); if (ev.clientX >= b.left && ev.clientX <= b.right) { tgt = c; after = ev.clientX > b.left + b.width / 2; } });
 				mark();
 			}
 			function up() {

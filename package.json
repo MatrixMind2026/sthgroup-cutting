@@ -1,15 +1,15 @@
 {
   "name": "sthgroup-cutting",
-  "version": "2.0.8",
+  "version": "2.0.9",
   "description": "STHGroup — раскрой, смета и заказы по модели из БАЗИС-Мебельщика (на основе окна BazisReborn)",
   "main": "main.js",
   "private": true,
   "scripts": {
     "start": "electron .",
-    "test": "node test/fixtures.js && node test/t_cut.js && node test/t_cut_simple.js && node test/t_project.js && node test/t_est.js && node test/t_matbase.js && node test/t_mblink.js && node test/t_replace.js && node test/t_est_v2.js && node test/t_est_menu.js && node test/t_pack.js && node test/t_server.js && node test/t_export.js && node test/t_orders.js && node test/t_crm.js && node test/t_restruct.js && node test/t_stock.js && node test/t_backup.js && node test/t_splash.js && node test/t_themes.js && node test/t_main_start.js && node test/t_stages.js",
+    "test": "node test/fixtures.js && node test/t_cut.js && node test/t_cut_simple.js && node test/t_project.js && node test/t_est.js && node test/t_matbase.js && node test/t_mblink.js && node test/t_replace.js && node test/t_est_v2.js && node test/t_est_menu.js && node test/t_pack.js && node test/t_server.js && node test/t_export.js && node test/t_orders.js && node test/t_crm.js && node test/t_restruct.js && node test/t_stock.js && node test/t_backup.js && node test/t_splash.js && node test/t_themes.js && node test/t_main_start.js && node test/t_stages.js && node test/t_kanban_drag.js",
     "dist": "electron-builder --win nsis --publish never",
     "release": "electron-builder --win nsis --publish always",
-    "test:ci": "node test/fixtures.js && node test/t_cut.js && node test/t_cut_simple.js && node test/t_project.js && node test/t_matbase.js && node test/t_mblink.js && node test/t_replace.js && node test/t_est_v2.js && node test/t_est_menu.js && node test/t_pack.js && node test/t_server.js && node test/t_export.js && node test/t_orders.js && node test/t_crm.js && node test/t_restruct.js && node test/t_stock.js && node test/t_backup.js && node test/t_splash.js && node test/t_themes.js && node test/t_main_start.js && node test/t_stages.js"
+    "test:ci": "node test/fixtures.js && node test/t_cut.js && node test/t_cut_simple.js && node test/t_project.js && node test/t_matbase.js && node test/t_mblink.js && node test/t_replace.js && node test/t_est_v2.js && node test/t_est_menu.js && node test/t_pack.js && node test/t_server.js && node test/t_export.js && node test/t_orders.js && node test/t_crm.js && node test/t_restruct.js && node test/t_stock.js && node test/t_backup.js && node test/t_splash.js && node test/t_themes.js && node test/t_main_start.js && node test/t_stages.js && node test/t_kanban_drag.js"
   },
   "dependencies": {
     "electron-updater": "^6.3.9"

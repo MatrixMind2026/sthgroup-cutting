@@ -1,3 +1,13 @@
+/* STHGroup: одинаковая геометрия основных и пользовательских колонок, метка вставки. */
+#orders .soLane{box-sizing:border-box;min-height:300px}
+#orders .soLaneTitle{height:44px;box-sizing:border-box;cursor:grab}
+#orders .soLaneTitle:active{cursor:grabbing}
+#orders .soLaneName{flex:1}
+#orders .soLaneDel{min-height:24px;height:24px;box-sizing:border-box}
+#orders .soLaneAdd{min-height:300px;box-sizing:border-box}
+#orders .soLane.soLaneBefore{box-shadow:-4px 0 0 var(--accent)}
+#orders .soLane.soLaneAfter{box-shadow:4px 0 0 var(--accent)}
+#orders .soLane.soLaneDragging{opacity:.55}
 /* STHGroup: выбранная позиция сметы — карточкой справа. */
 #eBody .sthCardPick{border:0;background:transparent;color:var(--text);text-align:left;white-space:normal;overflow-wrap:anywhere;padding:3px 0;flex:1;min-width:0;font:inherit;cursor:pointer}
 #eBody .sthCardPick:hover{color:var(--accent)}

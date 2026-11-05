@@ -35,14 +35,26 @@
 		if (!st) return false;
 		st.name = name; return true;
 	};
-	/* своя колонка встаёт перед «Закрыт» — закрытые всегда в конце доски */
+	/* STHGroup: новая колонка всегда добавляется в конец выбранного пользователем порядка. */
 	O.addStage = function (b, name) {
 		name = String(name || '').trim().slice(0, 40); if (!b || !b.cat || !name) return null;
 		O.stages(b);
-		var st = { id: O.id('u'), name: name }, arr = b.cat.stages, i = -1;
-		arr.forEach(function (s, k) { if (s.id === 'closed') i = k; });
-		if (i >= 0) arr.splice(i, 0, st); else arr.push(st);
+		var st = { id: O.id('u'), name: name };
+		b.cat.stages.push(st);
 		return st;
+	};
+	/* Меняется только порядок этапов, идентификаторы и статусы заказов сохраняются. */
+	O.moveStage = function (b, id, target, after) {
+		if (!b || !b.cat) return false;
+		O.stages(b);
+		var arr = b.cat.stages, from = arr.findIndex(function (s) { return s.id === id; });
+		var to = target == null ? arr.length : arr.findIndex(function (s) { return s.id === target; });
+		if (from < 0 || to < 0 || id === target) return false;
+		if (target != null && after) to++;
+		if (from < to) to--;
+		if (from === to) return false;
+		var stage = arr.splice(from, 1)[0]; arr.splice(to, 0, stage);
+		return true;
 	};
 	/* удалить можно только свою пустую колонку */
 	O.removeStage = function (b, id) {

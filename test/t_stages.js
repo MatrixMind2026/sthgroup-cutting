@@ -19,7 +19,7 @@ ok(!O.renameStage(book, 'work', '   ') && !O.renameStage(book, 'nope', 'Этап
 const mine = O.addStage(book, 'Закупка');
 ok(mine && mine.id !== 'closed' && mine.name === 'Закупка', 'своя колонка создаётся');
 const ids = O.stages(book).map(s => s[0]);
-ok(ids.indexOf(mine.id) === ids.indexOf('closed') - 1, 'своя колонка встаёт перед «Закрыт»');
+ok(ids[ids.length - 1] === mine.id, 'новая колонка добавляется после всех существующих');
 ok(!O.addStage(book, '  '), 'колонка без названия не создаётся');
 
 const o = O.addOrder(book, { clientId: '' });
@@ -43,6 +43,19 @@ ok(sum.active >= 1 && sum.attention.some(x => x.id === o.id), 'заказ в с�
 
 const back = JSON.parse(JSON.stringify(book));
 ok(back.cat.stages.some(s => s.id === mine2.id && s.name === 'Задачи'), 'свои этапы сохраняются в файл заказов');
+
+const orderStatus = o.status, history = JSON.stringify(o.sthFlow);
+ok(O.moveStage(book, mine2.id, 'calc', false) && O.stages(book)[0][0] === mine2.id, 'своя колонка переносится в начало');
+ok(O.moveStage(book, 'closed', mine2.id, true) && O.stages(book)[1][0] === 'closed', 'основные колонки тоже переставляются');
+ok(O.moveStage(book, mine2.id, null) && O.stages(book).at(-1)[0] === mine2.id, 'перенос колонки в конец');
+const unchanged = JSON.stringify(book.cat.stages);
+ok(!O.moveStage(book, 'unknown', 'calc') && !O.moveStage(book, 'calc', 'unknown') && !O.moveStage(book, 'calc', 'calc') && JSON.stringify(book.cat.stages) === unchanged, 'неизвестные этапы и перенос на себя не меняют книгу');
+ok(o.status === orderStatus && JSON.stringify(o.sthFlow) === history, 'перестановка колонок не меняет статусы и историю заказов');
+const restored = JSON.parse(JSON.stringify(book));
+ok(JSON.stringify(O.stages(restored)) === JSON.stringify(O.stages(book)), 'выбранный порядок сохраняется после записи и чтения книги');
+const appended = O.addStage(restored, 'Последняя');
+ok(O.stages(restored).at(-1)[0] === appended.id, 'новая колонка добавляется в конец и после перестановки');
+ok(!O.moveStage(restored, appended.id, null), 'повторный перенос в конец не создаёт изменений');
 
 const kb = fs.readFileSync(path.join(__dirname, '..', 'web', 'ui', 'sth_kanban.js'), 'utf8');
 ok(kb.includes('O.stages(X.book)') && kb.includes('soStageAdd') && kb.includes('data-rename') && kb.includes('data-delstage'), 'доска: этапы из книги, «+ Колонка», переименование и удаление');

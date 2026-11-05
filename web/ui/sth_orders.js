@@ -199,41 +199,58 @@
 	function sideHtml(o, q) {
 		var t = Object.assign({}, X.book.cat.terms, o.terms || {}), cat = X.book.cat;
 		return '<div class="mute">Итого по заказу</div><div class="soTot">' + money(q.total) + ' ₽</div>' +
+			'<details class="sgSide"><summary>Расчёт и скидки</summary>' + /* STHGroup: параметры не перегружают итог */
 			'<div class="soR"><span>Услуги</span><span>' + money(q.serv) + '</span></div>' +
 			'<label class="soR ac"><span><input type="checkbox" id="soCx"' + (o.complex ? ' checked' : '') + '> Скидка за комплекс ' + cat.complexPct + '%</span><span>−' + money(q.discount) + '</span></label>' +
 			'<label class="soR ac"><span><input type="checkbox" id="soUrg"' + (o.urgent ? ' checked' : '') + '> Срочно +' + cat.urgentPct + '%, ' + cat.urgentDays + ' дн.</span><span style="white-space:nowrap">' + (q.urgent ? '+' + money(q.urgent) : '') + '</span></label>' +
 			(q.pctSum ? '<div class="soR"><span>Проценты (безнал)</span><span>' + money(q.pctSum) + '</span></div>' : '') +
-			'<div class="soR"><span>Материалы</span><span>' + money(q.mats) + '</span></div>' +
+			'<div class="soR"><span>Материалы</span><span>' + money(q.mats) + '</span></div></details>' +
 			'<div class="soPay"><div class="soR"><span>Аванс</span><b>' + money(q.advance) + ' ₽</b></div><div class="mute sm">' + cat.advance.serv + '% услуг + ' + cat.advance.mat + '% материалов</div>' +
 			'<div class="soR"><span>Доплата</span><b>' + money(q.rest) + ' ₽</b></div><div class="soR"><span>Оплачено</span><span>' + money(q.paid) + '</span></div><div class="soR"><span>Долг</span><span class="' + (q.debt > 0.009 ? 'bad' : '') + '">' + money(q.debt) + '</span></div></div>' +
-			'<div class="sec2">Условия</div>' +
+			'<details class="sgSide"><summary>Условия производства</summary>' +
 			'<label class="soR"><span>Загрузка</span><select id="soLoad">' + opt(O.LOADS, t.load) + '</select></label>' +
 			'<label class="soR"><span>Срок, раб. дней</span><input class="soN" id="soDays" value="' + esc(t.days) + '"></label>' +
 			'<label class="soR"><span>Хранение: бесплатно дней</span><input class="soN" id="soFree" value="' + esc(t.freeDays) + '"></label>' +
-			'<label class="soR"><span>дальше, ₽/сут</span><input class="soN" id="soStor" value="' + esc(t.storage) + '"></label>' +
+			'<label class="soR"><span>дальше, ₽/сут</span><input class="soN" id="soStor" value="' + esc(t.storage) + '"></label></details>' +
 			'<div class="soBtns"><button id="soCheckOrder">Проверить заказ</button></div>' + /* STHGroup: диагностика до отправки КП */
 			'<div class="soBtns"><button class="primary" id="soKp">КП в PDF</button><button id="soInv">Счёт в PDF</button></div>' +
 			'<div class="soBtns"><button id="soCat">Справочник и цены…</button><button id="soPrice">Прайс для клиента</button></div>';
 	}
+	/* STHGroup: композиция «Центр заказа», штатные формы и идентификаторы сохранены. */
+	X.orderHeroHtml = function (o, c) {
+		return '<div class="sgHero"><div><button id="sgAllOrders" class="link">← Все заказы</button><h1>Заказ ' + esc(o.no) + '</h1><div class="mute">' + esc(c ? c.name : 'Клиент не выбран') + ' · Изделий: ' + o.items.length + '</div></div>' +
+			'<ol class="sgFlow" aria-label="Этапы заказа">' + O.stages(X.book).map(function (s) { return '<li' + (s[0] === o.status ? ' aria-current="step"' : '') + '>' + esc(s[1]) + '</li>'; }).join('') + '</ol></div>';
+	};
+	X.orderCenterHtml = function (o, q) {
+		if (X.tab === 'items') return '<details class="sgSection" open><summary>Изделия заказа</summary><div class="sgSectionBody">' + itemsHtml(o) + '</div></details>';
+		if (X.tab === 'pay') return '<details class="sgSection" open><summary>Оплаты заказа</summary><div class="sgSectionBody">' + payHtml(o, q) + '</div></details>';
+		var products = o.items.map(function (it, i) {
+			return '<div class="sgProduct"><div><b>' + esc(it.title || U.stemOf(it.path)) + '</b><small>' + (it.snap ? it.snap.parts + ' деталей · ' + it.snap.sheets.reduce(function (n, m) { return n + m.n; }, 0) + ' листов' : 'Расчёт изделия ещё не выполнен') + '</small></div><button data-iop="' + i + '">Модель</button></div>';
+		}).join('') || '<p class="mute">Изделия ещё не добавлены.</p>';
+		return '<details class="sgSection" open><summary>Изделия (' + o.items.length + ')<span>Модель и раскрой</span></summary><div class="sgSectionBody">' + products + '<div class="soRow"><button data-tb="items">Состав заказа…</button></div></div></details>' +
+			'<details class="sgSection" open><summary>Работы и материалы<span>' + money(q.total) + ' ₽</span></summary><div class="sgSectionBody">' + calcHtml(o, q) + '</div></details>' +
+			'<details class="sgSection" open><summary>Оплаты<span>Оплачено ' + money(q.paid) + ' ₽</span></summary><div class="sgSectionBody sgPayment"><span>Долг: ' + money(q.debt) + ' ₽</span><button data-tb="pay">Внести оплату…</button></div></details>';
+	};
 	X.render = async function () {
 		var host = $('orders'); if (!host) return;
 		if (!X.book) await X.load();
 		if (!X.book) { host.innerHTML = '<div class="soEmpty">Нет папки для заказов.</div>'; return; }
 		X.snapOpen();
-		if (S().section === 'clients') return X.renderClients();
+		if (S().section === 'clients') { host.classList.remove('sgOrderOpen'); return X.renderClients(); }
 		if (!O.order(X.book, X.cur)) X.cur = X.book.orders[0] ? X.book.orders[0].id : '';
 		var o = O.order(X.book, X.cur), b = X.book;
+		host.classList.toggle('sgOrderOpen', !!o && X.sgFocusOrder !== false);
 		var left = '<aside class="soL"><div class="sec">Заказы</div><button class="primary soNew" id="soNew">+ Новый заказ</button>' +
 			'<input type="search" id="soQ" placeholder="Поиск: номер, клиент, изделие" value="' + esc(X.q) + '"><select id="soSt"><option value="">все статусы</option>' + opt(O.stages(X.book), X.st) + '</select><div id="soList">' + listHtml() + '</div></aside>';
 		if (!o) { host.innerHTML = left + '<section class="soC"><div class="soEmpty">Выберите заказ или создайте новый.</div></section><aside class="soS"><div class="soBtns"><button id="soCat">Справочник и цены…</button><button id="soPrice">Прайс для клиента</button></div><p class="mute sm">Файл заказов: ' + esc(X.path) + '</p></aside>'; return; }
 		var q = O.calc(b, o), c = O.client(b, o.clientId);
 		var clients = '<option value="">— клиент —</option>' + b.clients.map(function (x) { return '<option value="' + x.id + '"' + (x.id === o.clientId ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '<option value="__new">＋ новый клиент…</option>';
 		var tabs = [['calc', 'Расчёт'], ['items', 'Изделия (' + o.items.length + ')'], ['pay', 'Оплаты' + (o.payments.length ? ' (' + o.payments.length + ')' : '')]];
-		var center = '<section class="soC"><div class="soHead"><input id="soNo" class="soNo" value="' + esc(o.no) + '"><select id="soCl">' + clients + '</select><input type="date" id="soDate" value="' + esc(o.date) + '"><select id="soStat">' + opt(O.stages(X.book), o.status) + '</select><button class="icon" id="soDel" title="Удалить заказ">✕</button></div>' +
+		var center = '<section class="soC" data-sg-order="' + esc(o.id) + '" data-sg-tab="' + esc(X.tab) + '">' + X.orderHeroHtml(o, c) + '<details class="sgOrderMeta"><summary>Данные заказа · ' + esc(O.statusName(o.status, b)) + '</summary><div class="sgOrderMetaBody"><div class="soHead"><input id="soNo" class="soNo" aria-label="Номер заказа" value="' + esc(o.no) + '"><select id="soCl" aria-label="Клиент">' + clients + '</select><input type="date" id="soDate" aria-label="Дата заказа" value="' + esc(o.date) + '"><select id="soStat" aria-label="Статус заказа">' + opt(O.stages(X.book), o.status) + '</select><button class="icon" id="soDel" title="Удалить заказ">✕</button></div>' +
 			'<div class="mute sm">' + esc(c ? [c.phone, c.email].filter(Boolean).join(' · ') : '') + '</div>' +
-			'<input id="soNote" class="soNote" placeholder="Комментарий к заказу" value="' + esc(o.note || '') + '">' +
+			'<input id="soNote" class="soNote" aria-label="Комментарий к заказу" placeholder="Комментарий к заказу" value="' + esc(o.note || '') + '"></div></details>' +
 			'<div class="tabs soTabs">' + tabs.map(function (t) { return '<button data-tb="' + t[0] + '"' + (X.tab === t[0] ? ' class="on"' : '') + '>' + t[1] + '</button>'; }).join('') + '</div>' +
-			'<div class="soBody">' + (X.tab === 'items' ? itemsHtml(o) : X.tab === 'pay' ? payHtml(o, q) : calcHtml(o, q)) + '</div></section>';
+			'<div class="soBody">' + X.orderCenterHtml(o, q) + '</div></section>';
 		host.innerHTML = left + center + '<aside class="soS">' + sideHtml(o, q) + '</aside>';
 		X.dnd();
 	};
@@ -296,12 +313,13 @@
 	}
 	function onClick(e) {
 		var t = e.target, o = cur(), d;
-		if ((d = t.closest('[data-o]'))) { X.cur = d.dataset.o; X.render(); X.openModels(O.order(X.book, X.cur)).catch(U.error); return; }
+		if ((d = t.closest('[data-o]'))) { X.cur = d.dataset.o; X.sgFocusOrder = true; X.render(); X.openModels(O.order(X.book, X.cur)).catch(U.error); return; }
 		if ((d = t.closest('[data-c]'))) { X.client = d.dataset.c; X.render(); return; }
 		if ((d = t.closest('[data-gi]'))) { var oo = O.order(X.book, d.dataset.go), ii = Number(d.dataset.gi); X.cur = oo ? oo.id : X.cur; X.openModels(oo, ii).then(function (ok) { if (ok) go('model'); }).catch(U.error); return; }
 		if ((d = t.closest('[data-go]'))) { X.cur = d.dataset.go; go('orders'); X.openModels(O.order(X.book, X.cur)).catch(U.error); return; }
 		if ((d = t.closest('[data-tb]'))) { X.tab = d.dataset.tb; X.render(); return; }
 		switch (t.id) {
+			case 'sgAllOrders': X.view = 'board'; X.render(); return;
 			case 'soNew': X.cur = O.addOrder(X.book, {}).id; X.tab = 'items'; changed(); return;
 			case 'scNew': newClient().then(function (c) { if (c) { X.client = c.id; changed(); } }); return;
 			case 'scOrder': X.cur = O.addOrder(X.book, { clientId: X.client }).id; X.tab = 'items'; X.save(); go('orders'); return;

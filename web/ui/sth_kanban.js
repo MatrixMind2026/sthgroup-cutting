@@ -22,8 +22,9 @@
 	/* как открывать заказы — из настроек (по умолчанию карточками); переключение кнопками — только сейчас, настройку не меняет */
 	function pref() { var s = S(); return s && s.set && s.set.sthOrderView === 'list' ? 'list' : 'board'; }
 	X.view = pref();
-	function saveView(v) { X.view = v; }
-	X.resetView = function () { X.view = pref(); };
+	X.sgFocusOrder = X.view !== 'list';
+	function saveView(v) { X.view = v; X.sgFocusOrder = v !== 'list'; }
+	X.resetView = function () { X.view = pref(); X.sgFocusOrder = X.view !== 'list'; };
 	function sum(o) { try { return O.calc(X.book, o); } catch (e) { return { total: 0, paid: 0, debt: 0 }; } }
 	function filtered() {
 		var q = String(X.q || '').toLowerCase().replace(/ё/g, 'е');
@@ -102,7 +103,7 @@
 	};
 	function openOrder(id) {
 		if (!O.order(X.book, id)) return;
-		X.cur = id; X.tab = 'calc'; saveView('list'); X.render();
+		X.cur = id; X.tab = 'calc'; saveView('list'); X.sgFocusOrder = true; X.render();
 	}
 	host.addEventListener('click', function (e) {
 		if (Date.now() < ignoreClickUntil) { e.preventDefault(); return; }

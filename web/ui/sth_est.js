@@ -23,7 +23,7 @@
 		var h = host(); if (!h) return;
 		var counts = C.counts(R.rows, info), n = selected().length;
 		h.innerHTML = '<div class="sthEstBar"><button data-setools="1" class="sthEstMore" aria-expanded="' + (X.toolsOpen ? 'true' : 'false') + '">Фильтры и действия</button>' +
-			'<span class="sthEstHint">Стрелка — старые поля · Правая кнопка мыши — все действия</span><div class="sthEstShown">Показано: ' + visible + ' из ' + R.rows.length + (n ? ' · выбрано: ' + n : '') + '</div></div>' +
+			'<span class="sthEstHint">Название — карточка справа · Правая кнопка мыши — все действия</span><div class="sthEstShown">Показано: ' + visible + ' из ' + R.rows.length + (n ? ' · выбрано: ' + n : '') + '</div></div>' +
 			'<div class="sthEstPanels"' + (X.toolsOpen ? '' : ' hidden') + '><div class="sthEstFilters" role="group" aria-label="Фильтр сметы">' + C.FILTERS.map(function (f) {
 				return '<button data-sef="' + f[0] + '" class="' + (filter() === f[0] ? 'on' : '') + '">' + f[1] + (counts[f[0]] ? ' <span>' + counts[f[0]] + '</span>' : '') + '</button>';
 			}).join('') + '</div><div class="sthEstBulk"><b>' + (n ? 'Выбрано: ' + n : 'Массовые действия') + '</b>' +
@@ -38,17 +38,38 @@
 		});
 		return found;
 	}
+	/* STHGroup: одна карточка справа; исходные поля переносятся с сохранением обработчиков. */
+	function showCard(k) {
+		var card = document.getElementById('eCard'); if (!card) return;
+		card.querySelectorAll('.sthCardCopy').forEach(function (el) { el.remove(); });
+		if (X.cardHome) moveChildren(card.querySelector('.sthCardFields'), X.cardHome);
+		X.cardHome = null; card.innerHTML = '';
+		document.querySelectorAll('#eBody .sthCompactRow').forEach(function (tr) {
+			var active = tr.dataset.k === k;
+			tr.classList.toggle('sthCardActive', active);
+			var b = tr.querySelector('[data-seexpand]'); if (b) b.setAttribute('aria-expanded', active ? 'true' : 'false');
+		});
+		var tr = k && mainRow(k), detail = tr && tr.nextElementSibling;
+		if (!tr || tr.hidden || !detail || !detail.classList.contains('sthDetail')) return;
+		var w = rows().filter(function (r) { return key(r) === k; })[0]; if (!w) return;
+		card.innerHTML = '<div class="sec">Материал сметы<div class="grow"></div><button type="button" class="icon" data-seclose="1" aria-label="Закрыть карточку">✕</button></div>' +
+			'<div class="cbody"><h3>' + esc(w.title || w.label || '') + '</h3><div class="sthCardFields"></div></div>';
+		var fields = card.querySelector('.sthCardFields'); X.cardHome = detail.firstElementChild;
+		moveChildren(X.cardHome, fields);
+		/* Цена и количество доступны и в таблице: штатное делегирование change пересчитывает оба представления. */
+		['qv', 'pv'].forEach(function (cls) {
+			var source = tr.querySelector('input.' + cls); if (!source) return;
+			var f = detailField(cls === 'pv' ? 'Цена, ' + (w.punit || '₽') : 'Количество, ' + E.shortUnit(w.unit));
+			f.box.classList.add('sthCardCopy');
+			var input = source.cloneNode(true); input.setAttribute('aria-label', cls === 'pv' ? 'Цена материала' : 'Количество материала');
+			f.body.appendChild(input); fields.appendChild(f.box);
+		});
+		if (w.sum > 0) { var total = document.createElement('div'); total.className = 'sthCardSum sthCardCopy'; total.textContent = 'Сумма: ' + E.money(w.sum) + ' ₽'; fields.appendChild(total); }
+	}
 	function setOpen(k, value) {
+		X.last = value ? k : ''; X.closed = !value;
 		X.open[k] = !!value;
-		var tr = mainRow(k); if (!tr) return;
-		var b = tr.querySelector('[data-seexpand]'), d = b && document.getElementById(b.getAttribute('aria-controls'));
-		tr.classList.toggle('sthOpen', !!value);
-		if (b) {
-			b.setAttribute('aria-expanded', value ? 'true' : 'false');
-			b.setAttribute('aria-label', (value ? 'Скрыть' : 'Показать') + ' старые поля и действия позиции');
-			b.title = (value ? 'Скрыть' : 'Показать') + ' артикул, режим расчёта, поставщика и остальные действия';
-		}
-		if (d) d.hidden = !value || tr.hidden;
+		showCard(X.last);
 	}
 	X.setOpen = setOpen;
 	function detailField(label, cls) {
@@ -58,7 +79,7 @@
 		box.appendChild(title); box.appendChild(body); return { box: box, body: body };
 	}
 	function moveChildren(from, to) { while (from && from.firstChild) to.appendChild(from.firstChild); }
-	/* Компактная строка сохраняет все штатные элементы: они не дублируются, а переносятся в раскрываемую панель. */
+	/* Компактная строка хранит штатные элементы в скрытом контейнере до выбора карточки справа. */
 	function expandable(R, map) {
 		var body = document.getElementById('eBody'), table = body && body.querySelector('table.et');
 		if (!table) return;
@@ -88,11 +109,14 @@
 			cell.appendChild(actions); detail.appendChild(cell);
 			[ar, unit, calc, sup].forEach(function (td) { if (td) td.classList.add('sthDetailCol'); });
 			tr.classList.add('sthCompactRow');
-			nm.innerHTML = '<button type="button" class="sthRowToggle" data-seexpand="' + esc(k) + '" aria-controls="' + detail.id + '" aria-expanded="false"><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M5 3l5 5-5 5"/></svg></button>' +
-				'<span class="sthRowName">' + esc(w.title || w.label || '') + '</span>' + (w.off ? '<small class="sthRowState">не считается</small>' : '');
+			nm.innerHTML = '<button type="button" class="sthCardPick" data-seexpand="' + esc(k) + '" aria-controls="eCard" aria-expanded="false">' + esc(w.title || w.label || '') + '</button>' + (w.off ? '<small class="sthRowState">не считается</small>' : '');
 			tr.insertAdjacentElement('afterend', detail);
-			setOpen(k, !!X.open[k]);
+			detail.hidden = true;
 		});
+		if (X.project !== S().st) { X.project = S().st; X.last = ''; X.closed = false; X.cardHome = null; }
+		var visible = list.filter(function (tr) { return !tr.hidden && tr.classList.contains('sthCompactRow'); });
+		if (!visible.some(function (tr) { return tr.dataset.k === X.last; })) X.last = X.closed ? '' : (visible[0] ? visible[0].dataset.k : '');
+		showCard(X.last);
 		/* Повторный вызов применяет сохранённый порядок уже к компактным строкам; скрытые ячейки переносятся вместе с видимыми. */
 		if (window.STHDrag && window.STHDrag.cols) window.STHDrag.cols(table, 'est', function () { Es.render(); });
 	}
@@ -328,10 +352,12 @@
 		U.menu(e.clientX, e.clientY, commonActs(head));
 	}, true);
 	document.addEventListener('click', function (e) {
+		var close = e.target.closest && e.target.closest('[data-seclose]');
+		if (close) { e.preventDefault(); e.stopPropagation(); setOpen(X.last, false); return; }
 		var expand = e.target.closest && e.target.closest('[data-seexpand]');
 		if (expand) {
 			e.preventDefault(); e.stopPropagation();
-			setOpen(expand.dataset.seexpand, !X.open[expand.dataset.seexpand]); return;
+			setOpen(expand.dataset.seexpand, X.last !== expand.dataset.seexpand); return;
 		}
 		var more = e.target.closest && e.target.closest('[data-semenu]');
 		if (more) {

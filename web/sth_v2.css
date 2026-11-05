@@ -1,3 +1,15 @@
+/* STHGroup: выбранная позиция сметы — карточкой справа. */
+#eBody .sthCardPick{border:0;background:transparent;color:var(--text);text-align:left;white-space:normal;overflow-wrap:anywhere;padding:3px 0;flex:1;min-width:0;font:inherit;cursor:pointer}
+#eBody .sthCardPick:hover{color:var(--accent)}
+#eBody table.sthCompact tr.sthCompactRow.sthCardActive>td{background:var(--sel)}
+#eCard .sthDetailGrid{display:flex;flex-direction:column;gap:14px;background:transparent;border:0;padding:12px 0}
+#eCard .sthDetailLabel{font-size:12px}
+#eCard .sthDetailActions{align-items:stretch;flex-direction:column;margin-bottom:14px}
+#eCard .sthDetailActions span{font-size:12px}
+#eCard .sthDetailBody textarea,#eCard .sthDetailBody input{max-width:100%;box-sizing:border-box}
+#eCard .sthDetailBody input.pv,#eCard .sthDetailBody input.qv{width:100%;padding:7px 9px;text-align:right}
+#eCard .sthCardSum{font-weight:600;border-top:1px solid var(--line);margin-top:14px;padding-top:12px}
+#eCard .sthDetailSupplier a{overflow-wrap:anywhere}
 /* STHGroup 2.0 — функциональные улучшения интерфейса без смены выбранной темы. */
 .sthEstTools{border-bottom:1px solid var(--line,#d8dce2);background:var(--panel,#fff);position:sticky;top:0;z-index:5}
 .sthEstBar{display:flex;align-items:center;gap:12px;min-height:38px;padding:4px 10px}.sthEstMore{padding:5px 9px;font-size:12px}.sthEstHint{color:var(--mute,#68717c);font-size:12px}.sthEstPanels{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:6px 10px 8px;border-top:1px solid var(--line2,#e5e8ec)}.sthEstPanels[hidden]{display:none}

@@ -33,7 +33,7 @@ ok(ui.includes('else if (Es.R) Es.R.rows.forEach'), 'выбор всех стр�
 ok(ui.includes("tbody > tr[data-k]") && ui.includes('data-seexpand'), 'стрелка создаётся у каждой расчётной позиции, не только у ЛДСП');
 ok(ui.includes("className = 'sthDetail'") && ui.includes('moveChildren(nm, name.body)') && ui.includes('moveChildren(ar, article.body)'), 'прежние поля переносятся в раскрытие без дублирования');
 ok(ui.includes('moveChildren(unit, mode.body)') && ui.includes('moveChildren(calc, model.body)') && ui.includes('moveChildren(sup, supplier.body)'), 'режим, модель и поставщик сохранены внутри позиции');
-ok(ui.includes('setOpen(key(w), true)') && ui.includes('d.hidden = !value || tr.hidden'), 'меню раскрывает скрытое поле, а фильтр скрывает и подробности строки');
+ok(ui.includes('setOpen(key(w), true)') && ui.includes('!tr || tr.hidden') && ui.includes('showCard(X.last)'), 'меню открывает карточку справа; скрытая фильтром строка не оставляет подробности');
 ok(ui.includes("window.STHDrag.cols(table, 'est'") && ui.includes('sthDetailCol'), 'компактная разметка учитывает перестановку столбцов');
 const css = fs.readFileSync(__dirname + '/../web/sth_v2.css', 'utf8');
 ok(css.includes('.sthRowToggle') && css.includes('tr.sthDetail[hidden]') && css.includes('.sthDetailGrid'), 'оформление стрелки, скрытия и сетки прежних полей');

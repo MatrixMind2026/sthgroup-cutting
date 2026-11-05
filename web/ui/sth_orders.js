@@ -211,6 +211,7 @@
 			'<label class="soR"><span>Срок, раб. дней</span><input class="soN" id="soDays" value="' + esc(t.days) + '"></label>' +
 			'<label class="soR"><span>Хранение: бесплатно дней</span><input class="soN" id="soFree" value="' + esc(t.freeDays) + '"></label>' +
 			'<label class="soR"><span>дальше, ₽/сут</span><input class="soN" id="soStor" value="' + esc(t.storage) + '"></label>' +
+			'<div class="soBtns"><button id="soCheckOrder">Проверить заказ</button></div>' + /* STHGroup: диагностика до отправки КП */
 			'<div class="soBtns"><button class="primary" id="soKp">КП в PDF</button><button id="soInv">Счёт в PDF</button></div>' +
 			'<div class="soBtns"><button id="soCat">Справочник и цены…</button><button id="soPrice">Прайс для клиента</button></div>';
 	}

@@ -1,0 +1,22 @@
+[Unit]
+Description=STHGroup customer viewer demo
+After=network.target
+
+[Service]
+Type=simple
+User=sthviewer
+Group=sthviewer
+WorkingDirectory=/opt/sthgroup-viewer
+Environment=NODE_ENV=production
+Environment=PORT=47920
+ExecStart=/usr/bin/node /opt/sthgroup-viewer/server.mjs
+Restart=on-failure
+RestartSec=3
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+UMask=0077
+
+[Install]
+WantedBy=multi-user.target

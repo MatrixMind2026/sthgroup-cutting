@@ -11,6 +11,14 @@
   if (v && typeof v === 'object') return '{' + Object.keys(v).sort().map(function (k) { return JSON.stringify(k) + ':' + stable(v[k]); }).join(',') + '}';
   return JSON.stringify(v === undefined ? null : v);
  }
+ /* Геометрия без служебных номеров сегментов: одинаковый контур может начинаться
+    с другого ребра и обходиться в другом направлении при повторной выгрузке. */
+ function contour(els) {
+  return (els || []).map(function (e) {
+   var a = e.a, b = e.b, g = e.g || 0;
+   return stable(a) <= stable(b) ? { a: a, b: b, g: g } : { a: b, b: a, g: -g };
+  }).sort(function (a, b) { return stable(a).localeCompare(stable(b)); });
+ }
  F.OPERATIONS = [['cut', 'Распил'], ['edge', 'Кромление'], ['drill', 'Присадка'], ['pack', 'Упаковка']];
  F.CATEGORIES = [['mat', 'Материалы'], ['fit', 'Фурнитура'], ['work', 'Работы']];
  F.fix = function (o) {
@@ -114,7 +122,7 @@
     L: t.L, W: t.W, th: m ? m.th : t.th, material: m ? m.name : t.matName, qty: count,
     edge: stable({ sides: t.shape && t.shape.sides || {}, edges: (t.shape && t.shape.edges || []).slice().sort(function (a, b) { return stable(a).localeCompare(stable(b)); }) }),
     holes: stable(t.holes ? { top: t.holes.top.slice().sort(function (a, b) { return stable(a).localeCompare(stable(b)); }), bot: t.holes.bot.slice().sort(function (a, b) { return stable(a).localeCompare(stable(b)); }), thr: t.holes.thr.slice().sort(function (a, b) { return stable(a).localeCompare(stable(b)); }), edge: t.holes.edge } : {}), cuts: stable(t.cuts || []),
-    contour: stable(t.shape && (t.shape.pts || t.shape.outer) || []), texture: t.tex === undefined ? null : t.tex };
+    contour: stable({ outer: contour(t.shape && t.shape.outer), inner: (t.shape && t.shape.inner || []).map(contour).sort(function (a, b) { return stable(a).localeCompare(stable(b)); }) }), texture: t.tex === undefined ? null : t.tex };
    var fp = stable(Object.assign({}, row, { qty: 0 })), old = index[fp];
    if (old) old.qty += count; else { index[fp] = row; rows.push(row); }
   });

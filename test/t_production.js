@@ -85,6 +85,21 @@ test('Изменение количества фурнитуры видно да
 test('Замена декора кромки без изменения её толщины обнаруживается в реальной выгрузке', () => {
  const next = clone(source); next.model.parts[0].butts[0].mat = 'Кромка другого декора'; const diff = F.diff(version, F.modelSnapshot(P.build(next, BM.defaults()))); assert.ok(diff.some(x => x.fields.includes('Кромка')));
 });
+test('Сдвиг внутреннего выреза фасада обнаруживается при неизменном внешнем размере', () => {
+ const changed = P.build(clone(source), BM.defaults()), t = changed.types.find(t => t.shape.inner.length);
+ assert.ok(t); const before = F.modelSnapshot(changed);
+ for (const edge of t.shape.inner[0]) { edge.a[0] += 20; edge.b[0] += 20; }
+ const diff = F.diff(before, F.modelSnapshot(changed)); assert.equal(diff.length, 1); assert.equal(diff[0].name, t.name); assert.ok(diff[0].fields.includes('Контур')); assert.ok(!diff[0].fields.includes('Размер'));
+});
+test('Номера сегментов и начало/направление обхода контура не создают ложные изменения', () => {
+ const changed = P.build(clone(source), BM.defaults()), before = F.modelSnapshot(changed);
+ for (const t of changed.types) {
+  for (const loop of [t.shape.outer, ...t.shape.inner]) {
+   loop.reverse(); for (const edge of loop) { const a = edge.a; edge.a = edge.b; edge.b = a; edge.g = -(edge.g || 0); edge.src = 1000 + (edge.src || 0); }
+  }
+ }
+ assert.deepEqual(F.diff(before, F.modelSnapshot(changed)), []);
+});
 test('Снимок стандартной сводки дополняется деталями, не меняя сумму материала', () => {
  const snapshot = O.snapshot(st, { groups: { 'МАТЕРИАЛ': 1200, 'ФУРНИТУРА': 500 } }, book.cat, 'Тест', 'test.bmk'); assert.equal(snapshot.mat, 1200); assert.equal(snapshot.fit, 500); assert.ok(snapshot.modelVersion.rows.length > 0); assert.ok(snapshot.edgeM >= 0);
 });

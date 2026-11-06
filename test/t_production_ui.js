@@ -7,7 +7,7 @@ let browser, srv, page, dialogPath = '', pdfs = 0;
 const errors = [];
 (async () => {
  browser = await chromium.launch({ channel: 'msedge', headless: true });
- srv = await require(path.join(repo, 'server')).start({ webDir: path.join(repo, 'web'), dataDir, version: '2.4.0-dev', hooks: {
+ srv = await require(path.join(repo, 'server')).start({ webDir: path.join(repo, 'web'), dataDir, version: require(path.join(repo, 'package.json')).version, hooks: {
   dialog: async () => dialogPath,
   pdf: async (html, file) => { const p = await browser.newPage(); await p.setContent(html); await p.pdf({ path: file, printBackground: true, preferCSSPageSize: true }); await p.close(); pdfs++; }
  } });

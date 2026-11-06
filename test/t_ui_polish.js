@@ -28,6 +28,16 @@ for (const f of ['geom', 'cut', 'project', 'draw', 'zip', 'out_tab', 'base', 'es
   const errors = []; page.on('pageerror', e => errors.push(e.message));
   const ready = () => page.waitForFunction(() => !!document.getElementById('cTex').onchange);
   const go = async sec => { await page.locator('#rail [data-s="' + sec + '"]').click(); await page.waitForFunction(s => App.S.section === s, sec); };
+  const checkGaps = async id => {
+   const result = await page.locator('#' + id).evaluate(root => Array.from(root.children).filter(el => el.classList.contains('splitH') && el.getClientRects().length && getComputedStyle(el).display !== 'none').map(el => {
+    const prev = el.previousElementSibling, next = el.nextElementSibling, h = el.getBoundingClientRect();
+    if (!prev || !next || !prev.getClientRects().length || !next.getClientRects().length) return null;
+    const p = prev.getBoundingClientRect(), n = next.getBoundingClientRect(), button = el.querySelector('.tng'), b = button && button.getBoundingClientRect();
+    return { gap: n.left - p.right, width: h.width, inside: !b || (b.left >= h.left && b.right <= h.right && b.height <= 28) };
+   }).filter(Boolean));
+   assert.ok(result.length, 'есть видимые стыки в ' + id);
+   result.forEach(r => { assert.strictEqual(r.gap, 12, 'зазор в ' + id); assert.strictEqual(r.width, 12); assert.ok(r.inside, 'кнопка скрытия внутри зазора в ' + id); });
+  };
   await page.goto(srv.url + '&splash=0'); await ready(); await go('orders'); await page.locator('.soBoard').waitFor();
   const toolbar = () => page.evaluate(() => ['[data-oview="list"]', '[data-oview="board"]', '#soBoardQ', '#soNew'].map(s => { const r = document.querySelector(s).getBoundingClientRect(); return [r.x, r.y, r.width, r.height]; }));
   const before = await toolbar(); await page.screenshot({ path: path.join(out, 'orders-cards.png') });
@@ -73,10 +83,25 @@ for (const f of ['geom', 'cut', 'project', 'draw', 'zip', 'out_tab', 'base', 'es
   await page.screenshot({ path: path.join(out, 'estimate-narrow.png') });
   await page.setViewportSize({ width: 1600, height: 1000 });
   await go('model');
+  await checkGaps('model');
+  const modelGrip = page.locator('#mLeft + .splitH'), mb = await modelGrip.boundingBox();
+  await page.mouse.move(mb.x + mb.width / 2, mb.y + 30); await page.mouse.down(); await page.mouse.move(mb.x + mb.width / 2 + 55, mb.y + 30, { steps: 6 }); await page.mouse.up(); await checkGaps('model');
+  await modelGrip.locator('.tng').click(); assert.strictEqual(await page.locator('#mLeft').isVisible(), false);
+  await modelGrip.locator('.tng').click(); await checkGaps('model');
+  await modelGrip.dblclick({ position: { x: 6, y: 30 } }); await checkGaps('model');
   assert.ok(await page.locator('#mBar .pill button').first().evaluate(el => parseFloat(getComputedStyle(el).borderRadius) >= 20));
   assert.ok(await page.locator('#mBar .pill button.on').first().evaluate(el => getComputedStyle(el).backgroundImage.includes('linear-gradient')));
   await page.screenshot({ path: path.join(out, 'model-buttons.png') });
+  const modelEdge = await page.locator('#mLeft').boundingBox();
+  await page.screenshot({ path: path.join(out, 'model-gap-detail.png'), clip: { x: modelEdge.x + modelEdge.width - 90, y: modelEdge.y, width: 210, height: Math.min(750, modelEdge.height) } });
+  // Эти служебные разделы скрыты в редакции STHGroup: проверяем общие стили их стыков.
+  for (const section of ['drill', 'detail', 'asm']) assert.ok(await page.locator('#' + section + ' > .splitH').evaluateAll(list => list.length > 0 && list.every(el => getComputedStyle(el).width === '12px' && getComputedStyle(el).marginLeft === '0px')));
+  await go('cut'); if (await page.locator('#cutSimpleMore').isVisible()) await page.locator('#cutSimpleMore').click();
+  await page.locator('#mapWrap').waitFor(); await checkGaps('main'); await page.screenshot({ path: path.join(out, 'cut-gaps.png') });
+  await go('clients');
+  assert.strictEqual(await page.locator('#orders').evaluate(root => root.querySelector('.soC').getBoundingClientRect().left - root.querySelector('.soL').getBoundingClientRect().right), 12);
   await go('est');
+  await checkGaps('est');
   const kitKey = await page.evaluate(() => {
    const candidates = Est.R.rows.filter(w => w.kind === 'fastener' && !w.own && !w.off && !w.info && w.val > 0).slice(0, 2), pl = Est.pl();
    if (candidates.length < 2) throw Error('Нет строк для проверки комплекта');
@@ -91,8 +116,8 @@ for (const f of ['geom', 'cut', 'project', 'draw', 'zip', 'out_tab', 'base', 'es
   assert.strictEqual(await page.locator('.sthKitContents article').count(), 2); assert.strictEqual(await page.evaluate(() => Est.R.rows.reduce((sum, w) => sum + w.sum, 0)), total);
   // Длинный текст должен увеличивать высоту строки, а не залезать на цену.
   await page.evaluate(() => { const w = Est.R.rows.find(w => w.sthKit); Est.pl().NAME[w.offKey] = 'Очень длинное название комплекта направляющих скрытого монтажа с креплениями и дополнительными элементами для проверки переноса текста'; Est.render(); });
-  const name = page.locator('thead th[data-ci="3"]'), price = page.locator('thead th[data-ci="7"]');
-  const box = await name.boundingBox(); const handle = page.locator('thead th[data-ci="3"] .sthResize'); const hb = await handle.boundingBox();
+  const name = page.locator('#est table.sthCompact thead th[data-ci="3"]'), price = page.locator('#est table.sthCompact thead th[data-ci="7"]');
+  const box = await name.boundingBox(); const handle = page.locator('#est table.sthCompact thead th[data-ci="3"] .sthResize'); const hb = await handle.boundingBox();
   await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await page.mouse.down(); await page.mouse.move(hb.x + hb.width / 2 + 140, hb.y + hb.height / 2, { steps: 8 }); await page.mouse.up();
   assert.ok((await name.boundingBox()).width > box.width + 120);
   const pb = await price.boundingBox(), nb = await name.boundingBox();

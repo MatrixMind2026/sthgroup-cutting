@@ -3,14 +3,14 @@
 (function () {
 	'use strict';
 	var U = window.UI, esc = U.esc, MB = BM.mb, SK = BM.stock;
-	var X = window.STHStock = { tab: 'sheet', q: '', all: false, sel: '' };
+	var X = window.STHStock = { tab: 'off', view: 'off', category: 'all', q: '', all: false, sel: '', offSel: '', rowSel: '' };
 	function S() { return window.App.S; }
 	function $(id) { return document.getElementById(id); }
 	function base() { return MB.cur ? SK.fix(MB.cur) : null; }
 	function n(v) { return String(Math.round((v || 0) * 1000) / 1000).replace('.', ','); }
 	function ruDate(d) { return String(d || '').split('-').reverse().join('.'); }
 	/* правка склада: свежая база → изменение → запись */
-	async function edit(fn) {
+	async function applyEdit(fn) {
 		var K = window.MatBase;
 		await K.refresh();
 		var b = base(); if (!b) { U.toast('Базы материалов нет: «Настройки → Общие → Папки и файлы».'); return false; }
@@ -20,6 +20,9 @@
 		X.render();
 		return r;
 	}
+	/* STHGroup: быстрые последовательные действия не должны перезаписывать друг друга. */
+	X.pending = Promise.resolve();
+	function edit(fn) { var result = X.pending.then(function () { return applyEdit(fn); }); X.pending = result.catch(function () {}); return result; }
 	/* заказы для выбора: открытые (не закрытые и не отгруженные) — сначала */
 	async function orders() {
 		var O = BM.sth, H = window.STHO; if (!H) return [];
@@ -29,7 +32,7 @@
 	}
 	function orderOpts(list, cur, none) { return (none ? '<option value="">' + esc(none) + '</option>' : '') + list.map(function (o) { return '<option value="' + esc(o.id) + '"' + (o.id === cur ? ' selected' : '') + '>' + esc(o.title) + '</option>'; }).join(''); }
 	function matOpts(b, tab) {
-		return Object.keys(b.mats).filter(function (id) { return SK.tabOf(b, b.mats[id]) === tab; }).map(function (id) { return b.mats[id]; })
+		return Object.keys(b.mats).filter(function (id) { return !tab || tab === 'all' || SK.tabOf(b, b.mats[id]) === tab; }).map(function (id) { return b.mats[id]; })
 			.sort(function (x, y) { return x.name.localeCompare(y.name, 'ru'); }).map(function (m) { return '<option value="' + esc(m.name + (m.art ? ' · ' + m.art : '')) + '">'; }).join('');
 	}
 	function matBy(b, v) {
@@ -42,41 +45,58 @@
 	/* -------------------------------- окно ---------------------------------- */
 	X.render = function () {
 		var host = $('stock'); if (!host) return;
-		var b = base(), tab = X.tab;
-		var tabs = SK.TABS.map(function (t) { return '<button data-skt="' + t[0] + '"' + (t[0] === tab ? ' class="on"' : '') + '>' + t[1] + '</button>'; }).join('');
-		var btns = (tab === 'moves' || tab === 'history') ? '' : tab === 'off' ? '<button id="skOffAdd">＋ Обрезок</button>' : '<button id="skIn">＋ Приход</button><button id="skOut">－ Расход</button><button id="skRes">Резерв…</button>';
-		var bar = '<div class="skBar"><span class="mseg">' + tabs + '</span><div class="grow"></div>' + btns +
-			(tab === 'sheet' || tab === 'lin' || tab === 'fit' ? '<label class="mute sm"><input type="checkbox" id="skAll"' + (X.all ? ' checked' : '') + '> все из базы</label>' : '') +
-			'<input type="search" id="skQ" placeholder="Поиск: название, артикул, ячейка" value="' + esc(X.q) + '"></div>';
-		if (!b) { host.innerHTML = bar + '<div class="skEmpty">Склад хранится в базе материалов. Базы нет — выберите файл в «Настройки → Общие → Папки и файлы».</div>'; return; }
-		host.innerHTML = bar + '<div class="skBody">' + (tab === 'moves' ? movesHtml(b) : tab === 'history' ? historyHtml(b) : tab === 'off' ? offHtml(b) : matsHtml(b)) + '</div>';
+		var b = base(), view = X.view;
+		var tabs = [['orders', 'Под заказы'], ['free', 'Свободные запасы'], ['off', 'Деловые остатки']].map(function (t) { return '<button data-skv="' + t[0] + '" class="' + (view === t[0] ? 'on' : '') + '" aria-pressed="' + (view === t[0]) + '">' + t[1] + '</button>'; }).join('');
+		var head = '<header class="scHead"><div><h1>Склад</h1><p class="mute">Материалы под заказы и свободные остатки</p></div><div class="scTools"><button data-skv="moves" aria-pressed="' + (view === 'moves') + '">Движения</button><button data-skv="history" aria-pressed="' + (view === 'history') + '">История</button></div></header>';
+		var bar = '<div class="scTabs tabs">' + tabs + '</div><div class="scToolbar"><input type="search" id="skQ" aria-label="Поиск по складу" placeholder="Поиск по материалу, размеру, заказу" value="' + esc(X.q) + '"><div class="grow"></div>' + (view === 'off' ? '<button class="primary" data-sk-off-add>＋ Добавить остаток</button>' : '') + '<button data-sk-in>Принять материал</button><button id="skRecv">Приход по заказу…</button><details class="scMore"><summary>Ещё</summary><div><button id="skWo">Списать по заказу…</button><button id="skImport">Импорт остатков</button></div></details></div>';
+		var categories = [['all', 'Все материалы'], ['sheet', 'Листовые'], ['lin', 'Кромка и погонаж'], ['fit', 'Фурнитура']];
+		if (view === 'off') categories = [['all', 'Все материалы'], ['chip', 'ЛДСП'], ['mdf', 'МДФ'], ['ply', 'Фанера'], ['other', 'Другие']];
+		var filters = view === 'moves' || view === 'history' ? '' : '<div class="scFilters">' + categories.map(function (c) { return '<button data-skc="' + c[0] + '" aria-pressed="' + (c[0] === X.category) + '"' + (c[0] === X.category ? ' class="on"' : '') + '>' + c[1] + '</button>'; }).join('') + '</div>';
+		if (!b) { host.innerHTML = head + '<div class="skEmpty">Склад хранится в базе материалов. Выберите файл в «Настройки → Общие → Папки и файлы».</div>'; return; }
+		var list = view === 'off' ? SK.offRows(b, X.q) : SK.centerRows(b, view, X.category, X.q);
+		if (view === 'off' && X.category !== 'all') list = list.filter(function (o) { return SK.offFamily(b.mats[o.mat]) === X.category; });
+		if (view === 'off' && !list.some(function (o) { return o.id === X.offSel; })) X.offSel = list[0] ? list[0].id : '';
+		if (view !== 'off' && !list.some(function (r) { return r.key === X.rowSel; })) X.rowSel = list[0] ? list[0].key : '';
+		var selected = list.filter(function (r) { return view === 'off' ? r.id === X.offSel : r.key === X.rowSel; })[0];
+		if (selected) { X.sel = view === 'off' ? selected.mat : selected.m.id; X.tab = SK.tabOf(b, b.mats[X.sel]); }
+		else X.tab = X.category === 'all' ? 'all' : X.category;
+		var body = view === 'moves' ? movesHtml(b) : view === 'history' ? historyHtml(b) : stockTable(b, list);
+		host.innerHTML = head + bar + filters + '<div class="scLayout' + (/^(moves|history)$/.test(view) ? ' scWide' : '') + '"><div class="scList">' + body + '</div>' + (/^(moves|history)$/.test(view) ? '' : '<aside class="scInspector" aria-label="Карточка склада">' + inspector(b, selected) + '</aside>') + '</div>';
+		if (view === 'history' && $('skHistoryType')) $('skHistoryType').value = X.historyType || 'all';
 		var q = $('skQ'); if (q && X.focusQ) { q.focus(); q.setSelectionRange(q.value.length, q.value.length); X.focusQ = false; }
 	};
-	function matsHtml(b) {
-		var rows = SK.rows(b, X.tab, X.q, X.all);
-		if (!rows.length) return '<div class="skEmpty">' + (X.q ? 'Ничего не найдено.' : 'На складе пусто. Добавьте первый приход или загрузите остатки из файла.') + '<div class="skEmptyActions"><button id="skEmptyIn" class="primary">Добавить приход</button><button id="skImport">Импортировать остатки</button></div></div>';
-		return '<table class="grid skT"><thead><tr><th>Материал</th><th>Ед.</th><th class="r">Есть</th><th class="r">Резерв</th><th class="r">Свободно</th><th>Ячейка</th><th>Под заказ</th></tr></thead><tbody>' +
-			rows.map(function (r) {
-				return '<tr data-mat="' + esc(r.m.id) + '"' + (r.m.id === X.sel ? ' class="on"' : '') + '><td class="name">' + esc(r.m.name) + (r.m.art ? ' <span class="mute">' + esc(r.m.art) + '</span>' : '') + '</td><td>' + esc(r.unit) + '</td>' +
-					'<td class="r">' + n(r.bal) + '</td><td class="r">' + (r.res ? n(r.res) : '') + '</td><td class="r ' + (r.free < 0 ? 'neg' : r.free > 0 ? 'pos' : '') + '">' + n(r.free) + (r.free < 0 ? ' докупить' : '') + '</td>' +
-					'<td><input class="skCell" data-cell="' + esc(r.m.id) + '" value="' + esc(r.cell) + '" placeholder="—"></td><td class="mute">' + esc(r.orders.map(function (x) { return '№ ' + x; }).join(', ')) + '</td></tr>';
-			}).join('') + '</tbody></table>';
+	function status(o) { return o.res ? '<span class="scBadge reserved">Под заказ №' + esc(o.resNo || '—') + '</span>' : '<span class="scBadge">✓ Свободен</span>'; }
+	function origin(o) { return o.project || (o.originNo ? 'Заказ №' + o.originNo : 'Не указан'); }
+	function stockTable(b, list) {
+		if (!list.length) return '<div class="skEmpty"><h3>' + (X.q ? 'Ничего не найдено' : X.view === 'off' ? 'Деловых остатков пока нет' : X.view === 'orders' ? 'Материалы под заказы пока не отложены' : 'Свободных запасов пока нет') + '</h3><p>' + (X.view === 'off' ? 'Добавьте пригодный остаток, укажите его размеры, место и исходный заказ.' : 'Примите материал или выберите другую категорию. Резервы показываются во вкладке «Под заказы».') + '</p><button id="' + (X.view === 'off' ? 'skOffAdd' : 'skIn') + '">' + (X.view === 'off' ? 'Добавить остаток' : 'Принять материал') + '</button></div>';
+		var off = X.view === 'off';
+		return '<table class="grid scTable"><thead><tr><th>Материал</th>' + (off ? '<th>Размер, мм</th><th>От какого заказа</th><th>Место</th><th>Статус</th>' : '<th>' + (X.view === 'orders' ? 'Под заказ' : 'На складе') + '</th><th>В резерве</th><th>' + (X.view === 'orders' ? 'Количество' : 'Свободно') + '</th><th>Место</th>') + '</tr></thead><tbody>' + list.map(function (r) {
+			var m = off ? b.mats[r.mat] : r.m, id = off ? r.id : r.key, on = id === (off ? X.offSel : X.rowSel);
+			var label = off ? r.L + ' × ' + r.W + ' × ' + (m.th || '—') : m.unit;
+			return '<tr data-scselect="' + esc(id) + '" class="' + (on ? 'on' : '') + '"><td><button class="scSelect" data-scrow="' + esc(id) + '" aria-pressed="' + on + '"><b>' + esc(m.name) + '</b><small>' + esc(m.art || '') + '</small></button></td>' + (off ? '<td>' + esc(label) + (r.n > 1 ? '<small>' + n(r.n) + ' шт.</small>' : '') + '</td><td>' + esc(origin(r)) + '</td><td>' + esc(SK.offCell(b, r) || '—') + '</td><td>' + status(r) + '</td>' : '<td>' + (X.view === 'orders' ? '№' + esc(r.reservation.no) : n(r.bal) + ' ' + esc(m.unit)) + '</td><td>' + n(r.res) + ' ' + esc(m.unit) + '</td><td class="' + (r.qty < 0 ? 'scShort' : '') + '">' + n(r.qty) + ' ' + esc(m.unit) + '</td><td>' + esc(r.cell || '—') + '</td>') + '</tr>';
+		}).join('') + '</tbody></table><p class="scFoot mute">' + (off ? 'Происхождение остатка сохраняется после передачи в другой заказ.' : X.view === 'orders' ? 'Здесь показаны резервы под заказы. Нехватка требует закупки; резерв сам по себе не является приходом.' : 'Свободно = на складе минус резерв под все заказы. Отрицательное значение означает нехватку.') + '</p>';
 	}
-	function offPic(o) {
-		var k = 60 / Math.max(o.L, 1), w = Math.max(4, Math.round(o.L * k)), h = Math.max(3, Math.round(o.W * k));
-		return '<svg width="64" height="' + (h + 4) + '"><rect x="2" y="2" width="' + w + '" height="' + h + '" class="skOffR' + (o.res ? ' res' : '') + '"/></svg>';
+	function fact(name, value) { return '<div class="scFact"><span class="mute">' + name + '</span><b>' + value + '</b></div>'; }
+	function inspector(b, r) {
+		if (!r) return '<div class="skEmpty">Выберите материал или остаток в таблице.</div>';
+		var off = X.view === 'off', m = off ? b.mats[r.mat] : r.m;
+		var title = off ? 'Деловой остаток' : X.view === 'orders' ? 'Под заказ №' + esc(r.reservation.no) : 'Свободный запас';
+		var html = '<h2>' + title + '</h2><h3>' + esc(m.name) + '</h3><p class="mute">' + esc(m.art || '') + '</p>';
+		if (off) {
+			html += '<div class="scDiagram"><div class="scDimTop">' + n(r.L) + ' мм</div><div class="scSheet" style="aspect-ratio:' + (r.L / r.W) + '"><span>' + n(m.th) + ' мм</span></div><div class="scDimBottom">' + n(r.W) + ' мм</div></div>';
+			html += fact('Количество', n(r.n) + ' шт.') + fact('Место', esc(SK.offCell(b, r) || 'Не указано')) + fact('От заказа', esc(origin(r))) + fact('Статус', status(r));
+			if (r.note) html += '<p class="scNote">' + esc(r.note) + '</p>';
+			html += '<p class="mute scHint">Заказ происхождения сохраняется в истории. Резерв откладывает остаток; для раскроя выберите его через «Со склада…».</p><div class="scActions"><button class="primary" data-ores="' + esc(r.id) + '">' + (r.res ? 'Снять резерв' : 'Использовать в заказе') + '</button><button id="scPlace">Переместить</button><button id="scHistory">История движения</button><button data-ouse="' + esc(r.id) + '">Выдать в производство</button><button data-odel="' + esc(r.id) + '">Списать как непригодный</button></div>';
+		} else {
+			html += fact('На складе', n(r.bal) + ' ' + esc(m.unit)) + fact('В резерве', n(r.res) + ' ' + esc(m.unit)) + fact('Свободно', n(r.free) + ' ' + esc(m.unit)) + fact('Место', esc(r.cell || 'Не указано'));
+			var res = SK.resOf(b, m.id); if (res.length) html += '<h3>Отложено под заказы</h3>' + res.map(function (a) { return fact('№' + esc(a.no), n(a.qty) + ' ' + esc(m.unit)); }).join('');
+			var receipts = b.stock.docs.filter(function (d) { return d.kind === 'in' && !d.off && d.lines.some(function (l) { return l.mat === m.id; }); }).slice(-5).reverse();
+			if (receipts.length) html += '<details class="scReceipts"><summary>Последние приходы материала</summary>' + receipts.map(function (d) { return '<p><b>' + esc(d.project || 'Без заказа') + '</b><br><span class="mute">' + esc(ruDate(d.date)) + ' · ' + n(d.lines.filter(function (l) { return l.mat === m.id; }).reduce(function (a, l) { return a + l.qty; }, 0)) + ' ' + esc(m.unit) + '</span></p>'; }).join('') + '<p class="mute">История поступлений. Текущий остаток показан выше.</p></details>';
+			html += '<div class="scActions"><button class="primary" id="skRes">Резерв под заказ…</button><button data-sk-in>Принять материал</button><button id="skOut">Выдать со склада</button><button id="scPlace">Изменить место</button><button id="scHistory">История движения</button></div>';
+		}
+		return html;
 	}
-	function offHtml(b) {
-		var list = SK.offRows(b, X.q);
-		if (!list.length) return '<div class="skEmpty">' + (X.q ? 'Ничего не найдено.' : 'Обрезков нет. «＋ Обрезок» — записать кусок вручную; после раскроя крупные остатки попадают сюда сами («Списать по заказу» в смете).') + '</div>';
-		return '<table class="grid skT"><thead><tr><th></th><th>Материал</th><th class="r">Размер, мм</th><th class="r">Шт</th><th>Откуда</th><th>Дата</th><th>Резерв</th><th></th></tr></thead><tbody>' +
-			list.map(function (o) {
-				var m = b.mats[o.mat];
-				return '<tr><td>' + offPic(o) + '</td><td class="name">' + esc(m.name) + '</td><td class="r">' + o.L + '×' + o.W + '</td><td class="r">' + o.n + '</td><td class="mute">' + esc(o.project || 'вручную') + '</td><td class="mute">' + esc(ruDate(o.date)) + '</td>' +
-					'<td>' + (o.res ? '<span class="skTag">№ ' + esc(o.resNo || '') + '</span>' : '') + '</td>' +
-					'<td class="skAct"><button data-ores="' + esc(o.id) + '">' + (o.res ? 'Снять резерв' : 'Под заказ…') + '</button><button data-ouse="' + esc(o.id) + '" title="Кусок взят в работу — убрать со склада">Взят</button><button class="icon" data-odel="' + esc(o.id) + '" title="Удалить (выбросили)">✕</button></td></tr>';
-			}).join('') + '</tbody></table>';
-	}
+
 	function movesHtml(b) {
 		var list = SK.moves(b, X.q);
 		if (!list.length) return '<div class="skEmpty">Движений нет.</div>';
@@ -89,7 +109,10 @@
 	}
 	function historyHtml(b) {
 		var list = SK.history(b, X.q, X.historyType || 'all');
+		if (X.historyOff) { var o = b.stock.offcuts.filter(function (x) { return x.id === X.historyOff; })[0]; list = list.filter(function (h) { return h.offcut === X.historyOff || (o && o.doc && h.doc === o.doc); }); }
+		if (X.historyMat) list = list.filter(function (h) { return h.mat === X.historyMat || (h.doc && b.stock.docs.some(function (d) { return d.id === h.doc && d.lines.some(function (l) { return l.mat === X.historyMat; }); })); });
 		var head = '<div class="skHistoryFilters"><b>Что произошло с материалами и складом</b><div class="grow"></div><select id="skHistoryType"><option value="all">Все события</option><option value="stock">Только склад</option><option value="replace">Замены и сопоставления</option></select></div>';
+		if (X.historyOff || X.historyMat) head += '<p class="mute">История выбранной позиции <button id="scClearHistory">Показать весь склад</button></p>';
 		if (!list.length) return head + '<div class="skEmpty">История пока пуста. Сюда попадут приходы, расходы, резервы, замены и сопоставления.</div>';
 		var TYPE = { replace: 'Замена', restore: 'Возврат строки', link: 'Сопоставление', unlink: 'Связь снята', stock: 'Склад' };
 		return head + '<div class="skHistory">' + list.slice(0, 300).map(function (h) {
@@ -100,33 +123,38 @@
 
 	/* ------------------------------- окна ------------------------------------ */
 	async function moveDlg(kind) {
+		await X.pending;
 		await window.MatBase.refresh();
 		var b = base(); if (!b) { X.render(); return; }
 		var ol = await orders(), m0 = b.mats[X.sel], tab = X.tab;
 		var res = await U.modal({ title: kind === 'in' ? 'Приход на склад' : 'Расход со склада', width: 620, cls: 'skDlg',
-			body: '<label class="fld wide">Материал <input id="skM" list="skML" value="' + esc(matLabel(m0 && SK.tabOf(b, m0) === tab ? m0 : null)) + '" placeholder="начните печатать название или артикул"></label><datalist id="skML">' + matOpts(b, tab) + '</datalist>' +
+			body: '<label class="fld wide">Материал <input id="skM" list="skML" value="' + esc(matLabel(m0)) + '" placeholder="начните печатать название или артикул"></label><datalist id="skML">' + matOpts(b, 'all') + '</datalist>' +
 				'<div class="row"><label class="fld">Количество <input id="skN" value="1" style="width:110px"></label><span class="mute" id="skU"></span>' +
 				(kind === 'in' ? '<label class="fld">Цена за ед., ₽ <input id="skP" style="width:110px" placeholder="необязательно"></label>' : '') + '</div>' +
-				'<label class="fld wide">' + (kind === 'in' ? 'Под заказ (резерв)' : 'По заказу') + ' <select id="skO">' + orderOpts(ol, '', kind === 'in' ? 'не резервировать' : 'без заказа') + '</select></label>' +
+				'<label class="fld wide">' + (kind === 'in' ? 'Заказ — источник поступления' : 'По заказу') + ' <select id="skO">' + orderOpts(ol, '', 'Без заказа') + '</select></label>' +
+				(kind === 'in' ? '<label class="fld wide"><span><input type="checkbox" id="skKeepRes" checked> Отложить под выбранный заказ</span><small class="mute">Снимите галочку, если это свободный остаток после заказа.</small></label>' : '') +
 				'<label class="fld wide">Примечание <input id="skNote"></label>',
 			buttons: [{ label: 'Отмена', value: null }, { label: kind === 'in' ? 'Принять' : 'Списать', primary: true, run: function (el) {
 				var m = matBy(base(), el.querySelector('#skM').value), q = el.querySelector('#skN').value;
 				if (!m) { U.toast('Выберите материал из списка базы.'); return false; }
 				if (!(Number(String(q).replace(',', '.')) > 0)) { U.toast('Укажите количество больше нуля.'); return false; }
-				return { mat: m.id, qty: q, price: el.querySelector('#skP') ? el.querySelector('#skP').value : 0, order: el.querySelector('#skO').value, note: el.querySelector('#skNote').value };
+				return { mat: m.id, qty: q, price: el.querySelector('#skP') ? el.querySelector('#skP').value : 0, order: el.querySelector('#skO').value, reserve: !!(el.querySelector('#skKeepRes') && el.querySelector('#skKeepRes').checked), note: el.querySelector('#skNote').value };
 			} }],
 			onOpen: function (el) { var f = function () { var m = matBy(base(), el.querySelector('#skM').value); el.querySelector('#skU').textContent = m ? m.unit + ' · есть ' + n(MB.balance(base(), m.id)) : ''; }; el.querySelector('#skM').addEventListener('input', f); f(); el.querySelector(m0 ? '#skN' : '#skM').focus(); } });
 		if (!res) return;
 		var ord = ol.filter(function (o) { return o.id === res.order; })[0] || null;
 		await edit(function (bb) {
-			var d = SK.move(bb, kind, res.mat, res.qty, { price: res.price, note: res.note, order: kind === 'out' ? ord : null });
+			var d = SK.move(bb, kind, res.mat, res.qty, { price: res.price, note: res.note, order: ord });
 			if (!d) { U.toast('Не записано.'); return false; }
-			if (kind === 'in' && ord) { var had = SK.resOf(bb, res.mat).filter(function (r) { return r.order === ord.id; })[0]; SK.reserve(bb, res.mat, (had ? had.qty : 0) + Number(String(res.qty).replace(',', '.')), ord); }
+			if (kind === 'in' && ord && res.reserve) { var had = SK.resOf(bb, res.mat).filter(function (r) { return r.order === ord.id; })[0]; SK.reserve(bb, res.mat, (had ? had.qty : 0) + Number(String(res.qty).replace(',', '.')), ord); }
 			X.sel = res.mat;
-			U.toast((kind === 'in' ? 'Принято: ' : 'Списано: ') + bb.mats[res.mat].name + ' — ' + n(d.lines[0].qty) + ' ' + bb.mats[res.mat].unit + (ord ? (kind === 'in' ? ', в резерв № ' : ', заказ № ') + ord.no : ''));
+			if (X.view === 'free') X.rowSel = res.mat;
+			if (X.view === 'orders' && ord) { var selectedRes = SK.resOf(bb, res.mat).filter(function (r) { return r.order === ord.id; })[0]; if (selectedRes) X.rowSel = selectedRes.id; }
+			U.toast((kind === 'in' ? 'Принято: ' : 'Списано: ') + bb.mats[res.mat].name + ' — ' + n(d.lines[0].qty) + ' ' + bb.mats[res.mat].unit + (ord ? (kind === 'in' && res.reserve ? ', в резерв № ' : ', заказ № ') + ord.no : ''));
 		});
 	}
 	async function resDlg() {
+		await X.pending;
 		await window.MatBase.refresh();
 		var b = base(); if (!b) return;
 		var m = b.mats[X.sel]; if (!m) { U.toast('Выберите строку материала в таблице.'); return; }
@@ -136,27 +164,40 @@
 			body: '<p class="mute">Есть ' + n(MB.balance(b, m.id)) + ' ' + esc(m.unit) + ', в резерве ' + n(SK.reserved(b, m.id)) + '. Зарезервированное другим заказам не видно как свободное.</p>' +
 				(list ? '<table class="grid" style="width:100%;margin-bottom:8px"><tbody>' + list + '</tbody></table>' : '') +
 				'<div class="row"><label class="fld">Заказ <select id="skO">' + orderOpts(ol, '') + '</select></label><label class="fld">Количество <input id="skN" value="1" style="width:100px"></label></div>',
-			buttons: [{ label: 'Закрыть', value: null }, { label: 'Зарезервировать', primary: true, run: function (el) { return { order: el.querySelector('#skO').value, qty: el.querySelector('#skN').value }; } }],
+			buttons: [{ label: 'Закрыть', value: null }, { label: 'Зарезервировать', primary: true, run: function (el) { var qty = Number(el.querySelector('#skN').value.replace(',', '.')); if (!(Number.isFinite(qty) && qty > 0)) { U.toast('Количество должно быть больше нуля.'); return false; } return { order: el.querySelector('#skO').value, qty: qty }; } }],
 			onOpen: function (el) { el.addEventListener('click', function (e) { var bt = e.target.closest('[data-unres]'); if (!bt) return; var id = bt.dataset.unres; edit(function (bb) { return SK.unreserve(bb, id); }); bt.closest('tr').remove(); }); } });
 		if (!res) return;
 		var ord = ol.filter(function (o) { return o.id === res.order; })[0];
 		await edit(function (bb) { var had = SK.resOf(bb, m.id).filter(function (r) { return r.order === ord.id; })[0]; SK.reserve(bb, m.id, (had ? had.qty : 0) + Number(String(res.qty).replace(',', '.')), ord); });
 	}
 	async function offDlg() {
+		await X.pending;
 		await window.MatBase.refresh();
 		var b = base(); if (!b) return;
-		var res = await U.modal({ title: 'Обрезок на склад', width: 560, cls: 'skDlg',
+		var ol = await orders();
+		var res = await U.modal({ title: 'Деловой остаток на склад', width: 620, cls: 'skDlg',
 			body: '<label class="fld wide">Материал <input id="skM" list="skML" placeholder="начните печатать название"></label><datalist id="skML">' + matOpts(b, 'sheet') + '</datalist>' +
-				'<div class="row"><label class="fld">Длина, мм <input id="skL" style="width:100px"></label><label class="fld">Ширина, мм <input id="skW" style="width:100px"></label><label class="fld">Шт <input id="skN" value="1" style="width:60px"></label></div>',
+				'<div class="row"><label class="fld">Длина, мм <input id="skL" style="width:100px"></label><label class="fld">Ширина, мм <input id="skW" style="width:100px"></label><label class="fld">Шт <input id="skN" value="1" style="width:60px"></label></div>' +
+				'<label class="fld wide">От какого заказа <select id="skOrigin">' + orderOpts(ol, '', 'Без исходного заказа') + '</select></label><label class="fld wide">Место хранения <input id="skPlace" placeholder="Например: Б-03"></label><label class="fld wide">Примечание <input id="skOffNote" placeholder="Скол, направление текстуры…"></label>',
 			buttons: [{ label: 'Отмена', value: null }, { label: 'Записать', primary: true, run: function (el) {
 				var m = matBy(base(), el.querySelector('#skM').value); if (!m) { U.toast('Выберите материал из списка базы.'); return false; }
-				var L = Number(el.querySelector('#skL').value), W = Number(el.querySelector('#skW').value); if (!(L > 0 && W > 0)) { U.toast('Укажите длину и ширину в миллиметрах.'); return false; }
-				return { mat: m.id, L: L, W: W, n: el.querySelector('#skN').value };
+				var L = Number(el.querySelector('#skL').value.replace(',', '.')), W = Number(el.querySelector('#skW').value.replace(',', '.')), count = Number(el.querySelector('#skN').value); if (!(L >= 1 && W >= 1 && Number.isFinite(L) && Number.isFinite(W))) { U.toast('Укажите длину и ширину в миллиметрах.'); return false; }
+				if (!(count > 0 && Number.isInteger(count))) { U.toast('Количество — целое число больше нуля.'); return false; }
+				return { mat: m.id, L: L, W: W, n: count, origin: el.querySelector('#skOrigin').value, cell: el.querySelector('#skPlace').value, note: el.querySelector('#skOffNote').value };
 			} }], onOpen: function (el) { el.querySelector('#skM').focus(); } });
 		if (!res) return;
-		await edit(function (bb) { return !!MB.addOffcut(bb, res.mat, res.L, res.W, res.n, { project: '' }); });
+		var source = ol.filter(function (x) { return x.id === res.origin; })[0];
+		await edit(function (bb) { var o = SK.addRemainder(bb, res.mat, res.L, res.W, res.n, { order: source && source.id, no: source && source.no, project: source ? 'Заказ №' + source.no : '', cell: res.cell, note: res.note }); if (!o) return false; X.offSel = o.id; X.q = ''; X.category = 'all'; return true; });
+	}
+	async function placeDlg() {
+		var b = base(), off = X.view === 'off', id = off ? X.offSel : X.sel;
+		var o = off && b.stock.offcuts.filter(function (x) { return x.id === id; })[0];
+		if (!id || (off && !o)) return;
+		var v = await U.modal({ title: 'Место хранения', width: 440, body: '<label class="fld wide">Стеллаж / ячейка <input id="scNewPlace" value="' + esc(off ? SK.offCell(b, o) : b.stock.cells[id] || '') + '"></label>', buttons: [{ label: 'Отмена', value: null }, { label: 'Сохранить', primary: true, run: function (el) { return { cell: el.querySelector('input').value }; } }] });
+		if (v) await edit(function (bb) { return off ? SK.setOffCell(bb, id, v.cell) : SK.setCell(bb, id, v.cell); });
 	}
 	async function offRes(id) {
+		await X.pending;
 		var b = base(), o = b && b.stock.offcuts.filter(function (x) { return x.id === id; })[0]; if (!o) return;
 		if (o.res) { await edit(function (bb) { return SK.reserveOff(bb, id, null); }); return; }
 		var ol = await orders(); if (!ol.length) { U.toast('Заказов нет.'); return; }
@@ -209,14 +250,20 @@
 		var host = $('stock'); if (!host || host._on) return; host._on = true;
 		host.addEventListener('click', function (e) {
 			var t = e.target, bt;
+			if ((bt = t.closest('[data-skv]'))) { X.view = bt.dataset.skv; X.category = 'all'; X.q = ''; X.historyOff = X.historyMat = ''; X.render(); return; }
+			if ((bt = t.closest('[data-skc]'))) { X.category = bt.dataset.skc; X.render(); return; }
+			if ((bt = t.closest('[data-scrow], [data-scselect]'))) { var rowKey = bt.dataset.scrow || bt.dataset.scselect; if (X.view === 'off') X.offSel = rowKey; else X.rowSel = rowKey; X.render(); var sel = host.querySelector('[data-scrow][aria-pressed="true"]'); if (sel) sel.focus({ preventScroll: true }); return; }
+			if (t.closest('#scPlace')) { placeDlg().catch(U.error); return; }
+			if (t.closest('#scHistory')) { X.historyOff = X.view === 'off' ? X.offSel : ''; X.historyMat = X.view === 'off' ? '' : X.sel; X.view = 'history'; X.q = ''; X.render(); return; }
+			if (t.closest('#scClearHistory')) { X.historyOff = X.historyMat = ''; X.render(); return; }
 			if ((bt = t.closest('[data-skt]'))) { X.tab = bt.dataset.skt; X.render(); return; }
-			if (t.closest('#skIn') || t.closest('#skEmptyIn')) { moveDlg('in').catch(U.error); return; }
+			if (t.closest('[data-sk-in]') || t.closest('#skIn') || t.closest('#skEmptyIn')) { moveDlg('in').catch(U.error); return; }
 			if (t.closest('#skImport')) { importStock().catch(U.error); return; }
 			if (t.closest('#skOut')) { moveDlg('out').catch(U.error); return; }
 			if (t.closest('#skRes')) { resDlg().catch(U.error); return; }
-			if (t.closest('#skOffAdd')) { offDlg().catch(U.error); return; }
+			if (t.closest('[data-sk-off-add]') || t.closest('#skOffAdd')) { offDlg().catch(U.error); return; }
 			if ((bt = t.closest('[data-ores]'))) { offRes(bt.dataset.ores).catch(U.error); return; }
-			if ((bt = t.closest('[data-ouse]'))) { var id = bt.dataset.ouse; edit(function (b) { return MB.useOffcut(b, id, 'взят со склада'); }).catch(U.error); return; }
+			if ((bt = t.closest('[data-ouse]'))) { var id = bt.dataset.ouse; U.confirm('Выдать остаток', 'Остаток физически передан в производство? Он будет убран из доступных остатков.', 'Выдать').then(function (ok) { if (ok) return edit(function (b) { var o = MB.offcuts(b).filter(function (x) { return x.id === id; })[0]; if (!o || !MB.useOffcut(b, id, o.resNo ? 'Заказ №' + o.resNo : 'Выдан без заказа')) return false; SK.log(b, 'stock', 'Остаток выдан в производство', o.L + '×' + o.W + ' · ' + o.usedIn, { mat: o.mat, offcut: id, order: o.res || '' }); return true; }); }).catch(U.error); return; }
 			if ((bt = t.closest('[data-odel]'))) { var id2 = bt.dataset.odel; U.confirm('Обрезок', 'Удалить обрезок со склада?', 'Удалить').then(function (ok) { if (ok) edit(function (b) { return SK.dropOff(b, id2); }); }); return; }
 			if ((bt = t.closest('[data-dx]'))) { var id3 = bt.dataset.dx; U.confirm('Движение', 'Отменить документ? Остатки пересчитаются.', 'Отменить документ').then(function (ok) { if (ok) edit(function (b) { return MB.cancelDoc(b, id3); }); }); return; }
 			var tr = t.closest('tr[data-mat]'); if (tr && !t.closest('input')) { X.sel = tr.dataset.mat; host.querySelectorAll('tr[data-mat]').forEach(function (r) { r.classList.toggle('on', r === tr); }); }
@@ -229,7 +276,7 @@
 			if (t.id === 'skHistoryType') { X.historyType = t.value; X.render(); return; }
 			if (t.dataset.cell) { var id = t.dataset.cell, v = t.value; edit(function (b) { SK.setCell(b, id, v); }).catch(U.error); }
 		});
-		window.addEventListener('focus', function () { var s = S(); if (s && s.section === 'stock') window.MatBase.refresh().then(X.render); });
+		window.addEventListener('focus', function () { var s = S(); if (s && s.section === 'stock') X.pending.then(function () { return window.MatBase.refresh(); }).then(X.render).catch(U.error); });
 	};
 	X.show = function () { X.init(); window.MatBase.refresh().then(X.render).catch(U.error); X.render(); };
 })();
@@ -259,7 +306,7 @@
 				}
 				if (w.part) {
 					var oc = SK.findOff(b, m.id, w.part.L, w.part.W)[0];
-					if (oc) { var cell = b.stock.cells[m.id]; add.push('на складе обрезок ' + oc.L + '×' + oc.W + (cell ? ', ячейка ' + cell : '')); w.stockOff = oc.id; }
+					if (oc) { var cell = SK.offCell(b, oc); add.push('на складе обрезок ' + oc.L + '×' + oc.W + (cell ? ', ячейка ' + cell : '')); w.stockOff = oc.id; }
 				}
 				if (add.length) w.note = (w.note ? w.note + ' · ' : '') + add.join(' · ');
 			});
@@ -365,7 +412,8 @@
 		var w = MB.writeOff(b, key(o), r.need, r.offcuts);
 		if (!w.doc) { U.toast('Списывать нечего.'); return; }
 		w.doc.order = o.id;
-		r.used.forEach(function (id) { MB.useOffcut(b, id, key(o)); });
+		w.offcuts.forEach(function (off) { off.originOrder = o.id; off.originNo = o.no; });
+		r.used.forEach(function (id) { if (MB.useOffcut(b, id, key(o))) SK.log(b, 'stock', 'Остаток использован в заказе', key(o), { offcut: id, order: o.id, doc: w.doc.id }); });
 		SK.unreserveOrder(b, o.id);
 		SK.log(b, 'stock', 'Списание заказа подтверждено', 'Заказ № ' + o.no + ' · позиций: ' + w.doc.lines.length + ', обрезков: ' + w.offcuts.length, { order: o.id, doc: w.doc.id });
 		await K.saveBase();
@@ -453,7 +501,7 @@
 			if (!list.length) { U.toast('Свободных обрезков нет (остальные в резерве других заказов).'); return; }
 			var v = await U.modal({ title: 'Обрезки со склада: ' + mat.name, width: 560, cls: 'skDlg',
 				body: '<p class="mute">Отмеченные пойдут в раскрой первыми.' + (ord ? ' Они встанут в резерв заказа ' + esc(ord.no) + '.' : '') + '</p><table class="grid" style="width:100%"><tbody>' +
-					list.map(function (o, i) { var c = b.stock.cells && b.stock.cells[o.mat]; return '<tr><td><input type="checkbox" class="rk" data-i="' + i + '" checked></td><td class="r">' + o.L + '×' + o.W + '</td><td class="r">' + o.n + ' шт</td><td class="mute">' + esc(o.project || 'вручную') + (c ? ' · ячейка ' + esc(c) : '') + '</td></tr>'; }).join('') + '</tbody></table>',
+					list.map(function (o, i) { var c = SK.offCell(b, o); return '<tr><td><input type="checkbox" class="rk" data-i="' + i + '" checked></td><td class="r">' + o.L + '×' + o.W + '</td><td class="r">' + o.n + ' шт</td><td class="mute">' + esc(o.project || 'вручную') + (c ? ' · ячейка ' + esc(c) : '') + '</td></tr>'; }).join('') + '</tbody></table>',
 				buttons: [{ label: 'Отмена', value: null }, { label: 'В раскрой', primary: true, run: function (el) { var out = []; el.querySelectorAll('.rk').forEach(function (c) { if (c.checked) out.push(list[c.dataset.i]); }); return out; } }] });
 			if (!v || !v.length) return;
 			A.pushUndo();

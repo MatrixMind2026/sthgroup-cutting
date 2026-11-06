@@ -1,0 +1,46 @@
+/* STHGroup: согласованный центр склада. Стеклянная оболочка и читаемые данные. */
+#stock{padding:8px 4px 0 12px;gap:12px;overflow:hidden;display:grid;grid-template-columns:minmax(0,1fr) 320px;grid-template-rows:auto auto auto auto minmax(0,1fr)}
+#stock>.scHead,#stock>.scTabs,#stock>.scToolbar,#stock>.scFilters{grid-column:1;min-width:0}
+#stock .scHead{display:flex;justify-content:space-between;align-items:center;gap:12px;flex:none}
+#stock .scHead h1{font-size:30px;margin:4px 0;letter-spacing:-.7px}
+#stock .scHead p{margin:2px 0 8px}
+#stock .scTools,#stock .scToolbar,#stock .scFilters{display:flex;align-items:center;gap:8px;flex-wrap:wrap;flex:none}
+#stock .scTabs{margin:0;align-self:flex-start;flex:none}
+#stock .scTabs button{min-height:42px;padding:10px 24px}
+#stock .scToolbar input[type=search]{flex:1 1 280px;max-width:460px;min-width:180px;min-height:38px;border-radius:24px;padding:8px 15px}
+#stock .scFilters button{padding:7px 17px}
+#stock .scLayout{display:contents}
+#stock .scList{grid-column:1;grid-row:5;min-height:0}
+#stock .scInspector{grid-column:2;grid-row:1 / 6;min-height:0}
+#stock .scList,#stock .scInspector{border:1px solid var(--sg-edge,var(--line));border-radius:24px;background:var(--sg-glass,var(--panel));box-shadow:var(--sg-shadow);backdrop-filter:var(--sg-blur);-webkit-backdrop-filter:var(--sg-blur);overflow:auto;min-width:0;scrollbar-gutter:stable}
+#stock .scList{padding:12px 14px}
+#stock:has(.scWide){grid-template-columns:minmax(0,1fr)}
+#stock .scTable{width:100%;border-collapse:separate;border-spacing:0;table-layout:auto;font-variant-numeric:tabular-nums}
+#stock .scTable th{background:var(--sg-data,var(--panel2));position:sticky;top:-12px;z-index:1;padding:14px 10px;text-align:left;color:var(--mute);font-weight:500;white-space:nowrap}
+#stock .scTable td{padding:12px 10px;border-bottom:1px solid var(--sg-edge,var(--line));overflow-wrap:anywhere}
+#stock .scTable tr.on td{background:var(--sel);background:color-mix(in srgb,var(--accent) 24%,transparent)}
+#stock .scTable tr.on td:first-child{border-radius:14px 0 0 14px}#stock .scTable tr.on td:last-child{border-radius:0 14px 14px 0}
+#stock .scTable small{display:block;color:var(--mute);font-size:11px;margin-top:4px}
+#stock button.scSelect{font:inherit;display:block;text-align:left;white-space:normal;padding:8px 0;min-width:130px;width:100%;border:0;border-radius:8px;background:transparent;box-shadow:none;color:var(--text)}
+#stock .scSelect b{font-weight:500}
+#stock .scBadge{display:inline-block;white-space:nowrap;font-size:12px;padding:5px 9px;border:1px solid color-mix(in srgb,#71a667 45%,transparent);border-radius:20px;background:color-mix(in srgb,#71a667 23%,transparent);color:var(--text)}
+#stock .scBadge.reserved{border-color:var(--sg-edge);background:var(--sg-tint,var(--accent-soft))}
+#stock .scShort{color:var(--warn);font-weight:700}
+#stock .scInspector{padding:22px 20px}
+#stock .scInspector h2{font-size:24px;margin:0 0 10px;letter-spacing:-.4px}
+#stock .scInspector h3{font-size:15px;margin:8px 0 14px;overflow-wrap:anywhere}
+#stock .scFact{display:flex;gap:12px;justify-content:space-between;align-items:center;padding:12px 0;border-bottom:1px solid var(--line2)}
+#stock .scFact b{text-align:right;overflow-wrap:anywhere;font-weight:600}
+#stock .scDiagram{padding:12px 24px;margin:10px 0;border-bottom:1px solid var(--sg-edge)}
+#stock .scSheet{max-height:120px;max-width:100%;border:1px solid #ffffffa0;background:linear-gradient(135deg,#e8e5e5c0,#b4b8b9a0);display:grid;place-items:center;color:#292d32;box-shadow:0 6px 18px #0002;margin:10px auto}
+#stock .scDimTop,#stock .scDimBottom{text-align:center;color:var(--mute);font-size:12px}
+#stock .scDimTop:before,#stock .scDimTop:after{content:'↔';margin:0 10px}
+#stock .scActions{display:grid;gap:10px;margin-top:20px}#stock .scActions button{min-height:40px;white-space:normal}
+#stock .scActions .primary{font-size:15px;min-height:46px}
+#stock .scHint,#stock .scFoot{font-size:12px;line-height:1.5;margin:18px 0 4px}
+#stock .scMore{position:relative}#stock .scMore summary{cursor:pointer;padding:8px 12px;border:1px solid var(--sg-edge);border-radius:20px}
+#stock .scMore[open]>div{position:absolute;z-index:8;right:0;top:42px;display:grid;gap:8px;padding:12px;width:225px;border:1px solid var(--line);border-radius:16px;background:var(--panel);box-shadow:var(--shadow)}
+.skDlg .fld{margin-bottom:12px}.skDlg input,.skDlg select{min-height:36px}
+@media(max-width:1300px){#stock{grid-template-columns:minmax(0,1fr) 280px;gap:10px}#stock .scInspector{padding:18px 14px}#stock .scTable td{padding:10px 7px}}
+@media(max-width:1000px){#stock{overflow:auto;display:flex}#stock .scLayout{overflow:visible;display:block;flex:0 0 auto}#stock .scList{min-height:180px;max-height:60vh}#stock .scInspector{margin-top:12px;overflow:visible}#stock .scTabs button{padding:9px 13px}#stock .scHead h1{font-size:26px}}
+@media print{#stock .scInspector,#stock .scList{box-shadow:none;backdrop-filter:none}}

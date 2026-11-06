@@ -106,7 +106,7 @@
 	K.offRows = function (b, q) {
 		K.fix(b);
 		var ql = low(q);
-		return MB.offcuts(b).filter(function (o) { var m = b.mats[o.mat]; return m && (!ql || low(m.name).indexOf(ql) >= 0 || low(m.art).indexOf(ql) >= 0 || (o.L + '×' + o.W).indexOf(ql) >= 0); })
+		return MB.offcuts(b).filter(function (o) { var m = b.mats[o.mat]; return m && (!ql || low([m.name, m.art, o.L + '×' + o.W, o.L + ' ' + o.W, o.project, o.originNo, o.resNo, K.offCell(b, o), o.note].join(' ')).indexOf(ql.replace(/\s*[xх×]\s*/g, '×')) >= 0); })
 			.sort(function (x, y) { var a = b.mats[x.mat].name.localeCompare(b.mats[y.mat].name, 'ru'); return a || y.L * y.W - x.L * x.W; });
 	};
 	/* подходящие свободные обрезки материала под кусок L×W (в любом повороте), самые маленькие — первыми */
@@ -116,12 +116,35 @@
 	};
 	K.reserveOff = function (b, id, order) {
 		var o = b.stock.offcuts.filter(function (x) { return x.id === id; })[0];
-		if (!o) return false;
+		if (!o || o.gone || o.used || (order && o.res && o.res !== order.id)) return false;
 		if (order && order.id) { o.res = order.id; o.resNo = String(order.no || ''); } else { delete o.res; delete o.resNo; }
-		K.log(b, 'stock', order ? 'Обрезок зарезервирован' : 'Резерв обрезка снят', o.L + '×' + o.W + (order ? ' · заказ № ' + (order.no || '') : ''), { mat: o.mat, order: order && order.id });
+		K.log(b, 'stock', order ? 'Обрезок зарезервирован' : 'Резерв обрезка снят', o.L + '×' + o.W + (order ? ' · заказ № ' + (order.no || '') : ''), { mat: o.mat, offcut: o.id, order: order && order.id });
 		return true;
 	};
-	K.dropOff = function (b, id) { var o = b.stock.offcuts.filter(function (x) { return x.id === id; })[0]; if (!o) return false; o.gone = 1; K.log(b, 'stock', 'Обрезок удалён', o.L + '×' + o.W, { mat: o.mat }); return true; };
+	/* STHGroup: происхождение и место отдельного остатка не зависят от его резерва. */
+	K.offCell = function (b, o) { return o.cell === undefined ? (b.stock.cells[o.mat] || '') : o.cell; };
+	K.offFamily = function (m) { var name = low(m.name); return /лдсп|дсп/.test(name) ? 'chip' : /мдф|mdf/.test(name) ? 'mdf' : /фанер|plywood/.test(name) ? 'ply' : 'other'; };
+	K.setOffCell = function (b, id, cell) {
+		var o = MB.offcuts(b).filter(function (x) { return x.id === id; })[0]; if (!o) return false;
+		o.cell = String(cell || '').trim();
+		K.log(b, 'stock', 'Остаток перемещён', o.L + '×' + o.W + ' · ' + (o.cell || 'место не указано'), { mat: o.mat, offcut: o.id }); return true;
+	};
+	K.addRemainder = function (b, mat, L, W, count, source) {
+		source = source || {}; var qty = num(count), length = num(L), width = num(W);
+		if (!b.mats[mat] || K.tabOf(b, b.mats[mat]) !== 'sheet' || !(length > 0 && width > 0 && qty > 0 && qty === Math.floor(qty))) return null;
+		var o = MB.addOffcut(b, mat, length, width, qty, { project: source.project || '' }); if (!o) return null;
+		o.originOrder = String(source.order || ''); o.originNo = String(source.no || ''); o.cell = String(source.cell || '').trim(); o.note = String(source.note || '').trim();
+		K.log(b, 'stock', 'Деловой остаток добавлен', b.mats[mat].name + ' · ' + o.L + '×' + o.W + ' · ' + (o.project || 'без исходного заказа'), { mat: mat, offcut: o.id, order: o.originOrder }); return o;
+	};
+	K.centerRows = function (b, view, category, query) {
+		var rows = [], q = low(query);
+		['sheet', 'lin', 'fit'].forEach(function (tab) { if (category && category !== 'all' && category !== tab) return; K.rows(b, tab, '', false).forEach(function (r) {
+			if (view === 'orders') K.resOf(b, r.m.id).forEach(function (res) { rows.push(Object.assign({}, r, { key: res.id, reservation: res, qty: res.qty })); });
+			else if (r.free !== 0) rows.push(Object.assign({}, r, { key: r.m.id, qty: r.free }));
+		}); });
+		return rows.filter(function (r) { return !q || low([r.m.name, r.m.art, r.cell, r.reservation ? r.reservation.no : ''].join(' ')).indexOf(q) >= 0; });
+	};
+	K.dropOff = function (b, id) { var o = b.stock.offcuts.filter(function (x) { return x.id === id; })[0]; if (!o || o.gone || o.used) return false; o.gone = 1; K.log(b, 'stock', 'Обрезок удалён', o.L + '×' + o.W, { mat: o.mat, offcut: id }); return true; };
 
 	/* -------------------------------- движения --------------------------------- */
 	K.KIND = { 'in': 'Приход', out: 'Расход', adj: 'Корректировка' };

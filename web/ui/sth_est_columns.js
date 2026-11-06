@@ -33,27 +33,23 @@
 		var referencePaneWidth = Number(stored._paneWidth) || table.parentElement.clientWidth, rendered = {};
 		var group = document.createElement('colgroup'); table.insertBefore(group, table.firstChild);
 		function layout() {
-			/* STHGroup: предпочтения пользователя отдельно от текущей ширины панели.
-			   При сужении сначала переносится название, при расширении свободное место
-			   распределяется по столбцам данных — пустой полосы справа не остаётся. */
+			/* STHGroup: таблица всегда вписана между панелями, включая старые сохранённые размеры. */
 			var actual = Object.assign({}, widths), available = table.parentElement.clientWidth;
-			if (!(referencePaneWidth > 0) && available > 0) referencePaneWidth = available;
+			if (available <= 0) return;
 			var requested = visible.reduce(function (sum, id) { return sum + actual[id]; }, 0);
-			/* Сужение панели — адаптация. Явное расширение столбца пользователем —
-			   его размер и горизонтальная прокрутка, без возврата ширины назад. */
-			if (available > 0 && available < referencePaneWidth && requested > available) {
-				var reduction = Math.min(referencePaneWidth - available, requested - available);
-				var fromName = Math.min(reduction, actual[3] - minimum[3]); actual[3] -= fromName; reduction -= fromName;
+			if (requested > available) {
+				var reduction = requested - available;
+				var fromName = Math.min(reduction, Math.max(0, actual[3] - minimum[3])); actual[3] -= fromName; reduction -= fromName;
 				var others = visible.filter(function (id) { return id > 3; });
-				var slack = others.reduce(function (sum, id) { return sum + actual[id] - minimum[id]; }, 0);
-				if (slack > 0 && reduction > 0) others.forEach(function (id) { actual[id] -= (actual[id] - minimum[id]) * Math.min(1, reduction / slack); });
+				var slack = others.reduce(function (sum, id) { return sum + Math.max(0, actual[id] - minimum[id]); }, 0);
+				if (slack > 0 && reduction > 0) others.forEach(function (id) { actual[id] -= Math.max(0, actual[id] - minimum[id]) * Math.min(1, reduction / slack); });
 			}
 			var fixed = actual[0] + actual[1], flexible = visible.filter(function (id) { return id >= 3; });
 			var flexibleTotal = flexible.reduce(function (sum, id) { return sum + actual[id]; }, 0);
-			if (available > fixed + flexibleTotal) {
-				var scale = (available - fixed) / flexibleTotal;
-				flexible.forEach(function (id) { actual[id] *= scale; });
-			}
+			/* На узком экране уменьшаются столбцы, содержимое переносится по строкам. */
+			var scale = Math.max(0, available - fixed) / flexibleTotal;
+			flexible.forEach(function (id) { actual[id] *= scale; });
+			table.parentElement.scrollLeft = 0;
 			rendered = actual;
 			group.replaceChildren(); var total = 0;
 			order.forEach(function (id) {
@@ -75,6 +71,20 @@
 			layout();
 		}
 		function rememberDisplayed() { visible.forEach(function (id) { if (rendered[id] > 0) widths[id] = rendered[id]; }); referencePaneWidth = table.parentElement.clientWidth; }
+		/* Расширение одного столбца забирает свободную ширину у остальных. */
+		function resizeTo(id, target, initial) {
+			var available = table.parentElement.clientWidth, factor = Math.min(1, Math.max(0, available - 66) / 570);
+			var donors = visible.filter(function (other) { return other >= 3 && other !== id; });
+			var slack = donors.reduce(function (sum, other) { return sum + Math.max(0, initial[other] - minimum[other] * factor); }, 0);
+			var delta = Math.max(minimum[id] * factor - initial[id], Math.min(slack, target - initial[id]));
+			visible.forEach(function (other) { widths[other] = initial[other]; });
+			widths[id] += delta;
+			donors.forEach(function (other) {
+				var share = delta > 0 ? (slack > 0 ? Math.max(0, initial[other] - minimum[other] * factor) / slack : 0) : initial[other] / donors.reduce(function (sum, n) { return sum + initial[n]; }, 0);
+				widths[other] -= delta * share;
+			});
+			layout();
+		}
 		function persist() { rememberDisplayed(); set.sthCols = set.sthCols || {}; set.sthCols.est = order.slice(); set.sthColWidths = set.sthColWidths || {}; set.sthColWidths.est = Object.assign({}, widths, { _paneWidth: referencePaneWidth }); save(); }
 		function reset() { if (set.sthCols) delete set.sthCols.est; if (set.sthColWidths) delete set.sthColWidths.est; save(); window.Est.render(); }
 		Array.from(head.cells).forEach(function (th) {
@@ -85,13 +95,13 @@
 			handle.addEventListener('pointerdown', function (e) {
 				if (e.button !== 0) return; e.preventDefault(); e.stopPropagation();
 				rememberDisplayed();
-				var start = e.clientX, original = widths[id]; document.body.classList.add('sthResizing');
-				function move(ev) { widths[id] = Math.round(Math.max(minimum[id], Math.min(Math.max(1600, referencePaneWidth, original), original + ev.clientX - start))); layout(); }
+				var start = e.clientX, original = widths[id], initial = Object.assign({}, widths); document.body.classList.add('sthResizing');
+				function move(ev) { resizeTo(id, original + ev.clientX - start, initial); }
 				function end() { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', end); document.removeEventListener('pointercancel', cancel); document.body.classList.remove('sthResizing'); persist(); }
-				function cancel() { widths[id] = original; layout(); end(); }
+				function cancel() { widths = Object.assign({}, initial); layout(); end(); }
 				document.addEventListener('pointermove', move); document.addEventListener('pointerup', end); document.addEventListener('pointercancel', cancel);
 			});
-			handle.addEventListener('keydown', function (e) { if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return; e.preventDefault(); e.stopPropagation(); rememberDisplayed(); widths[id] = Math.max(minimum[id], Math.min(Math.max(1600, referencePaneWidth, widths[id]), widths[id] + (e.key === 'ArrowRight' ? 20 : -20))); layout(); persist(); });
+			handle.addEventListener('keydown', function (e) { if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return; e.preventDefault(); e.stopPropagation(); rememberDisplayed(); resizeTo(id, widths[id] + (e.key === 'ArrowRight' ? 20 : -20), Object.assign({}, widths)); persist(); });
 			th.addEventListener('keydown', function (e) {
 				if (e.target !== th || !e.altKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
 				e.preventDefault(); var data = order.filter(function (i) { return i >= 3 && visible.indexOf(i) >= 0; }), at = data.indexOf(id), to = at + (e.key === 'ArrowRight' ? 1 : -1); if (to < 0 || to >= data.length) return;

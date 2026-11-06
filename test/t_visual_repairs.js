@@ -27,6 +27,7 @@ let browser,srv,page;const errors=[],measurements={};
    const t=root.querySelector('table.sthCompact'),rows=[...t.querySelectorAll('tr.sthCompactRow')].filter(r=>!r.hidden),tr=rows[0];
    const cells=[...tr.cells].filter(c=>getComputedStyle(c).display!=='none'),last=cells.at(-1),first=cells[0],box=root.getBoundingClientRect();
    return {panel:root.clientWidth,table:t.getBoundingClientRect().width,end:last.getBoundingClientRect().right-box.left+root.scrollLeft,
+    scrollWidth:root.scrollWidth,scrollLeft:root.scrollLeft,
     gap:rows[1].getBoundingClientRect().top-tr.getBoundingClientRect().bottom,
     roundLeft:parseFloat(getComputedStyle(first).borderTopLeftRadius),roundRight:parseFloat(getComputedStyle(last).borderTopRightRadius),
     aligned:cells.every(c=>{const h=t.querySelector('th[data-ci="'+c.dataset.ci+'"]'),a=c.getBoundingClientRect(),b=h.getBoundingClientRect();return Math.abs(a.left-b.left)<1&&Math.abs(a.width-b.width)<1}),
@@ -35,6 +36,7 @@ let browser,srv,page;const errors=[],measurements={};
   });
   assert.ok(m.gap>=7,'каждая строка отделена зазором');assert.ok(m.roundLeft>=12&&m.roundRight>=12,'закруглены оба конца видимой строки');assert.equal(m.aligned,true,'границы данных совпадают с заголовками');
   assert.equal(m.pickBackground,'rgba(0, 0, 0, 0)');assert.equal(m.pickBorder,0);
+  assert.ok(m.scrollWidth<=m.panel,'нет горизонтального переполнения: '+JSON.stringify(m));assert.equal(m.scrollLeft,0);
   if(requireFit){assert.ok(Math.abs(m.table-m.panel)<2,'таблица заполняет панель');assert.ok(Math.abs(m.end-m.panel)<2,'крайняя ячейка доходит до края панели, пустоты нет');}
   return m;
  }
@@ -43,6 +45,9 @@ let browser,srv,page;const errors=[],measurements={};
  for(let i=0;i<5&&await page.locator('#modals .modal').count();i++)await page.locator('#modals .modal').last().locator('h2 button').click();
  await go('est');await page.locator('.sthCompactRow').first().waitFor();await page.mouse.move(5,5);
  measurements.initial=await geometry();await snap('estimate-wide');
+ const chips=await page.locator('#eChips>.chip').evaluateAll(els=>els.map(el=>{const b=el.getBoundingClientRect(),r=document.createRange();r.selectNodeContents(el);const t=r.getBoundingClientRect();return {dx:Math.abs(t.left+t.width/2-b.left-b.width/2),dy:Math.abs(t.top+t.height/2-b.top-b.height/2)};}));
+ assert.ok(chips.length);chips.forEach(c=>assert.ok(c.dx<2.5&&c.dy<2.5,JSON.stringify(c)));measurements.chips=chips;
+
  // Пользовательский сценарий из видео: сужение названия, изменение ширины панели и перенос столбцов.
  for(let i=0;i<24;i++)await page.locator('th[data-ci="3"] .sthResize').press('ArrowLeft');
  await page.evaluate(()=>document.activeElement?.blur());measurements.shrunkColumn=await geometry();await snap('estimate-column-shrunk');
@@ -63,15 +68,15 @@ let browser,srv,page;const errors=[],measurements={};
  const help=await page.locator('.cform>label>.qm').evaluateAll(buttons=>buttons.map(el=>{const b=el.getBoundingClientRect(),range=document.createRange();range.selectNodeContents(el);const t=range.getBoundingClientRect();return {x:b.left,w:b.width,h:b.height,dx:Math.abs(t.left+t.width/2-b.left-b.width/2),dy:Math.abs(t.top+t.height/2-b.top-b.height/2)}}));
  assert.ok(help.length>3);for(const h of help){assert.equal(h.w,24);assert.equal(h.h,24);assert.ok(h.dx<2.5&&h.dy<2.5,'вопрос по центру кнопки');assert.ok(Math.abs(h.x-help[0].x)<1,'значки в одной колонке')}
  measurements.help=help;await page.locator('.cform>label>.qm').first().click();await page.locator('.hintBox:not([hidden])').first().waitFor();await snap('settings-help');await page.locator('.modal h2 button').last().click();
- for(const width of [1600,1366,1100]){await page.setViewportSize({width,height:1000});await page.waitForTimeout(100);measurements['width'+width]=await geometry(width>=1600);await snap('estimate-'+width);}
- // На узкой панели прокрутка сохраняется и позволяет добраться до крайнего столбца.
- await page.locator('#eBody').evaluate(el=>{el.scrollLeft=el.scrollWidth});assert.ok(await page.locator('#eBody').evaluate(el=>el.scrollLeft>0));
- // Размер видео владельца: обе полосы прокрутки и их нижний правый стык.
+ for(const width of [1600,1366,1100]){await page.setViewportSize({width,height:1000});await page.waitForTimeout(100);measurements['width'+width]=await geometry();await snap('estimate-'+width);}
+ // Смета никогда не выходит за границы панели, даже на узком экране.
+ await page.locator('#eBody').evaluate(el=>{el.scrollLeft=el.scrollWidth});assert.ok(await page.locator('#eBody').evaluate(el=>el.scrollLeft===0));
+ // Размер видео владельца: чистый нижний правый угол, только вертикальная прокрутка.
  await page.setViewportSize({width:3440,height:1408});await page.waitForTimeout(100);measurements.width3440=await geometry();
  for(let i=0;i<30;i++)await page.locator('th[data-ci="7"] .sthResize').press('ArrowRight');
  await page.evaluate(()=>document.activeElement?.blur());
  await page.locator('#eBody').evaluate(el=>{el.scrollTop=el.scrollHeight;el.scrollLeft=el.scrollWidth});
- assert.ok(await page.locator('#eBody').evaluate(el=>el.scrollWidth>el.clientWidth&&el.scrollHeight>el.clientHeight));
+ assert.ok(await page.locator('#eBody').evaluate(el=>el.scrollWidth<=el.clientWidth&&el.scrollHeight>el.clientHeight));
  const corner=await page.locator('#eCenter').boundingBox();await page.mouse.move(5,5);await page.screenshot({path:path.join(out,'scroll-corner-3440.png'),clip:{x:corner.x+corner.width-240,y:corner.y+corner.height-180,width:240,height:180}});
  await page.locator('#eBody').evaluate(el=>{el.scrollTop=el.scrollLeft=0});
  // Сброс ручного расширения перед следующими независимыми сценариями.
@@ -89,6 +94,24 @@ let browser,srv,page;const errors=[],measurements={};
  await page.setViewportSize({width:1920,height:1100});await go('mbase');const frame=page.frameLocator('#mbase iframe');await frame.locator('#mbRows .tr').first().waitFor();
  const backgrounds=await page.locator('#mbase iframe').evaluate(el=>{const doc=el.contentDocument;return {frame:getComputedStyle(el).backgroundColor,root:el.contentWindow.getComputedStyle(doc.documentElement).backgroundColor,body:el.contentWindow.getComputedStyle(doc.body).backgroundColor,bodyImage:el.contentWindow.getComputedStyle(doc.body).backgroundImage}});
  assert.deepEqual(backgrounds,{frame:'rgba(0, 0, 0, 0)',root:'rgba(0, 0, 0, 0)',body:'rgba(0, 0, 0, 0)',bodyImage:'none'});measurements.embeddedBase=backgrounds;await snap('embedded-base');
+ const baseLayout=await page.locator('#mbase iframe').evaluate(el=>{
+  const rail=document.getElementById('rail').getBoundingClientRect(), frame=el.getBoundingClientRect(), doc=el.contentDocument;
+  const menu=doc.getElementById('mbMenu').getBoundingClientRect(), left=doc.getElementById('mbLeft').getBoundingClientRect(),right=doc.getElementById('mbRight').getBoundingClientRect();
+  return {top:frame.top+menu.top-rail.top,bottom:frame.top+left.bottom-rail.bottom,panelBottom:left.bottom-right.bottom,resize:el.contentWindow.getComputedStyle(doc.getElementById('mbLeft')).resize};
+ });
+ assert.ok(Math.abs(baseLayout.top)<2&&Math.abs(baseLayout.bottom)<2&&Math.abs(baseLayout.panelBottom)<2,JSON.stringify(baseLayout));assert.equal(baseLayout.resize,'none');measurements.baseLayout=baseLayout;
+ const baseWidth=await frame.locator('#mbLeft').evaluate(el=>el.getBoundingClientRect().width);
+ await frame.locator('.sthBaseResize').press('ArrowRight');assert.ok(await frame.locator('#mbLeft').evaluate(el=>el.getBoundingClientRect().width)>baseWidth+15);
+ const baseGrip=await frame.locator('.sthBaseResize').boundingBox();await page.mouse.move(baseGrip.x+6,baseGrip.y+30);await page.mouse.down();await page.mouse.move(baseGrip.x+46,baseGrip.y+30,{steps:5});await page.mouse.up();assert.ok(await frame.locator('#mbLeft').evaluate(el=>el.getBoundingClientRect().width)>baseWidth+50);
+ await snap('embedded-base-resized');
+ for(const size of [{width:1366,height:900},{width:1920,height:1100}]){
+  await page.setViewportSize(size);await page.waitForTimeout(100);
+  const edges=await page.locator('#mbase iframe').evaluate(el=>{const rail=document.getElementById('rail').getBoundingClientRect(),f=el.getBoundingClientRect(),doc=el.contentDocument;return {top:f.top+doc.getElementById('mbMenu').getBoundingClientRect().top-rail.top,bottom:f.top+doc.getElementById('mbLeft').getBoundingClientRect().bottom-rail.bottom};});
+  assert.ok(Math.abs(edges.top)<2&&Math.abs(edges.bottom)<2,JSON.stringify(edges));
+ }
+ await frame.locator('#mbRows .tr').first().dblclick();await frame.locator('#modals .modal').last().waitFor();await frame.locator('#modals .modal').last().locator('h2 button').click();
+
+
  const standalone=await browser.newPage({viewport:{width:1400,height:900}});await standalone.goto(srv.url.replace('/?','/matbase.html?')+'&file='+encodeURIComponent(base));await standalone.locator('#mbRows .tr').first().waitFor();
  assert.notEqual(await standalone.locator('body').evaluate(el=>getComputedStyle(el).backgroundImage),'none');await standalone.screenshot({path:path.join(out,'standalone-base.png')});await standalone.close();
  await go('est');await page.waitForTimeout(500);const order=await page.evaluate(()=>App.S.set.sthCols.est);assert.ok(Array.isArray(order));

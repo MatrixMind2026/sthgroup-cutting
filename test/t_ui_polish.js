@@ -119,9 +119,10 @@ for (const f of ['geom', 'cut', 'project', 'draw', 'zip', 'out_tab', 'base', 'es
   // Длинный текст должен увеличивать высоту строки, а не залезать на цену.
   await page.evaluate(() => { const w = Est.R.rows.find(w => w.sthKit); Est.pl().NAME[w.offKey] = 'Очень длинное название комплекта направляющих скрытого монтажа с креплениями и дополнительными элементами для проверки переноса текста'; Est.render(); });
   const name = page.locator('#est table.sthCompact thead th[data-ci="3"]'), price = page.locator('#est table.sthCompact thead th[data-ci="7"]');
-  const box = await name.boundingBox(); const handle = page.locator('#est table.sthCompact thead th[data-ci="3"] .sthResize'); const hb = await handle.boundingBox();
+  const box = await name.boundingBox(); const donorSlack = await page.evaluate(() => [5,7,8].reduce((sum,id) => sum + Math.max(0,document.querySelector('th[data-ci="'+id+'"]').getBoundingClientRect().width-({5:130,7:150,8:110}[id])),0)); const handle = page.locator('#est table.sthCompact thead th[data-ci="3"] .sthResize'); const hb = await handle.boundingBox();
   await page.mouse.move(hb.x + hb.width / 2, hb.y + hb.height / 2); await page.mouse.down(); await page.mouse.move(hb.x + hb.width / 2 + 140, hb.y + hb.height / 2, { steps: 8 }); await page.mouse.up();
-  assert.ok((await name.boundingBox()).width > box.width + 120);
+  assert.ok(Math.abs((await name.boundingBox()).width - box.width - Math.min(140,donorSlack)) < 3, 'столбец расширяется за счёт доступной ширины соседей');
+  assert.ok(await page.locator('#eBody').evaluate(el => el.scrollWidth <= el.clientWidth && el.scrollLeft === 0), 'горизонтальной прокрутки нет после ручного расширения');
   const pb = await price.boundingBox(), nb = await name.boundingBox();
   await page.mouse.move(pb.x + 20, pb.y + 12); await page.mouse.down(); await page.mouse.move(nb.x + 15, nb.y + 12, { steps: 10 }); await page.mouse.up();
   const orderNow = await page.evaluate(() => Array.from(document.querySelector('table.sthCompact').tHead.rows[0].cells).filter(c => getComputedStyle(c).display !== 'none').map(c => Number(c.dataset.ci)));

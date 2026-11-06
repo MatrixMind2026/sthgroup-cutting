@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#24252a"><meta name="description" content="STHGroup — просмотр заказа, модели, раскроя и сметы">
+  <title>STHGroup — просмотр заказа</title><link rel="stylesheet" href="style.css">
+  <script defer src="vendor/three.min.js"></script><script defer src="app.js"></script>
+</head>
+<body>
+ <div class="ambient" aria-hidden="true"></div>
+ <div class="shell">
+  <header class="top glass">
+   <a class="brand" href="#model" aria-label="STHGroup, модель заказа">STH<span>Group</span></a>
+   <div class="identity"><strong>Заказ STH-0142</strong><span>Кухня «Тёплый дуб»</span></div>
+   <span class="status"><i></i>В работе</span><span class="demo">Демонстрационный заказ</span>
+  </header>
+  <nav class="tabs glass" aria-label="Разделы заказа">
+   <button role="tab" id="tab-model" aria-selected="true" aria-controls="model" data-tab="model"><span data-icon="cube"></span>Модель</button>
+   <button role="tab" id="tab-product" aria-selected="false" aria-controls="product" data-tab="product"><span data-icon="layers"></span>Изделие</button>
+   <button role="tab" id="tab-status" aria-selected="false" aria-controls="status" data-tab="status"><span data-icon="list"></span>Статус заказа</button>
+  </nav>
+  <main>
+   <section id="model" role="tabpanel" aria-labelledby="tab-model" class="workspace">
+    <div class="stage glass">
+     <div class="stage-head"><div><span class="eyebrow">Изделие 01</span><h1>Кухня «Тёплый дуб»</h1></div><span class="tag">3D-просмотр</span></div>
+     <div id="canvas" aria-label="Интерактивная демонстрационная 3D-модель кухни"></div>
+     <div class="model-tools"><button id="reset-view" class="tool" title="Вернуть исходный ракурс"><span data-icon="reset"></span><span>Вписать</span></button><button id="facades" class="tool" aria-pressed="false"><span data-icon="layers"></span><span>Скрыть фасады</span></button></div>
+     <div class="stage-foot"><span id="selected-label">Выберите элемент модели</span><span class="gesture">Перетаскивание — вращение · колесо / жест — масштаб</span></div>
+    </div>
+    <aside class="inspector glass">
+     <details open><summary>Состав изделия <span data-icon="chevron"></span></summary><div id="parts" class="parts"></div></details>
+     <div id="part-info" class="part-info" aria-live="polite"></div>
+     <details open class="materials"><summary>Материалы <span data-icon="chevron"></span></summary><div class="swatches"><div><i class="oak"></i><span>Дуб натуральный<small>Нижние фасады</small></span></div><div><i class="graphite"></i><span>Графит матовый<small>Верхние фасады</small></span></div><div><i class="stone"></i><span>Серый камень<small>Столешница</small></span></div></div></details>
+     <p class="readonly"><span data-icon="eye"></span>Только просмотр</p>
+    </aside>
+   </section>
+   <section id="product" role="tabpanel" aria-labelledby="tab-product" class="glass content" hidden>
+    <div class="section-head"><div><span class="eyebrow">Ваше изделие</span><h1>Кухня «Тёплый дуб»</h1></div><span class="tag">Угловая кухня</span></div>
+    <div class="product-intro"><p>Натуральный дуб, матовый графит и столешница с декором камня.</p><span>Габариты: 3200 × 2400 × 2200 мм</span></div>
+    <div id="product-list" class="product-list"></div>
+    <p class="hint">Демонстрационный состав изделия. В рабочей версии здесь будут данные вашего заказа.</p>
+   </section>
+   <section id="status" role="tabpanel" aria-labelledby="tab-status" class="glass content" hidden>
+    <div class="section-head"><div><span class="eyebrow">Заказ STH-0142</span><h1>Статус заказа</h1></div><span class="status"><i></i>В работе</span></div>
+    <p class="status-intro">Сейчас изготавливаем детали вашего изделия.</p>
+    <ol class="timeline"><li class="complete"><span class="step-dot">✓</span><div><h2>Заказ согласован</h2><p>Состав изделия и материалы согласованы</p></div></li><li class="current" aria-current="step"><span class="step-dot">2</span><div><h2>В производстве</h2><p>Изготавливаем детали и готовим изделие</p></div></li><li><span class="step-dot">3</span><div><h2>Готов к выдаче</h2><p>Следующий этап</p></div></li><li><span class="step-dot">4</span><div><h2>Передан заказчику</h2><p>Завершение заказа</p></div></li></ol>
+    <p class="hint">Это демонстрационный статус. Сроки и данные реального заказа пока не подключены.</p>
+   </section>
+  </main>
+  <footer class="footer"><span>STHGroup · Веб-просмотр заказа</span><span>Прототип 0.1 · демонстрационные данные</span></footer>
+ </div>
+ <noscript>Для просмотра модели и разделов включите JavaScript.</noscript>
+</body></html>

@@ -107,6 +107,7 @@
 			zoom: 1,                      // масштаб окна программы: 0.5–2 (PDF и Excel не меняются)
 			texMaps: 1,                   // текстура материала (раздел «База») на картах раскроя и в PDF
 			panes: {},                    // ширина панелей, растянутых мышью за стык: имя панели → px
+			sthCols: {}, sthColWidths: {}, // STHGroup: порядок и ширина столбцов сохраняются между запусками
 			sound: 1,                     // звук заставки при запуске
 			formats: [[2800, 2070], [2750, 1830], [2440, 1830], [2800, 1220], [2440, 1220]],
 			mats: {},                     // запомненные настройки материалов: ключ → { fmts, fmt, grain, on }
@@ -134,6 +135,8 @@
 			if (typeof d[k] === 'object' && !Array.isArray(d[k]) && k !== 'mats') { for (var q in s[k]) if (s[k].hasOwnProperty(q)) d[k][q] = s[k][q]; }
 			else d[k] = s[k];
 		}
+		/* STHGroup: настройки своих разделов и папок сохраняются вместе с общими. */
+		for (var sthKey in s) if (Object.prototype.hasOwnProperty.call(s, sthKey) && /^sth[A-Z]/.test(sthKey) && !Object.prototype.hasOwnProperty.call(d, sthKey)) d[sthKey] = s[sthKey];
 		if (s.drillPdf && s.drill === undefined) d.drill.multi = s.drillPdf.multi ? 1 : 0;      // настройка версии 1.3
 		if (s.cutV !== 2) { var d0 = BM.defaults(); d.kerf = d0.kerf; d.margin = d0.margin; d.allow = d0.allow; d.quality = d0.quality; d.cut = d0.cut; }      // раскрой 1.21: прежние настройки не переносятся
 		else { var dc = BM.cutDefaults(); for (var ck in dc) if (dc.hasOwnProperty(ck) && d.cut[ck] === undefined) d.cut[ck] = dc[ck]; }

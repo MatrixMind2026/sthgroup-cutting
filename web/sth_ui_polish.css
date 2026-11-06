@@ -1,0 +1,44 @@
+/* STHGroup: стабильные панели, свободная ширина столбцов и аккуратная навигация. */
+html[data-sth-style="glass"] #rail{min-width:0;overflow-x:hidden;overflow-y:auto;align-items:stretch;scrollbar-gutter:stable}
+html[data-sth-style="glass"] #rail button{box-sizing:border-box;width:100%;max-width:100%;min-width:0;margin:0;flex-shrink:0;overflow-wrap:anywhere;white-space:normal}
+html[data-sth-style="glass"] #rail button svg{max-width:23px}
+#orders.soCollection{flex-direction:column!important;gap:0!important}
+#orders.soCollection .soViewBar{flex:none;min-height:68px;box-sizing:border-box;gap:10px;flex-wrap:nowrap}
+#orders.soCollection .soViewBar .tabs{flex:none;margin:0;flex-wrap:nowrap}
+#orders.soCollection .soViewBar .tabs button{width:104px;flex:0 0 104px;font-weight:600}
+#orders.soCollection .soViewBar input{min-width:110px;width:240px;max-width:320px}
+#orders.soCollection .soViewBar select{min-width:105px;max-width:160px;min-height:36px}
+#orders .soOrderList{flex:1;min-height:0;overflow:auto;padding:12px}
+#orders .soOrderList table{width:100%;border-collapse:collapse;background:var(--sg-glass,var(--panel));border-radius:18px}
+#orders .soOrderList th,#orders .soOrderList td{padding:15px 14px;text-align:left;border-bottom:1px solid var(--line2);overflow-wrap:anywhere}
+#orders .soOrderList th.r,#orders .soOrderList td.r{text-align:right;white-space:nowrap}
+#orders .soOrderList tr[data-ko]{cursor:pointer}#orders .soOrderList tr[data-ko]:hover{background:var(--hover)}
+#eBody table.sthCompact{table-layout:fixed;max-width:none;min-width:0}
+#eBody table.sthCompact th.sthMovable{position:relative;padding-right:16px;cursor:grab;touch-action:none}
+#eBody table.sthCompact th[data-ci="0"],#eBody table.sthCompact th[data-ci="1"]{padding-left:5px;padding-right:5px}
+#eBody table.sthCompact .sthResize{position:absolute;top:0;bottom:0;right:-1px;width:12px;cursor:col-resize;touch-action:none;z-index:3}
+#eBody table.sthCompact .sthResize:after{content:'';position:absolute;right:5px;top:20%;bottom:20%;border-right:1px solid var(--line)}
+#eBody table.sthCompact .sthResize:hover:after,#eBody table.sthCompact .sthResize:focus-visible:after{border-right:2px solid var(--accent)}
+body.sthResizing,body.sthResizing *{cursor:col-resize!important;user-select:none!important}
+#eBody table.sthCompact td.nm{display:table-cell;white-space:normal;vertical-align:middle;overflow-wrap:anywhere}
+#eBody table.sthCompact td{vertical-align:middle;white-space:normal;overflow-wrap:anywhere;overflow:hidden}
+#eBody table.sthCompact .sthCardPick{display:block;width:100%;white-space:normal;overflow-wrap:anywhere;text-align:left;line-height:1.45;min-width:0}
+#eBody table.sthCompact tr.sthCompactRow>td{height:auto;min-height:38px;padding-top:8px;padding-bottom:8px}
+#eBody table.sthCompact .un{white-space:normal;overflow-wrap:anywhere}
+#eBody table.sthCompact input.pv,#eBody table.sthCompact input.qv{max-width:100%;width:72px}
+.sthSpanLine{display:flex;flex-wrap:wrap;align-items:center;gap:12px;white-space:normal;overflow-wrap:anywhere}.sthSpanLine>span:first-child{flex:1}
+.sthKitContents{margin:14px 0 20px;padding-bottom:14px;border-bottom:1px solid var(--line)}
+.sthKitContents article{padding:14px;margin:10px 0;border:1px solid var(--sg-edge,var(--line));border-radius:16px;background:var(--sg-glass,var(--panel2));overflow-wrap:anywhere}
+.sthKitContents p{margin:8px 0}.sthKitContents a{display:block;color:var(--accent);margin-top:10px}.sthKitContents small{display:block;margin-top:8px}
+/* STHGroup: единые стеклянные поверхности всех внутренних разделов. */
+html[data-sth-style="glass"] :is(#mLeft,#mCenter,#kLeft,#kCenter,#kRight,#aLeft,#aCenter,#aRight,#dCenter,#eCenter,#eRight,#eLeft,#bLeft,#bRight,#base,#crm){border:1px solid var(--sg-edge);border-radius:20px;background:var(--sg-glass);box-shadow:var(--sg-shadow);backdrop-filter:var(--sg-blur);-webkit-backdrop-filter:var(--sg-blur);min-width:0}
+html[data-sth-style="glass"] :is(#mTreeBox,#mPropBox,#mProps,#mTree,#eCard,#eTotal,#eHead,#eBody,.soViewBar,.crmBar,.mbar,.skBar){background:transparent}
+html[data-sth-style="glass"] :is(#center,#left,#right){border:1px solid var(--sg-edge);border-radius:20px;background:var(--sg-glass);box-shadow:var(--sg-shadow);backdrop-filter:var(--sg-blur);-webkit-backdrop-filter:var(--sg-blur)}
+html[data-sth-style="glass"] #mapWrap{background:linear-gradient(145deg,#ffffff09,transparent 55%,#849daa12);border-top:1px solid var(--sg-edge);border-radius:0 0 20px 20px}
+html[data-sth-style="glass"] #map{padding:18px 20px}
+html[data-sth-style="glass"] #map svg{filter:drop-shadow(0 8px 12px #0003)}
+html[data-sth-style="glass"] :is(#sheetBar,#mapBar,#mBar,#dBar,#kBar,#aBar,.bar){background:transparent;border-color:var(--sg-edge)}
+html[data-sth-style="glass"] :is(.mat,.thumb,.todayMetric,.todayBlock,.cutSimpleCard){border-radius:16px;border-color:var(--sg-edge);background:var(--sg-glass);box-shadow:var(--sg-shadow)}
+html[data-sth-style="glass"] :is(.mat,.thumb).on{border-color:var(--accent);background:var(--sg-tint)}
+html[data-sth-style="glass"] :is(#dPages,#kPages,#aPages){background:transparent}
+@media(max-width:800px){#orders.soCollection .soViewBar{gap:6px;padding:8px 4px}#orders.soCollection .soViewBar input{flex:1;width:110px}#orders.soCollection .soViewBar .tabs button{padding:8px 10px}}

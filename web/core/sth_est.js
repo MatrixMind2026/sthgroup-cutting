@@ -4,6 +4,18 @@
 	var K = BM.sthEst = {};
 	K.FILTERS = [['all', 'Все'], ['problem', 'Проблемные'], ['replaced', 'Заменённые'], ['noPrice', 'Без цены'], ['stock', 'Со склада']];
 	K.rowKey = function (w) { return w.kind + '|' + (w.ownId || w.offKey || w.priceId); };
+	/* STHGroup: состав — справочное представление существующих расчётных строк. */
+	K.kitDetails = function (rows, selected) {
+		var parent = selected;
+		if (selected.sthKitId) parent = rows.filter(function (w) { return w.sthKit && w.sthKit.id === selected.sthKitId; })[0];
+		if (selected.sthPart) parent = rows.filter(function (w) { return K.rowKey(w) === selected.sthPart; })[0];
+		if (!parent || (!parent.sthKit && !parent.sthSplit)) return null;
+		var parts = rows.filter(function (w) { return parent.sthKit ? (parent.sthMem || []).indexOf(K.rowKey(w)) >= 0 : w.sthPart === K.rowKey(parent); });
+		return { parent: parent, parts: parts.map(function (w) {
+			var ref = w.sthReference || w, price = Number(ref.priceOut !== undefined ? ref.priceOut : ref.price || 0);
+			return { row: w, price: price, total: Math.round(w.val * price) };
+		}) };
+	};
 	K.active = function (w) { return !!w && !w.off && !w.info; };
 	K.noPrice = function (w) { return K.active(w) && !w.own && !w.card && w.kind !== 'own' && w.kind !== 'extra' && w.val > 0 && !(Number(w.price) > 0); };
 	K.problem = function (w, info) {

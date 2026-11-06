@@ -59,6 +59,7 @@
 	}
 	D.cols = function (t, key, redraw) {
 		if (!t || !key) return;
+		if (key === 'est' && window.STHEstColumns) { window.STHEstColumns.attach(t); return; }
 		var hr = headRow(t); if (!hr) return;
 		Array.prototype.forEach.call(hr.cells, function (c, i) { c.setAttribute('data-ci', i); c.classList.add('sthCol'); });
 		var ord = saved(key);

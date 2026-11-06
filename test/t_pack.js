@@ -16,7 +16,7 @@ ok('один файл: .bmk — архив', !!E, log.slice(0, 200));
 ok('внутри — проект, 3D, развёртка, текстура (имена — как раньше рядом с моделью)', names[0] === 'project.json' && names.some(n => /— 3D\.glb$/.test(n)) && names.some(n => /— 3D\.uv$/.test(n)) && names.some(n => /_textures\/Дерево\/дуб\.jpg$/.test(n)), names);
 ok('контрольные суммы верны, имена в UTF-8', names.every(n => E[n].crcOk && E[n].utf8));
 const doc = JSON.parse(E['project.json'].d.toString('utf8'));
-ok('проект внутри читается, 3D указан', doc.format === 'benchmark-project' && /— 3D\.glb$/.test(doc.model.mesh) && doc.exporter === 'bazis-export 1.11');
+ok('проект внутри читается, 3D указан', doc.format === 'benchmark-project' && /— 3D\.glb$/.test(doc.model.mesh) && doc.exporter === 'bazis-export 1.12');
 ok('отдельных файлов рядом с моделью не осталось', /отдельных файлов осталось: 0/.test(log), log.match(/отдельных.*$/m));
 /* программа поработала с проектом (раскрой) — повторная выгрузка его сохраняет */
 const z = fs.readFileSync(out); doc.work = { note: 'раскрой сохранён' };

@@ -1,0 +1,12 @@
+const assert = require('assert');
+require('../web/core/dbf.js'); require('../web/core/matbase.js'); require('../web/core/sth_stock.js');
+const MB = BM.mb, SK = BM.stock, b = SK.fix(MB.empty());
+const g = MB.addGroup(b, '', 'Фурнитура', 'fit'), m = MB.saveMat(b, Object.assign(MB.defMat(g.id), { name: 'Петля', unit: 'шт', price: 250 })).mat;
+SK.move(b, 'in', m.id, 20); SK.reserve(b, m.id, 8, { id: 'order', no: '142' });
+assert.ok(SK.history(b).length > 0); SK.clearHistory(b);
+assert.strictEqual(SK.history(b).length, 0); assert.strictEqual(MB.balance(b, m.id), 20); assert.strictEqual(SK.reserved(b, m.id), 8); assert.strictEqual(b.stock.docs.length, 1);
+SK.move(b, 'out', m.id, 2); assert.ok(SK.history(b).length > 0);
+SK.clearWarehouse(b); assert.strictEqual(MB.balance(b, m.id), 0); assert.strictEqual(SK.reserved(b, m.id), 0);
+assert.strictEqual(b.stock.docs.length, 0); assert.strictEqual(b.stock.offcuts.length, 0); assert.strictEqual(b.mats[m.id].name, 'Петля'); assert.strictEqual(b.mats[m.id].price, 250);
+assert.strictEqual(b.groups.length, 1);
+console.log('ошибок нет: очистка истории сохраняет остатки, новые события видны, очистка склада сохраняет каталог и цены');

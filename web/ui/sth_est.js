@@ -56,6 +56,16 @@
 			'<div class="cbody"><h3>' + esc(w.title || w.label || '') + '</h3><div class="sthCardFields"></div></div>';
 		var fields = card.querySelector('.sthCardFields'); X.cardHome = detail.firstElementChild;
 		moveChildren(X.cardHome, fields);
+		var kit = C.kitDetails(rows(), w);
+		if (kit) {
+			var contents = document.createElement('section'); contents.className = 'sthKitContents';
+			contents.innerHTML = '<h3>Состав комплекта «' + esc(kit.parent.title || kit.parent.label || '') + '» · ' + kit.parts.length + ' позиции</h3>' + kit.parts.map(function (part) {
+				var row = part.row, supplier = row.sup || {}, url = supplier.url || '', inf = info(row);
+				if (!/^https?:\/\//i.test(url) && inf) url = inf.url || '';
+				return '<article><b>' + esc(row.title || row.label || row.name0) + '</b><p>Количество: ' + esc(E.num(row.val)) + ' ' + esc(E.shortUnit(row.unit)) + '</p><div>Цена: ' + (part.price > 0 ? E.money(part.price) + ' ₽' : 'не указана') + ' · Сумма: ' + E.money(part.total) + ' ₽</div>' + (/^https?:\/\//i.test(url) ? '<a href="' + esc(url) + '" target="_blank" rel="noopener noreferrer">Открыть у поставщика ↗</a>' : '<small class="mute">Ссылка поставщика не указана</small>') + '</article>';
+			}).join('') + '<p><b>Сумма составляющих: ' + E.money(kit.parts.reduce(function (sum, p) { return sum + p.total; }, 0)) + ' ₽</b></p><p class="mute">Состав показан справочно. В итог входят только расчётные строки сметы.</p>';
+			fields.parentNode.insertBefore(contents, fields);
+		}
 		/* Цена и количество доступны и в таблице: штатное делегирование change пересчитывает оба представления. */
 		['qv', 'pv'].forEach(function (cls) {
 			var source = tr.querySelector('input.' + cls); if (!source) return;

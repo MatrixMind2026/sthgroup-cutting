@@ -14,7 +14,7 @@
 		var K = window.MatBase;
 		await K.refresh();
 		var b = base(); if (!b) { U.toast('Базы материалов нет: «Настройки → Общие → Папки и файлы».'); return false; }
-		var r = fn(b);
+		var r = await fn(b);
 		if (r === false) return false;
 		await K.saveBase();
 		X.render();
@@ -48,7 +48,7 @@
 		var b = base(), view = X.view;
 		var tabs = [['orders', 'Под заказы'], ['free', 'Свободные запасы'], ['off', 'Деловые остатки']].map(function (t) { return '<button data-skv="' + t[0] + '" class="' + (view === t[0] ? 'on' : '') + '" aria-pressed="' + (view === t[0]) + '">' + t[1] + '</button>'; }).join('');
 		var head = '<header class="scHead"><div><h1>Склад</h1><p class="mute">Материалы под заказы и свободные остатки</p></div><div class="scTools"><button data-skv="moves" aria-pressed="' + (view === 'moves') + '">Движения</button><button data-skv="history" aria-pressed="' + (view === 'history') + '">История</button></div></header>';
-		var bar = '<div class="scTabs tabs">' + tabs + '</div><div class="scToolbar"><input type="search" id="skQ" aria-label="Поиск по складу" placeholder="Поиск по материалу, размеру, заказу" value="' + esc(X.q) + '"><div class="grow"></div>' + (view === 'off' ? '<button class="primary" data-sk-off-add>＋ Добавить остаток</button>' : '') + '<button data-sk-in>Принять материал</button><button id="skRecv">Приход по заказу…</button><details class="scMore"><summary>Ещё</summary><div><button id="skWo">Списать по заказу…</button><button id="skImport">Импорт остатков</button></div></details></div>';
+		var bar = '<div class="scTabs tabs">' + tabs + '</div><div class="scToolbar"><input type="search" id="skQ" aria-label="Поиск по складу" placeholder="Поиск по материалу, размеру, заказу" value="' + esc(X.q) + '"><div class="grow"></div>' + (view === 'off' ? '<button class="primary" data-sk-off-add>＋ Добавить остаток</button>' : '') + '<button data-sk-in>Принять материал</button><button id="skRecv">Приход по заказу…</button><details class="scMore"><summary>Ещё</summary><div><button id="skWo">Списать по заказу…</button><button id="skImport">Импорт остатков</button><button id="scClearHistory">Очистить историю…</button><button id="scClearAll">Очистить склад…</button></div></details></div>';
 		var categories = [['all', 'Все материалы'], ['sheet', 'Листовые'], ['lin', 'Кромка и погонаж'], ['fit', 'Фурнитура']];
 		if (view === 'off') categories = [['all', 'Все материалы'], ['chip', 'ЛДСП'], ['mdf', 'МДФ'], ['ply', 'Фанера'], ['other', 'Другие']];
 		var filters = view === 'moves' || view === 'history' ? '' : '<div class="scFilters">' + categories.map(function (c) { return '<button data-skc="' + c[0] + '" aria-pressed="' + (c[0] === X.category) + '"' + (c[0] === X.category ? ' class="on"' : '') + '>' + c[1] + '</button>'; }).join('') + '</div>';
@@ -189,6 +189,18 @@
 		var source = ol.filter(function (x) { return x.id === res.origin; })[0];
 		await edit(function (bb) { var o = SK.addRemainder(bb, res.mat, res.L, res.W, res.n, { order: source && source.id, no: source && source.no, project: source ? 'Заказ №' + source.no : '', cell: res.cell, note: res.note }); if (!o) return false; X.offSel = o.id; X.q = ''; X.category = 'all'; return true; });
 	}
+	async function clearStock(all) {
+		await X.pending;
+		var b = base(); if (!b) return;
+		var ok = await U.confirm(all ? 'Очистить склад?' : 'Очистить историю?', all ? 'Будут удалены все складские приходы и расходы (' + b.stock.docs.length + '), деловые остатки (' + b.stock.offcuts.length + '), резервы и места хранения. Остатки станут нулевыми. Каталог материалов, цены и заказы сохранятся. Перед удалением программа создаст резервную копию.' : 'Журнал событий будет очищен. Остатки, резервы, исходные заказы остатков и документы движения сохранятся. Перед очисткой программа создаст резервную копию.', all ? 'Удалить данные склада' : 'Очистить историю');
+		if (!ok) return;
+		await edit(async function (bb) {
+			var backup = window.STH && window.STH.backupBase && await window.STH.backupBase();
+			if (!backup) { U.toast('Очистка не выполнена: не удалось создать резервную копию.', { bad: true }); return false; }
+			if (all) SK.clearWarehouse(bb); else SK.clearHistory(bb);
+			X.historyOff = X.historyMat = X.q = ''; X.sel = X.offSel = X.rowSel = ''; return true;
+		});
+	}
 	async function placeDlg() {
 		var b = base(), off = X.view === 'off', id = off ? X.offSel : X.sel;
 		var o = off && b.stock.offcuts.filter(function (x) { return x.id === id; })[0];
@@ -250,6 +262,7 @@
 		var host = $('stock'); if (!host || host._on) return; host._on = true;
 		host.addEventListener('click', function (e) {
 			var t = e.target, bt;
+			if (t.closest('#scClearHistory') || t.closest('#scClearAll')) { clearStock(!!t.closest('#scClearAll')).catch(U.error); return; }
 			if ((bt = t.closest('[data-skv]'))) { X.view = bt.dataset.skv; X.category = 'all'; X.q = ''; X.historyOff = X.historyMat = ''; X.render(); return; }
 			if ((bt = t.closest('[data-skc]'))) { X.category = bt.dataset.skc; X.render(); return; }
 			if ((bt = t.closest('[data-scrow], [data-scselect]'))) { var rowKey = bt.dataset.scrow || bt.dataset.scselect; if (X.view === 'off') X.offSel = rowKey; else X.rowSel = rowKey; X.render(); var sel = host.querySelector('[data-scrow][aria-pressed="true"]'); if (sel) sel.focus({ preventScroll: true }); return; }

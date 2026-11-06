@@ -29,7 +29,7 @@
 		if (b && b.sthKits) { var bs = b.sthKits.split || {}; for (var k in bs) if (Object.prototype.hasOwnProperty.call(bs, k) && !no[k]) split[k] = bs[k]; (b.sthKits.merge || []).forEach(function (d) { if (!no['m:' + d.id]) merge.push(d); }); }
 		var ps = we.sthSplit || {}; for (var k2 in ps) if (Object.prototype.hasOwnProperty.call(ps, k2)) split[k2] = ps[k2];
 		(we.sthKits || []).forEach(function (d) { merge = merge.filter(function (x) { return x.id !== d.id; }); merge.push(d); });
-		function zero(w) { w.info = 1; w.price = 0; w.priceOut = 0; w.sum = 0; }
+		function zero(w) { w.sthReference = { price: w.price, priceOut: w.priceOut, sum: w.sum }; w.info = 1; w.price = 0; w.priceOut = 0; w.sum = 0; }
 		var after = [];      // [строка, вставить после неё]
 		/* разделить */
 		ROWS.slice().forEach(function (w) {

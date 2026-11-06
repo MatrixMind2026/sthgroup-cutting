@@ -54,7 +54,7 @@ const O = BM.sth;
   }
   await page.locator('#sgAllOrders').click(); await page.locator('.soBoard').waitFor();
   await page.locator('[data-oview="list"]').click();
-  assert.strictEqual(await page.locator('#orders .soL').isVisible(), true, 'режим списка и поиск заказов остаются доступны');
+  assert.strictEqual(await page.locator('#orders .soOrderList').isVisible(), true, 'режим списка и поиск заказов остаются доступны');
   await page.locator('[data-oview="board"]').click(); await page.locator('.soBoard').waitFor();
   await page.locator('.soCard').first().click(); await page.locator('.sgHero').waitFor();
   await page.locator('#rail [data-s="clients"]').click();

@@ -12,7 +12,7 @@
    остаются рядом, чтобы программа показала, что изменилось.
    ========================================================================== */
 
-var BM_EXPORT_VERSION = '1.11';
+var BM_EXPORT_VERSION = '1.12';
 var BM_EXE = '%%BM_EXE%%';            // путь к программе; прописывает установщик
 var BM_SKIP_PREFIX = '@Р ';            // детали раскроя, построенные сметой в модели, не выгружаются
 
@@ -813,7 +813,7 @@ function bmUV(file) {
 
 /* ------------------------ окно выгрузки STHGroup --------------------------- */
 
-/* Отдельное окно (mshta), вариант «C»: слева — сводка модели и ход выгрузки, справа — данные заказа
+/* Отдельное окно (mshta), вариант «Б»: стеклянные панели: слева — сводка модели и ход выгрузки, справа — данные заказа
    (заказчик, номер заказа, изделие, комментарий). Пока человек заполняет поля, скрипт уже читает модель
    и сохраняет 3D; перед записью проекта ждёт ответа окна (файл answer.txt). Закрыли окно — выгрузка
    отменяется. Окно живёт своим процессом и каждые 40 мс читает файл состояния state.txt, который пишет скрипт.
@@ -823,35 +823,25 @@ var BM_WIN_HTA = [
 	"<html><head><meta charset=\"utf-8\"><meta http-equiv=\"X-UA-Compatible\" content=\"IE=edge\"><title>STHGroup — выгрузка модели</title>",
 	"<hta:application id=\"bmw\" applicationname=\"STHGroupExport\" border=\"dialog\" borderstyle=\"normal\" caption=\"yes\" maximizebutton=\"no\" minimizebutton=\"yes\" showintaskbar=\"yes\" singleinstance=\"no\" sysmenu=\"yes\" scroll=\"no\" contextmenu=\"no\" selection=\"yes\" icon=\"\">",
 	"<style>",
-	"html,body{margin:0;padding:0;background:#fff;color:#23262B;font-family:\"Segoe UI\",Arial,sans-serif;font-size:14px;overflow:hidden}",
-	"#w{display:table;width:640px;height:100%}#l,#r{display:table-cell;vertical-align:top}",
-	"#l{width:200px;background:#2a2c30;color:#eceef0;padding:20px 18px;border-right:3px solid #F26B1D}",
-	"#lg{background:#fff;border-radius:8px;padding:8px 10px}#lg svg{display:block}",
-	"#mt{margin:16px 0 4px;font-size:15px;font-weight:600;line-height:1.25;word-wrap:break-word}#ms{color:#a3a8ae;font-size:12.5px;line-height:1.5}",
-	"ul{list-style:none;margin:16px 0 0;padding:0}li{padding:4px 0 4px 24px;color:#8f959b;font-size:12.5px;position:relative;min-height:16px}",
-	"li i{position:absolute;left:0;top:5px;width:12px;height:12px;border-radius:7px;border:2px solid #4a4e55;font-style:normal;font-size:9px;line-height:12px;text-align:center}",
-	"li.ok{color:#d9dcdf}li.ok i{background:#F26B1D;border-color:#F26B1D;color:#fff}li.now{color:#fff;font-weight:600}li.now i{border-color:#F26B1D}",
-	"li.warn{color:#f5c453}li.warn i{border-color:#f5c453;color:#f5c453}li.bad{color:#ff8a7a}li.bad i{border-color:#ff8a7a;color:#ff8a7a}",
-	"li span{display:block;color:#a3a8ae;font-weight:normal;font-size:11.5px}",
-	"#r{padding:18px 22px 18px}h2{margin:0;font-size:18px}.s{color:#777;font-size:12.5px;margin-top:2px}",
-	"label{display:block;margin-top:10px}label span{display:block;font-size:12px;color:#666;margin-bottom:3px}",
-	"input,textarea{width:100%;box-sizing:border-box;border:1px solid #d6d3ce;border-radius:6px;padding:7px 9px;font:14px \"Segoe UI\",Arial,sans-serif;background:#faf9f7;color:#23262B}",
-	"input:focus,textarea:focus{border-color:#F26B1D;outline:none;background:#fff}textarea{height:56px;resize:none}",
-	"#two{display:table;width:100%;border-spacing:0}#two div{display:table-cell;width:50%}#two div.a{padding-right:6px}#two div.b{padding-left:6px}",
-	"#btns{margin-top:16px;display:table;width:100%}#btns div{display:table-cell;width:50%}#btns div.a{padding-right:6px}#btns div.b{padding-left:6px}",
-	"button{width:100%;white-space:nowrap;padding:10px 8px;border-radius:7px;border:1px solid #d6d3ce;background:#fff;color:#23262B;font:600 14px \"Segoe UI\",Arial,sans-serif;cursor:pointer}",
-	"button.p{background:#F26B1D;border-color:#F26B1D;color:#fff}button:disabled{opacity:.5;cursor:default}",
-	"#now{margin-top:12px;font-size:13px;color:#c2560f;font-weight:600;min-height:18px}#now.ok{color:#2e8b57}#now.bad{color:#c0392b}",
-	"#err{margin-top:8px;color:#c0392b;font-size:12.5px;display:none}#fold{margin-top:6px;font-size:12.5px;display:none}#fold a{color:#F26B1D;cursor:pointer}",
-	"</style></head><body><div id=\"w\">",
-	"<div id=\"l\"><div id=\"lg\">%LOGO%</div><div id=\"mt\"></div><div id=\"ms\"></div><ul id=\"steps\"></ul></div>",
+	"html,body{margin:0;padding:0;color:#f0f1f3;font-family:\"Segoe UI\",Arial,sans-serif;font-size:14px;overflow:auto;background:#202327}",
+	"body{background:radial-gradient(ellipse at 0% 30%,rgba(158,91,49,.55),transparent 65%),radial-gradient(ellipse at 100% 80%,rgba(108,133,150,.4),transparent 65%),#202327}",
+	"*{box-sizing:border-box}#shell{padding:16px}#brand{padding:10px 16px;border:1px solid rgba(255,255,255,.25);border-radius:22px;background:rgba(255,255,255,.07);margin-bottom:14px;box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}#brand svg{vertical-align:middle}#brand span{display:inline-block;margin-left:16px;vertical-align:middle;color:#c0c4cb;font-size:13px}",
+	"#w{display:table;table-layout:fixed;width:100%;border-spacing:10px 0}#l,#r{display:table-cell;vertical-align:top;border:1px solid rgba(255,255,255,.23);border-radius:22px;background:rgba(255,255,255,.07);box-shadow:inset 0 1px 0 rgba(255,255,255,.16),0 12px 24px rgba(0,0,0,.16)}",
+	"#l{width:225px;padding:24px 18px}#r{padding:22px}#mt{font-size:23px;font-weight:600;line-height:1.3;word-wrap:break-word;margin:0 0 10px}#ms{font-size:13px;color:#bcc1c8;line-height:1.6;padding-bottom:20px;border-bottom:1px solid rgba(255,255,255,.18)}",
+	"ul{list-style:none;margin:24px 0 0;padding:0}li{position:relative;padding:0 0 25px 30px;min-height:60px;color:#9ea7b0;font-size:14px}li i{position:absolute;left:0;top:2px;width:17px;height:17px;border:2px solid #687079;border-radius:12px;text-align:center;font-style:normal;font-size:11px;line-height:13px}li:before{content:'';position:absolute;left:8px;top:22px;bottom:4px;border-left:1px solid #687079}li:last-child:before{display:none}li.ok{color:#e9edf0}li.ok i{background:#ed791f;border-color:#ffae5b;color:white}li.now{color:#fff;font-weight:600}li.now i{border-color:#ff9b45;box-shadow:0 0 12px rgba(255,140,40,.45)}li.warn{color:#f5c453}li.warn i{border-color:#f5c453}li.bad{color:#ff9c93}li.bad i{border-color:#ff9c93}li span{display:block;font-size:12px;color:#b2b9c1;font-weight:normal;margin-top:5px;word-wrap:break-word}",
+	"h2{font-size:22px;margin:0 0 4px}.s{font-size:12px;color:#bcc1c8;margin-bottom:16px}label{display:block;margin-top:12px}label span{display:block;font-size:13px;color:#d4d7dc;margin-bottom:6px}input,textarea{width:100%;border:1px solid rgba(255,255,255,.25);border-radius:12px;background:rgba(255,255,255,.07);color:#fff;padding:9px 12px;font:14px \"Segoe UI\",Arial,sans-serif;box-shadow:inset 0 1px 0 rgba(255,255,255,.09)}input:focus,textarea:focus{outline:none;border-color:#ff9b45;background:rgba(255,255,255,.12)}textarea{height:60px;resize:none}",
+	"#two,#two div{display:block;width:100%}#btns{margin-top:18px}#btns div{display:block;width:100%;margin-top:10px}button{width:100%;padding:11px 12px;min-height:42px;border:1px solid rgba(255,255,255,.3);border-radius:22px;background:linear-gradient(rgba(255,255,255,.13),rgba(255,255,255,.04));color:#fff;font:600 14px \"Segoe UI\",Arial,sans-serif;cursor:pointer;box-shadow:inset 0 1px 0 rgba(255,255,255,.2)}button.p{background:linear-gradient(#ff922f,#e9670e);border-color:#ffb265;box-shadow:inset 0 1px 0 rgba(255,255,255,.5),0 5px 16px rgba(237,115,28,.2)}button:disabled{opacity:.5;cursor:default}button:focus{outline:1px solid #ffc18b}",
+	"#now{font-size:13px;color:#ffad6b;min-height:20px;margin-top:14px;word-wrap:break-word}#now.ok{color:#a4d79b}#now.bad,#err{color:#ffa99d}#err{display:none;font-size:13px;margin-top:8px;word-wrap:break-word}#fold{display:none;margin-top:10px}#fold a{color:#ffad6b;cursor:pointer}#hint{font-size:12px;color:#bbc1c7;text-align:center;margin:16px 0 0}",
+	"",
+	"</style></head><body><div id=\"shell\"><header id=\"brand\">%LOGO%<span>Выгрузка модели</span></header><div id=\"w\">",
+	"<div id=\"l\"><div id=\"mt\"></div><div id=\"ms\"></div><ul id=\"steps\"></ul></div>",
 	"<div id=\"r\"><h2>Данные заказа</h2><div class=\"s\">Попадут в проект, смету и КП</div>",
-	"<div id=\"two\"><div class=\"a\"><label><span>Заказчик</span><input id=\"fCust\"></label></div><div class=\"b\"><label><span>Номер заказа</span><input id=\"fNo\"></label></div></div>",
-	"<label><span>Изделие</span><input id=\"fTitle\"></label>",
-	"<label><span>Комментарий</span><textarea id=\"fNote\"></textarea></label>",
+	"<div id=\"two\"><div class=\"a\"><label><span>Заказчик</span><input id=\"fCust\" aria-label=\"Заказчик\"></label></div><div class=\"b\"><label><span>Номер заказа</span><input id=\"fNo\" aria-label=\"Номер заказа\"></label></div></div>",
+	"<label><span>Изделие</span><input id=\"fTitle\" aria-label=\"Изделие\"></label>",
+	"<label><span>Комментарий</span><textarea id=\"fNote\" aria-label=\"Комментарий\"></textarea></label>",
 	"<div id=\"btns\"><div class=\"a\"><button id=\"bSave\">Только сохранить</button></div><div class=\"b\"><button class=\"p\" id=\"bOpen\">Выгрузить и открыть</button></div></div>",
 	"<div id=\"now\"></div><div id=\"err\"></div><div id=\"fold\"><a id=\"bFolder\">Показать файл проекта в папке</a></div>",
-	"</div></div>",
+	"</div></div><p id=\"hint\">Пока вы заполняете данные, модель уже читается</p></div>",
 	"<script>",
 	"var DIR = '%DIR%', fso = new ActiveXObject('Scripting.FileSystemObject'), sh = new ActiveXObject('WScript.Shell'), S = null, CHOICE = '', finished = false, lastStamp = '', idle = 0, filled = false;",
 	"function $(id) { return document.getElementById(id); }",
@@ -859,8 +849,8 @@ var BM_WIN_HTA = [
 	"function read() { try { var f = fso.OpenTextFile(DIR + '\\\\state.txt', 1, false, -1), t = f.ReadAll(); f.Close(); return t; } catch (e) { return ''; } }",
 	"function write(name, text) { try { var f = fso.CreateTextFile(name, true, true); f.Write(text); f.Close(); } catch (e) { } }",
 	"function q(s) { return '\"' + String(s).replace(/\\\\/g, '\\\\\\\\').replace(/\"/g, '\\\\\"').replace(/\\r?\\n/g, '\\\\n') + '\"'; }",
-	"function fit() { try { window.resizeTo(660, Math.max(430, $('w').offsetHeight + 40)); } catch (e) { } }",
-	"function center() { try { window.moveTo(Math.max(0, (screen.availWidth - 660) / 2), Math.max(0, (screen.availHeight - 460) / 2.4)); } catch (e) { } }",
+	"function fit() { try { var w = Math.min(840, screen.availWidth - 24), h = Math.min(screen.availHeight - 40, Math.max(600, $('shell').offsetHeight + 42)); if (Math.abs(window.outerWidth - w) > 2 || Math.abs(window.outerHeight - h) > 2) window.resizeTo(w, h); } catch (e) { } }",
+	"function center() { try { window.moveTo(Math.max(0, (screen.availWidth - 840) / 2), Math.max(0, (screen.availHeight - 680) / 2.4)); } catch (e) { } }",
 	"function draw() {",
 	"\t$('mt').innerHTML = esc(S.title || 'Модель');",
 	"\tvar m = S.sum ? (S.sum.parts + ' дет. · материалов ' + S.sum.mats + '<br>фурнитуры ' + S.sum.furn) : esc(S.sub || '');",
@@ -904,7 +894,7 @@ var BM_WIN_HTA = [
 	""
 ].join('\n');
 /* логотип STHGroup: графитовый прямоугольник с отверстием, оранжевый и серый — как в логотипе программы */
-var BM_LOGO_SVG = "<svg width=\"150\" height=\"40\" viewBox=\"0 0 150 40\"><rect x=\"0\" y=\"0\" width=\"18\" height=\"40\" rx=\"2\" fill=\"#23262B\"/><circle cx=\"9\" cy=\"20\" r=\"2.6\" fill=\"#fff\"/><rect x=\"20\" y=\"0\" width=\"15\" height=\"22\" rx=\"2\" fill=\"#F26B1D\"/><rect x=\"20\" y=\"24\" width=\"15\" height=\"16\" rx=\"2\" fill=\"#9AA0A6\"/><text x=\"42\" y=\"28\" font-family=\"Segoe UI, Arial, sans-serif\" font-size=\"21\" font-weight=\"700\" fill=\"#23262B\">STH<tspan fill=\"#F26B1D\">Group</tspan></text></svg>";
+var BM_LOGO_SVG = "<svg width=\"158\" height=\"32\" viewBox=\"0 0 158 32\"><text x=\"0\" y=\"25\" font-family=\"Segoe UI,Arial,sans-serif\" font-size=\"27\" font-weight=\"700\" fill=\"#f0f1f3\">STH<tspan fill=\"#ff892d\">Group</tspan></text></svg>";
 var BM_WIN = null;
 function bmWinOpen(title, sub, form) {
 	var fs = bmFs(), tmp = '';

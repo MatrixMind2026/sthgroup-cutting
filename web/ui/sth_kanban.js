@@ -22,13 +22,14 @@
 	/* как открывать заказы — из настроек (по умолчанию карточками); переключение кнопками — только сейчас, настройку не меняет */
 	function pref() { var s = S(); return s && s.set && s.set.sthOrderView === 'list' ? 'list' : 'board'; }
 	X.view = pref();
-	X.sgFocusOrder = X.view !== 'list';
-	function saveView(v) { X.view = v; X.sgFocusOrder = v !== 'list'; }
-	X.resetView = function () { X.view = pref(); X.sgFocusOrder = X.view !== 'list'; };
+	X.sgFocusOrder = false;
+	function saveView(v) { X.view = v; X.sgFocusOrder = false; }
+	X.resetView = function () { X.view = pref(); X.sgFocusOrder = false; };
 	function sum(o) { try { return O.calc(X.book, o); } catch (e) { return { total: 0, paid: 0, debt: 0 }; } }
 	function filtered() {
 		var q = String(X.q || '').toLowerCase().replace(/ё/g, 'е');
 		return X.book.orders.filter(function (o) {
+			if (X.st && o.status !== X.st) return false;
 			if (!q) return true;
 			var c = O.client(X.book, o.clientId);
 			return String([o.no, c && c.name, c && c.phone, o.note, o.externalId].concat(o.items.map(function (i) { return i.title; })).join(' ')).toLowerCase().replace(/ё/g, 'е').indexOf(q) >= 0;
@@ -45,11 +46,21 @@
 			(t.debt > 0.009 && t.paid > 0 ? '<div class="soCardDebt">Долг: ' + O.money(t.debt) + ' ₽</div>' : '') +
 			(o.source === 'crm' ? '<div class="soCardSource">Из CRM' + (o.externalNo ? ' · ' + esc(o.externalNo) : '') + '</div>' : '') + '</article>';
 	}
+	function viewBar() {
+		return '<div class="soViewBar"><div class="tabs"><button data-oview="list"' + (X.view === 'list' ? ' class="on"' : '') + '>Список</button><button data-oview="board"' + (X.view === 'board' ? ' class="on"' : '') + '>Карточки</button></div>' +
+			'<input type="search" id="soBoardQ" placeholder="Номер, клиент, изделие" value="' + esc(X.q || '') + '"><select id="soSt" aria-label="Фильтр по этапу"><option value="">Все этапы</option>' + O.stages(X.book).map(function (s) { return '<option value="' + esc(s[0]) + '"' + (s[0] === X.st ? ' selected' : '') + '>' + esc(s[1]) + '</option>'; }).join('') + '</select><div class="grow"></div>' +
+			'<button class="primary" id="soNew">+ Новый заказ</button></div>';
+	}
+	function listHtml() {
+		var list = filtered();
+		return viewBar() + '<div class="soOrderList"><table class="grid"><thead><tr><th>Заказ</th><th>Клиент</th><th>Изделие</th><th>Этап</th><th class="r">Сумма</th></tr></thead><tbody>' + list.map(function (o) {
+			var c = O.client(X.book, o.clientId);
+			return '<tr data-ko="' + esc(o.id) + '"><td><button class="link" data-ko="' + esc(o.id) + '">' + esc(o.no) + '</button></td><td>' + esc(c ? c.name : 'Без клиента') + '</td><td>' + esc(o.items.map(function (i) { return i.title || U.stemOf(i.path); }).join(', ') || 'Изделия ещё не добавлены') + '</td><td>' + esc(O.statusName(o.status, X.book)) + '</td><td class="r">' + O.money(sum(o).total) + ' ₽</td></tr>';
+		}).join('') + '</tbody></table>' + (!list.length ? '<div class="soEmpty">Заказы не найдены.</div>' : '') + '</div>';
+	}
 	function boardHtml() {
 		var list = filtered();
-		return '<div class="soViewBar"><div class="tabs"><button data-oview="list">Список</button><button class="on" data-oview="board">Карточки</button></div>' +
-			'<input type="search" id="soBoardQ" placeholder="Номер, клиент, изделие" value="' + esc(X.q || '') + '"><div class="grow"></div>' +
-			'<span class="mute sm">Заказы — за карточку · Колонки — за заголовок</span><button class="primary" id="soNew">+ Новый заказ</button></div>' +
+		return viewBar() +
 			'<div class="soBoard">' + O.stages(X.book).map(function (s) {
 				var rows = list.filter(function (o) { return o.status === s[0]; });
 				var total = rows.reduce(function (a, o) { return a + sum(o).total; }, 0);
@@ -91,19 +102,19 @@
 	}
 	var render0 = X.render;
 	X.render = async function () {
-		host.classList.toggle('soBoardMode', X.view === 'board' && S().section === 'orders');
-		if (X.view !== 'board' || S().section !== 'orders') {
-			var result = await render0.apply(this, arguments), sec = host.querySelector('.soL .sec');
-			if (sec && S().section === 'orders' && !sec.querySelector('[data-oview]')) sec.innerHTML = 'Заказы <button class="soBoardSwitch" data-oview="board" title="Показать заказы карточками по этапам">Карточки</button>';
-			return result;
+		var collection = !X.sgFocusOrder && S().section === 'orders';
+		host.classList.toggle('soBoardMode', collection);
+		host.classList.toggle('soCollection', collection);
+		if (!collection) {
+			return render0.apply(this, arguments);
 		}
 		if (!X.book) await X.load();
 		if (!X.book) { host.innerHTML = '<div class="soEmpty">Нет папки для заказов.</div>'; return; }
-		X.snapOpen(); host.innerHTML = boardHtml();
+		X.snapOpen(); host.innerHTML = X.view === 'list' ? listHtml() : boardHtml();
 	};
 	function openOrder(id) {
 		if (!O.order(X.book, id)) return;
-		X.cur = id; X.tab = 'calc'; saveView('list'); X.sgFocusOrder = true; X.render();
+		X.cur = id; X.tab = 'calc'; X.sgFocusOrder = true; X.render();
 	}
 	host.addEventListener('click', function (e) {
 		if (Date.now() < ignoreClickUntil) { e.preventDefault(); return; }
@@ -129,8 +140,8 @@
 	});
 	host.addEventListener('input', function (e) {
 		if (e.target.id !== 'soBoardQ') return;
-		X.q = e.target.value; var board = host.querySelector('.soBoard');
-		if (board) { var tmp = document.createElement('div'); tmp.innerHTML = boardHtml(); board.replaceWith(tmp.querySelector('.soBoard')); }
+		X.q = e.target.value; var content = host.querySelector('.soBoard,.soOrderList');
+		if (content) { var tmp = document.createElement('div'); tmp.innerHTML = X.view === 'list' ? listHtml() : boardHtml(); content.replaceWith(tmp.querySelector('.soBoard,.soOrderList')); }
 	});
 	host.addEventListener('dragstart', function (e) {
 		var title = e.target.closest('.soLaneTitle');

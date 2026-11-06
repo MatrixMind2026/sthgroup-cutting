@@ -12,6 +12,7 @@
 	K.fix = function (b) {
 		if (!b.stock || typeof b.stock !== 'object') b.stock = { docs: [], offcuts: [] };
 		if (!Array.isArray(b.stock.res)) b.stock.res = [];
+		if (!Array.isArray(b.stock.historyHiddenDocs)) b.stock.historyHiddenDocs = [];
 		if (!b.stock.cells || typeof b.stock.cells !== 'object' || Array.isArray(b.stock.cells)) b.stock.cells = {};
 		b.stock.res = b.stock.res.filter(function (r) { return r && b.mats[r.mat] && r.qty > 0; });
 		return b;
@@ -159,6 +160,7 @@
 		K.fix(b); var out = [];
 		(b.sthHistory || []).forEach(function (h) { if (!type || type === 'all' || h.type === type || (type === 'replace' && /^(replace|restore|link|unlink)$/.test(h.type))) out.push(h); });
 		if (!type || type === 'all' || type === 'stock') b.stock.docs.forEach(function (d) {
+			if ((b.stock.historyHiddenDocs || []).indexOf(d.id) >= 0) return;
 			out.push({ id: 'doc-' + d.id, at: d.at || d.date || '', type: 'stock', title: (K.KIND[d.kind] || 'Движение') + ' № ' + d.no + (d.off ? ' (отменён)' : ''),
 				details: d.lines.map(function (l) { var m = b.mats[l.mat]; return (m ? m.name : '?') + ' — ' + l.qty + ' ' + (m ? m.unit : ''); }).join('; '), project: d.project || d.note || '', doc: d.id });
 		});
@@ -166,6 +168,8 @@
 		return out.filter(function (h) { return !ql || low([h.title, h.details, h.from, h.to, h.project].join(' ')).indexOf(ql) >= 0; })
 			.sort(function (a, z) { return String(z.at || '').localeCompare(String(a.at || '')); });
 	};
+	K.clearHistory = function (b) { K.fix(b); b.sthHistory = []; b.stock.historyHiddenDocs = b.stock.docs.map(function (d) { return d.id; }); };
+	K.clearWarehouse = function (b) { b.stock = { docs: [], offcuts: [], res: [], cells: {}, historyHiddenDocs: [] }; b.sthHistory = (b.sthHistory || []).filter(function (h) { return h.type !== 'stock'; }); };
 	/* Предварительная проверка списания заказа. Ничего не записывает. */
 	K.orderPreview = function (b, order, result) {
 		K.fix(b); var project = 'Заказ ' + order.no, prev = b.stock.docs.filter(function (d) { return d.kind === 'out' && !d.off && d.project === project; });

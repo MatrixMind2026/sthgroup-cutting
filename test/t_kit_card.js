@@ -1,0 +1,18 @@
+const fs = require('fs'), vm = require('vm'), assert = require('assert');
+global.BM = {}; require('../web/core/sth_est.js');
+const E = {}, UI = { esc: s => String(s) }, Es = { render() {} };
+vm.runInNewContext(fs.readFileSync(require('path').join(__dirname, '../web/ui/sth_kits.js'), 'utf8'), { BM: { est: E, mb: {} }, window: { UI, Est: Es, App: { S: {} } }, document: { addEventListener() {} }, console });
+const rows = [{ kind: 'fastener', offKey: 'a', name0: 'Толкатель', val: 7, price: 950, priceOut: 950, sum: 6650, sup: { url: 'https://example.com/a' } }, { kind: 'fastener', offKey: 'b', name0: 'Пластина', val: 7, price: 250, priceOut: 250, sum: 1750 }];
+E.sthKits({ rows, we: { sthKits: [{ id: 'k1', name: 'TIP-ON', members: [{ name: 'Толкатель', q: 1 }, { name: 'Пластина', q: 1 }] }] }, mk: o => Object.assign(o, { val: o.calc, price: 1200, priceOut: 1200, sum: 8400 }) });
+const kit = rows.find(w => w.sthKit), member = rows.find(w => w.sthKitId);
+const details = BM.sthEst.kitDetails(rows, member);
+assert.strictEqual(details.parent, kit); assert.strictEqual(details.parts.length, 2); assert.strictEqual(details.parts[0].price, 950);
+assert.strictEqual(details.parts.reduce((sum, p) => sum + p.total, 0), 8400);
+assert.strictEqual(rows.reduce((sum, w) => sum + w.sum, 0), 8400, 'стоимость частей не добавлена повторно');
+assert.strictEqual(details.parts[0].row.sup.url, 'https://example.com/a');
+assert.strictEqual(BM.sthEst.kitDetails(rows, kit).parts.length, 2);
+assert.strictEqual(member.price, 0); assert.strictEqual(member.sthReference.price, 950);
+member.sthReference.priceOut = 0;
+assert.strictEqual(BM.sthEst.kitDetails(rows, member).parts[0].price, 0, 'нулевая цена с наценкой не заменяется исходной');
+assert.strictEqual(BM.sthEst.kitDetails(rows, { kind: 'panel', offKey: 'none' }), null);
+console.log('ошибок нет: состав при выборе комплекта и части, справочные цены, ссылки и отсутствие двойного начисления');

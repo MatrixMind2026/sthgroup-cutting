@@ -81,7 +81,7 @@
 				}
 			} catch (e) { U.toast('Модель не скопирована в папку заказа: ' + e.message, { bad: true }); }
 		}
-		if (r.made) U.toast('Заказ ' + r.order.no + ' создан' + (r.order.clientId ? ' для «' + O.client(X.book, r.order.clientId).name + '»' : '') + '. Раздел «Заказы» слева.', { ms: 9000, actions: [{ label: 'Открыть заказ', run: function () { window.Drill && window.Dl ? 0 : 0; go('orders'); } }] });
+		if (r.made) U.toast('Заказ ' + r.order.no + ' создан' + (r.order.clientId ? ' для «' + O.client(X.book, r.order.clientId).name + '»' : '') + '. Раздел «Заказы» слева.', { ms: 9000, actions: [{ label: 'Открыть заказ', run: function () { X.sgFocusOrder = true; go('orders'); } }] });
 	};
 	/* ------------------------- папка заказа и модели ------------------------ */
 	/* Папка заказа: <папка заказов>\Заказы\<номер клиент>. Файл модели (.bmk) копируется туда — заказ работает с копией,
@@ -316,13 +316,13 @@
 		if ((d = t.closest('[data-o]'))) { X.cur = d.dataset.o; X.sgFocusOrder = true; X.render(); X.openModels(O.order(X.book, X.cur)).catch(U.error); return; }
 		if ((d = t.closest('[data-c]'))) { X.client = d.dataset.c; X.render(); return; }
 		if ((d = t.closest('[data-gi]'))) { var oo = O.order(X.book, d.dataset.go), ii = Number(d.dataset.gi); X.cur = oo ? oo.id : X.cur; X.openModels(oo, ii).then(function (ok) { if (ok) go('model'); }).catch(U.error); return; }
-		if ((d = t.closest('[data-go]'))) { X.cur = d.dataset.go; go('orders'); X.openModels(O.order(X.book, X.cur)).catch(U.error); return; }
+		if ((d = t.closest('[data-go]'))) { X.cur = d.dataset.go; X.sgFocusOrder = true; go('orders'); X.openModels(O.order(X.book, X.cur)).catch(U.error); return; }
 		if ((d = t.closest('[data-tb]'))) { X.tab = d.dataset.tb; X.render(); return; }
 		switch (t.id) {
-			case 'sgAllOrders': X.view = 'board'; X.render(); return;
-			case 'soNew': X.cur = O.addOrder(X.book, {}).id; X.tab = 'items'; changed(); return;
+			case 'sgAllOrders': X.sgFocusOrder = false; X.render(); return;
+			case 'soNew': X.sgFocusOrder = true; X.cur = O.addOrder(X.book, {}).id; X.tab = 'items'; changed(); return;
 			case 'scNew': newClient().then(function (c) { if (c) { X.client = c.id; changed(); } }); return;
-			case 'scOrder': X.cur = O.addOrder(X.book, { clientId: X.client }).id; X.tab = 'items'; X.save(); go('orders'); return;
+			case 'scOrder': X.sgFocusOrder = true; X.cur = O.addOrder(X.book, { clientId: X.client }).id; X.tab = 'items'; X.save(); go('orders'); return;
 			case 'scDel': (async function () { var c = O.client(X.book, X.client); if (!c) return; var n = X.book.orders.filter(function (x) { return x.clientId === c.id; }).length; if (!(await U.confirm('Удалить клиента', 'Удалить «' + c.name + '»?' + (n ? ' Его заказы (' + n + ') останутся без клиента.' : ''), 'Удалить'))) return; X.book.clients = X.book.clients.filter(function (x) { return x.id !== c.id; }); X.book.orders.forEach(function (x) { if (x.clientId === c.id) x.clientId = ''; }); X.client = ''; changed(); })(); return;
 			case 'soDel': (async function () { if (!o || !(await U.confirm('Удалить заказ', 'Удалить заказ ' + o.no + '? Файлы изделий не удаляются.', 'Удалить'))) return; X.book.orders = X.book.orders.filter(function (x) { return x.id !== o.id; }); X.cur = ''; changed(); })(); return;
 			case 'soAddItem': if (o) addItem(o); return;

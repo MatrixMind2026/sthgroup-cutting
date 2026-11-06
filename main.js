@@ -4,12 +4,13 @@
    Принудительная проверка — кнопка «Проверить обновления» в настройках: окно зовёт /api/upd/check,
    сервер передаёт вызов сюда (hooks.updCheck), а проверяет и качает electron-updater. */
 'use strict';
-const { app, BrowserWindow, dialog, shell, Menu, session, safeStorage } = require('electron');
+const { app, BrowserWindow, dialog, shell, Menu, session, safeStorage, screen } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const server = require('./server');
 const backupRoutes = require('./sth_backup'); // STHGroup 2.0
 const crmRoutes = require('./sth_crm'); // STHGroup 2.0
+const windowState = require('./sth_window_state'); // STHGroup: положение, размер и состояние окна
 
 const APP_NAME = 'STHGroup';
 let win = null, srv = null;
@@ -191,11 +192,16 @@ app.on('web-contents-created', function (e, contents) {
 
 function createWindow(url) {
   Menu.setApplicationMenu(null);
+  const stateFile = path.join(app.getPath('userData'), 'window-state.json');
+  const previous = windowState.read(stateFile);
+  const placement = windowState.restore(previous, screen ? screen.getAllDisplays() : [], screen && screen.getPrimaryDisplay());
   win = new BrowserWindow({
-    width: 1440, height: 900, minWidth: 1000, minHeight: 640, title: APP_NAME, backgroundColor: '#f3f1ec',
+    ...placement.bounds, minWidth: placement.minWidth, minHeight: placement.minHeight, show: false, title: APP_NAME, backgroundColor: '#202327',
     icon: path.join(__dirname, 'assets', 'icon.png'),
     webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, webviewTag: true }   // STHGroup: webview — CRM внутри программы
   });
+  windowState.track(win, stateFile, screen, previous);
+  win.once('ready-to-show', function () { if (placement.maximized) win.maximize(); if (placement.fullscreen) win.setFullScreen(true); win.show(); });
   const origin = new URL(url).origin;
   /* STHGroup: встроенный сайт (CRM) — только http(s), без доступа к компьютеру, своё хранилище входа */
   win.webContents.on('will-attach-webview', function (e, wp, params) {

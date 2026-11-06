@@ -361,11 +361,12 @@
 			lay.sheets.forEach(function (sh) { if (sh.tree && BM.cut.wasteRects) BM.cut.wasteRects(sh.tree).forEach(function (r) { offcuts.push({ mat: inf.id, L: r.w, W: r.h, n: 1 }); }); });
 		});
 		(R ? R.rows : []).forEach(function (w) {
-			if (w.kind === 'panel' || w.off || w.info || !(w.val > 0)) return;
+			if (['linear', 'edge', 'fastener', 'profile'].indexOf(w.kind) < 0 || w.off || w.info || w.card || w.own || !(w.val > 0) || (BM.sthEst && !BM.sthEst.active(w))) return;
 			var inf = K0.rowInfo(w);
-			if (!inf || seen[inf.id]) return;
+			if (!inf) { miss.push(w.title || w.label || 'Позиция сметы'); return; } // STHGroup: неполное обеспечение нельзя выдавать за полное
+			if (seen[inf.id]) return;
 			var a = K0.unitOf(inf.unit), u = K0.unitOf(w.unit), q = w.val;
-			if (a !== u && u && a) { if (a === 'лист' && u === 'м2' && inf.L > 0 && inf.W > 0) q = Math.ceil(q / (inf.L * inf.W / 1e6)); else return; }
+			if (a !== u && u && a) { if (a === 'лист' && u === 'м2' && inf.L > 0 && inf.W > 0) q = Math.ceil(q / (inf.L * inf.W / 1e6)); else { miss.push((w.title || w.label || inf.name) + ' (разные единицы)'); return; } }
 			need.push({ mat: inf.id, qty: q, title: w.title });
 		});
 		return { need: need, offcuts: offcuts, miss: miss };
@@ -389,6 +390,7 @@
 		}
 		return { need: Object.keys(need).map(function (k) { return { mat: k, qty: Math.round(need[k] * 1e4) / 1e4 }; }), offcuts: offcuts, used: used, miss: miss, bad: bad };
 	}
+	X.orderNeed = orderNeed; // STHGroup: та же потребность для вкладок обеспечения и задания цеху
 	async function pickOrder(title, cur) {
 		var H = window.STHO, bk = H && await H.load(); if (!bk || !bk.orders.length) { U.toast('Заказов нет.'); return null; }
 		if (cur) return cur;

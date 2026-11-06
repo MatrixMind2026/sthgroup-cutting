@@ -1,0 +1,23 @@
+/* STHGroup: согласованный вариант Б — перестановка деталей на листе. Только CSS,
+   без таймеров и вмешательства в вычисление раскроя. */
+#busy{width:280px;min-width:0;max-width:calc(100% - 24px);padding:20px;gap:14px;border-radius:20px;background:linear-gradient(145deg,#ffffff0c,transparent),color-mix(in srgb,var(--panel) 94%,transparent);border-color:var(--sg-edge,var(--line));backdrop-filter:var(--sg-blur,blur(18px));-webkit-backdrop-filter:var(--sg-blur,blur(18px));box-shadow:var(--sg-shadow,var(--shadow))}
+#busy[hidden]{display:none!important}
+#busy .sthCutBrand{align-self:flex-start;font:850 23px/1.2 'Segoe UI',Arial,sans-serif;letter-spacing:-.8px;color:var(--text)}
+#busy .sthCutBrand b{color:var(--accent);font-weight:850}
+#busy .sthCutSheet{display:block;width:100%;height:auto;overflow:visible}
+#busy .sthCutBoard{fill:color-mix(in srgb,var(--text) 3%,transparent);stroke:color-mix(in srgb,var(--accent) 35%,transparent);stroke-width:1}
+#busy .sthCutPiece rect{fill:color-mix(in srgb,var(--accent) 14%,transparent);stroke:color-mix(in srgb,var(--accent) 68%,var(--line));stroke-width:1}
+#busy .sthCutPiece text{fill:var(--text);text-anchor:middle;font:10px 'Segoe UI',Arial,sans-serif;opacity:.7}
+#busy .sthCutPiece1{animation:sthCutSwap1 4.8s cubic-bezier(.4,0,.2,1) infinite}
+#busy .sthCutPiece2{animation:sthCutSwap2 4.8s cubic-bezier(.4,0,.2,1) infinite}
+#busy .sthCutPiece3,#busy .sthCutPiece4{animation:sthCutGlow 4.8s ease-in-out infinite}
+#busy .bt{width:100%;font-size:12px;justify-content:space-between;white-space:normal;align-items:center}
+#busy .bt span:last-child{color:var(--accent);white-space:nowrap}
+#busy .bb{background:color-mix(in srgb,var(--text) 12%,transparent)}
+#busy .bb i{background:var(--accent)}
+#busy[hidden] .sthCutPiece,#busy[data-running="0"] .sthCutPiece{animation-play-state:paused}
+html.noanim #busy .sthCutPiece{animation:none}
+@keyframes sthCutSwap1{0%,12%,88%,100%{transform:translate(0,0)}26%{transform:translate(0,-5px)}42%,64%{transform:translate(69px,0)}78%{transform:translate(69px,-5px)}}
+@keyframes sthCutSwap2{0%,12%,88%,100%{transform:translate(0,0)}26%{transform:translate(0,5px)}42%,64%{transform:translate(-69px,0)}78%{transform:translate(-69px,5px)}}
+@keyframes sthCutGlow{0%,12%,88%,100%{opacity:.65}42%,64%{opacity:1}}
+@media(prefers-reduced-motion:reduce){#busy .sthCutPiece{animation:none}#busy .bb i{transition:none}}

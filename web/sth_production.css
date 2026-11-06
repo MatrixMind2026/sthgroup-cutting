@@ -1,0 +1,33 @@
+/* STHGroup: производственные вкладки, в том же оформлении центра заказа. */
+#orders .spPanel{border:1px solid var(--sg-edge,var(--line));border-radius:20px;background:var(--sg-glass,var(--panel));padding:22px;margin-bottom:16px;min-width:0;backdrop-filter:var(--sg-blur,none)}
+#orders .spPanel h2,#orders .spPanel h3,#orders .soS h2{margin:0 0 16px;line-height:1.25}
+#orders .spPanel h2{font-size:24px}
+#orders .spTable{width:100%;table-layout:fixed;border-collapse:collapse;font-variant-numeric:tabular-nums}
+#orders .spTable th,#orders .spTable td{text-align:left;padding:14px 10px;vertical-align:top;overflow-wrap:anywhere;border-bottom:1px solid var(--line2,var(--line))}
+#orders .spTable th{font-weight:500;color:var(--mute)}
+#orders .spTable th:first-child{width:32%}
+#orders .spTable tr.spOn{background:var(--sel);outline:1px solid var(--accent);outline-offset:-1px}
+#orders .spTable button.link{text-align:left;width:100%;white-space:normal;color:var(--text)}
+#orders .spTable small{display:block;margin-top:5px;color:var(--mute)}
+#orders .spBadge{display:inline-block;border:1px solid var(--line);border-radius:16px;padding:4px 9px;font-size:12px}
+#orders .spBadge.done{color:#70cf9c}#orders .spBadge.work{color:var(--accent)}
+#orders .spProgress{width:100%;height:12px;margin:12px 0 18px;accent-color:var(--accent)}
+:is(#orders,.modal) .spForm{display:grid;gap:14px;margin:18px 0}
+:is(#orders,.modal) .spForm label{display:grid;gap:6px;min-width:0}
+:is(#orders,.modal) .spForm label.spCheck{display:flex;align-items:center;gap:8px}
+:is(#orders,.modal) .spForm input:not([type=checkbox]),:is(#orders,.modal) .spForm select,:is(#orders,.modal) .spForm textarea{width:100%;min-width:0;box-sizing:border-box}
+#orders .spActions{display:flex;flex-wrap:wrap;gap:10px;margin:16px 0}
+#orders .spTotals{display:flex;flex-wrap:wrap;gap:20px;margin-bottom:18px}
+#orders .spTotals span{display:grid;gap:6px;min-width:130px}
+#orders .spTotals b{font-size:21px}
+#orders .spHistory{list-style:none;padding:0;margin:0}
+#orders .spHistory li{display:flex;gap:12px;justify-content:space-between;padding:12px 0;border-bottom:1px solid var(--line2,var(--line))}
+#orders .spHistory time{color:var(--mute);font-size:12px;white-space:nowrap}
+#orders .spCompare{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin:16px 0}
+#orders .spCompare>div{min-width:0;overflow-wrap:anywhere}
+#orders .spCompare svg{display:block;width:100%;height:100px;color:var(--accent);margin:10px 0}
+#orders .spEmpty{padding:22px 0;color:var(--mute);line-height:1.6}
+#orders .soTabs{flex-wrap:wrap}
+#orders .soTabs button{white-space:normal}
+@media(max-width:1100px){#orders .spPanel{padding:16px}#orders .spTable th,#orders .spTable td{padding:12px 6px;font-size:12px}html[data-sth-style="glass"] #orders .soS{width:260px;padding:16px}}
+@media(max-width:760px){#orders .spTable th,#orders .spTable td{font-size:11px;padding:10px 4px}#orders .spPanel h2{font-size:20px}#orders .spHistory li{display:block}}

@@ -34,6 +34,14 @@
 			catch (e) { U.toast('Заказы не сохранены: ' + e.message, { bad: true }); }
 		}, now ? 0 : 400);
 	};
+	/* STHGroup: производственные действия дожидаются записи книги и показывают ошибку. */
+	X.flush = async function () {
+		clearTimeout(saveT);
+		if (!X.book || !X.path) throw new Error('Нет файла книги заказов');
+		await U.api.mkdir(U.dirOf(X.path));
+		await U.api.write(X.path, JSON.stringify(X.book));
+		var st = await U.api.stat(X.path); X.mtime = st.mtime || 0;
+	};
 	function changed() { X.save(); X.render(); }
 
 	/* --------------------------- сводка изделия ----------------------------- */
@@ -47,12 +55,13 @@
 		var o = O.byItem(X.book, s.path); if (!o) return null;
 		try { var sn = O.snapshot(s.st, buildR(s.st), X.book.cat, P.modelName(s.st.model), s.path); O.putItem(o, s.path, sn); return o; } catch (e) { console.warn(e); return null; }
 	};
-	X.snapFile = async function (path) {
+	X.snapFile = async function (path, persist) {
 		var s = S();
 		if (s.path === path && s.st) { var o = X.snapOpen(); return o ? O.putItem(o, path, null).snap : null; }
 		var doc = JSON.parse(await U.api.readText(path));
 		var st = P.build(doc, s.set);
 		st.mats.forEach(function (m) { if (m.cfg.on && (!st.work.layout[m.key] || P.isStale(st, m))) P.nest(st, m.key, { quality: 0 }); });
+		if (persist) await U.api.write(path, JSON.stringify(st.doc)); // STHGroup: принятая версия хранится с новым раскроем, включая архив .bmk
 		return O.snapshot(st, buildR(st), X.book.cat, P.modelName(st.model), path);
 	};
 
@@ -87,7 +96,12 @@
 	/* Папка заказа: <папка заказов>\Заказы\<номер клиент>. Файл модели (.bmk) копируется туда — заказ работает с копией,
 	   поэтому старый заказ открывается со своей моделью, даже если исходный файл перенесли или выгрузили заново. */
 	X.orderDir = function (o) { if (!o.dir) o.dir = U.join(U.join(X.folder(), 'Заказы'), O.dirName(X.book, o)); return o.dir; };
-	function inDir(p, dir) { return U.dirOf(p).toLowerCase().replace(/[\\/]+$/, '') === String(dir).toLowerCase().replace(/[\\/]+$/, ''); }
+	/* STHGroup: подпапки версий уже принадлежат заказу; не копировать их поверх старой модели. */
+	function inDir(p, dir) {
+		var parent = U.dirOf(p).replace(/\\/g, '/').toLowerCase().replace(/\/+$/, '');
+		var root = String(dir).replace(/\\/g, '/').toLowerCase().replace(/\/+$/, '');
+		return parent === root || parent.indexOf(root + '/') === 0;
+	}
 	async function copyFile(src, dst) {
 		var r = await fetch('/api/sth/copy', { method: 'POST', headers: { 'X-BM-Token': new URLSearchParams(location.search).get('t') || '', 'Content-Type': 'application/json' }, body: JSON.stringify({ src: src, dst: dst }) });
 		var j = await r.json(); if (!r.ok || j.error) throw new Error(j.error || 'файл не скопирован');
@@ -222,6 +236,7 @@
 			'<ol class="sgFlow" aria-label="Этапы заказа">' + O.stages(X.book).map(function (s) { return '<li' + (s[0] === o.status ? ' aria-current="step"' : '') + '>' + esc(s[1]) + '</li>'; }).join('') + '</ol></div>';
 	};
 	X.orderCenterHtml = function (o, q) {
+		if (X.productionHtml && X.productionTabs.some(function (t) { return t[0] === X.tab; })) return X.productionHtml(o, q);
 		if (X.tab === 'items') return '<details class="sgSection" open><summary>Изделия заказа</summary><div class="sgSectionBody">' + itemsHtml(o) + '</div></details>';
 		if (X.tab === 'pay') return '<details class="sgSection" open><summary>Оплаты заказа</summary><div class="sgSectionBody">' + payHtml(o, q) + '</div></details>';
 		var products = o.items.map(function (it, i) {
@@ -246,12 +261,13 @@
 		var q = O.calc(b, o), c = O.client(b, o.clientId);
 		var clients = '<option value="">— клиент —</option>' + b.clients.map(function (x) { return '<option value="' + x.id + '"' + (x.id === o.clientId ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '<option value="__new">＋ новый клиент…</option>';
 		var tabs = [['calc', 'Расчёт'], ['items', 'Изделия (' + o.items.length + ')'], ['pay', 'Оплаты' + (o.payments.length ? ' (' + o.payments.length + ')' : '')]];
+		if (X.productionTabs) tabs = tabs.concat(X.productionTabs); // STHGroup: производственные вкладки заказа
 		var center = '<section class="soC" data-sg-order="' + esc(o.id) + '" data-sg-tab="' + esc(X.tab) + '">' + X.orderHeroHtml(o, c) + '<details class="sgOrderMeta"><summary>Данные заказа · ' + esc(O.statusName(o.status, b)) + '</summary><div class="sgOrderMetaBody"><div class="soHead"><input id="soNo" class="soNo" aria-label="Номер заказа" value="' + esc(o.no) + '"><select id="soCl" aria-label="Клиент">' + clients + '</select><input type="date" id="soDate" aria-label="Дата заказа" value="' + esc(o.date) + '"><select id="soStat" aria-label="Статус заказа">' + opt(O.stages(X.book), o.status) + '</select><button class="icon" id="soDel" title="Удалить заказ">✕</button></div>' +
 			'<div class="mute sm">' + esc(c ? [c.phone, c.email].filter(Boolean).join(' · ') : '') + '</div>' +
 			'<input id="soNote" class="soNote" aria-label="Комментарий к заказу" placeholder="Комментарий к заказу" value="' + esc(o.note || '') + '"></div></details>' +
 			'<div class="tabs soTabs">' + tabs.map(function (t) { return '<button data-tb="' + t[0] + '"' + (X.tab === t[0] ? ' class="on"' : '') + '>' + t[1] + '</button>'; }).join('') + '</div>' +
 			'<div class="soBody">' + X.orderCenterHtml(o, q) + '</div></section>';
-		host.innerHTML = left + center + '<aside class="soS">' + sideHtml(o, q) + '</aside>';
+		host.innerHTML = left + center + '<aside class="soS">' + (X.productionSideHtml && X.productionTabs.some(function (t) { return t[0] === X.tab; }) ? X.productionSideHtml(o, q) : sideHtml(o, q)) + '</aside>';
 		X.dnd();
 	};
 	/* перетаскивание: строки расчёта (порядок — в заказе, он же в КП), изделия; столбцы таблиц */

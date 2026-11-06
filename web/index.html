@@ -10,6 +10,8 @@
 <link rel="stylesheet" href="sth_stock_center.css"><!-- STHGroup: склад под заказы и деловые остатки -->
 <link rel="stylesheet" href="sth_ui_polish.css"><!-- STHGroup: столбцы, комплекты и навигация -->
 <link rel="stylesheet" href="sth_pane_fix.css"><!-- STHGroup: зазоры и полупрозрачные строки -->
+<link rel="stylesheet" href="sth_cut_busy.css"><!-- STHGroup: анимация подбора раскладки -->
+<link rel="stylesheet" href="sth_production.css"><!-- STHGroup: производство в заказе -->
 </head>
 <body data-sec="today">
 <div id="ghost" hidden></div>
@@ -95,7 +97,8 @@
 				</div></div>
 			</div>
 			<div id="mapWrap"><div id="map"></div><div id="tiles"></div><div id="mapMsg"></div></div>
-			<div id="busy" hidden><svg class="frame" viewBox="0 0 64 64" aria-hidden="true"><path class="f-base" d="M32 5 L55.5 18.5 V45.5 L32 59 L8.5 45.5 V18.5 Z M32 32 V59 M32 32 L8.5 18.5 M32 32 L55.5 18.5"/><path class="f-fire f1" pathLength="100" d="M8.5 45.5 V18.5 L32 5 L55.5 18.5 V45.5 L32 59 Z"/><path class="f-fire f2" pathLength="100" d="M32 59 V32 L8.5 18.5"/><path class="f-fire f3" pathLength="100" d="M32 59 V32 L55.5 18.5"/></svg><div class="bt"><span id="busyText">Идёт раскладка…</span><span id="busyPc"></span></div><div class="bb"><i id="busyBar"></i></div></div>
+			<!-- STHGroup: свой логотип и перестановка деталей вместо куба BazisReborn. -->
+			<div id="busy" hidden role="status"><div class="sthCutBrand" aria-label="STHGroup"><span>STH</span><b>Group</b></div><svg class="sthCutSheet" viewBox="0 0 220 116" aria-hidden="true"><rect class="sthCutBoard" x="1" y="1" width="218" height="114" rx="8"/><g class="sthCutPiece sthCutPiece1"><rect x="10" y="10" width="63" height="56" rx="3"/><text x="41" y="42">01</text></g><g class="sthCutPiece sthCutPiece2"><rect x="79" y="10" width="63" height="56" rx="3"/><text x="110" y="42">02</text></g><g class="sthCutPiece sthCutPiece3"><rect x="148" y="10" width="62" height="96" rx="3"/><text x="179" y="61">03</text></g><g class="sthCutPiece sthCutPiece4"><rect x="10" y="72" width="132" height="34" rx="3"/><text x="76" y="93">04</text></g></svg><div class="bt"><span id="busyText">Подбираем раскладку…</span><span id="busyPc" aria-live="off"></span></div><div class="bb" role="progressbar" aria-label="Расчёт раскроя" aria-valuemin="0" aria-valuemax="100"><i id="busyBar"></i></div></div>
 		</section>
 		<aside id="right" data-pane="right" data-side="r" data-min="240">
 			<div class="sec"><span id="listTitle">Детали листа</span>
@@ -308,5 +311,8 @@
 <script src="core/sth_order_check.js"></script><!-- STHGroup: проверка заказа перед КП -->
 <script src="ui/sth_order_check.js"></script>
 <script src="ui/sth_glass.js"></script><!-- STHGroup: состояние нового центра заказа -->
+
+<script src="core/sth_production.js"></script>
+<script src="ui/sth_production.js"></script>
 </body>
 </html>

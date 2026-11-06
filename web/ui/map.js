@@ -95,7 +95,7 @@
 		last = { mat: mat.key, si: S.si, px: px, keys: keys };
 	};
 
-	/* Знак-локатор с процентом, пока раскладывается выбранный материал. */
+	/* STHGroup: карта с перестановкой деталей и настоящим процентом расчёта. */
 	M.busy = function () {
 		var A = window.App, S = A.S, el = $('busy'), mat = S.st ? A.mat() : null, job = mat ? S.jobs[mat.key] : null;
 		if (!job) { el.hidden = true; return; }
@@ -106,10 +106,13 @@
 			map0.innerHTML = D.sheet(S.st, mat, bl, { px: fitPx(bl), uid: 'm', offcuts: 0, font: 'Segoe UI, Arial, sans-serif' });
 			$('mapMsg').textContent = '';
 		}
-		var run = job === S.running, pc = Math.round((job.progress || 0) * 100);
-		$('busyText').textContent = run ? 'Идёт раскладка…' : 'В очереди на раскладку…';
+		var run = job === S.running, pc = Math.max(0, Math.min(100, Math.round((Number(job.progress) || 0) * 100)));
+		$('busyText').textContent = run ? 'Подбираем раскладку…' : 'В очереди на раскладку…';
 		$('busyPc').textContent = run ? pc + ' %' : '';
-		$('busyBar').style.width = (run ? Math.max(3, pc) : 0) + '%';
+		$('busyBar').style.width = (run ? pc : 0) + '%';
+		el.dataset.running = run ? '1' : '0';
+		var bar = el.querySelector('[role="progressbar"]');
+		if (bar) { if (run) bar.setAttribute('aria-valuenow', String(pc)); else bar.removeAttribute('aria-valuenow'); bar.setAttribute('aria-valuetext', run ? pc + ' %' : 'Ожидает очереди'); }
 		el.hidden = false;
 	};
 

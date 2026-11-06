@@ -50,7 +50,7 @@
 			if (!k || w.own || K.rowInfo(w)) return;
 			var name = w.kind === 'panel' ? w.skey : (w.skey || w.title), key = w.kind + '|' + String(name).toLowerCase();
 			if (!name || seen[key]) return; seen[key] = 1;
-			var it = { kind: w.kind, name: name, art: w.art || w.art0 || '', unit: k.unit === 'шт' ? bmkUnit(w.unit) : k.unit, th: 0, L: 0, W: 0, tex: 0, plen: w.plen || 0 };
+			var it = { row: w, kind: w.kind, name: name, art: w.art || w.art0 || '', unit: k.unit === 'шт' ? bmkUnit(w.unit) : k.unit, th: 0, L: 0, W: 0, tex: 0, plen: w.plen || 0 };
 			if (w.kind === 'panel') {
 				var th0 = /\|\s*([\d.]+)\s*$/.exec(w.priceId || ''), m = s.st.mats.filter(function (x) { return x.key === w.akey; })[0] || s.st.mats.filter(function (x) { return x.name === w.skey && (!th0 || String(x.th) === th0[1]); })[0];
 				if (m) { it.th = m.th || 0; var f = m.cfg && m.cfg.fmts && m.cfg.fmts[m.cfg.fmt || 0]; if (f) { it.L = f[0]; it.W = f[1]; } it.tex = m.cfg && m.cfg.grain ? 1 : 0; if (it.art === 'нет') it.art = ''; }
@@ -62,19 +62,19 @@
 	}
 	function sigOf(list) { return list.map(function (x) { return x.kind + ':' + x.name; }).sort().join('\n'); }
 	/* все группы базы деревом (основные и подгруппы, с отступом); выбрана cur, иначе «Из моделей: …» или первая группа своего типа */
-	function groupOpts(b, t, cur) {
+	function groupOpts(b, t, cur, choose) {
 		var out = [], kids = {};
 		b.groups.forEach(function (g) { (kids[g.parent || ''] = kids[g.parent || ''] || []).push(g); });
-		if (!cur || !MB.group(b, cur)) { var d = b.groups.filter(function (g) { return g.type === t && g.name === KINDS0[t]; })[0] || b.groups.filter(function (g) { return g.type === t; })[0]; cur = d ? d.id : ''; }
+		if (!cur || !MB.group(b, cur)) { var d = b.groups.filter(function (g) { return g.type === t && g.name === KINDS0[t]; })[0] || (!choose && b.groups.filter(function (g) { return g.type === t; })[0]); cur = d ? d.id : ''; }
 		var seen = {};
 		function one(g, depth) {
 			if (seen[g.id]) return; seen[g.id] = 1;
-			out.push('<option value="' + g.id + '"' + (g.id === cur ? ' selected' : '') + '>' + new Array(depth + 1).join('\u2003') + esc(g.name) + '</option>');
+			out.push('<option value="' + g.id + '"' + (g.id === cur && !choose ? ' selected' : '') + '>' + new Array(depth + 1).join('\u2003') + esc(g.name) + '</option>');
 			(kids[g.id] || []).forEach(function (c) { one(c, depth + 1); });
 		}
 		(kids[''] || []).forEach(function (g) { one(g, 0); });
 		b.groups.forEach(function (g) { one(g, 0); });      /* группа без родителя в базе — в корень */
-		return out.join('') + '<option value=""' + (cur ? '' : ' selected') + '>＋ новая «' + esc(KINDS0[t]) + '»</option>';
+		return (choose ? '<option value="__choose" selected>Выберите группу…</option>' : '') + out.join('') + '<option value=""' + (!choose && !cur ? ' selected' : '') + '>＋ новая «' + esc(KINDS0[t]) + '»</option>';
 	}
 	window.STH.groupOpts = groupOpts;
 	var KINDS0 = { sheet: 'Из моделей: листовые', edge: 'Из моделей: кромка', fit: 'Из моделей: фурнитура', other: 'Из моделей: прочее' };
@@ -94,35 +94,42 @@
 		if (!force && seenMap[s.path] === sig) return;
 		var b = MB.cur, grp = {};
 		Object.keys(KINDS0).forEach(function (t) { grp[t] = defGroup(b, t); });
+		var labels = {}, choices = Object.keys(b.mats).map(function (id) { var m = b.mats[id], group = MB.group(b, m.group), supplier = MB.supplier(b, m.sup), label = m.name + (m.art ? ' · ' + m.art : '') + (m.th ? ' · ' + m.th + ' мм' : '') + ' · ' + m.unit + (group ? ' · ' + group.name : '') + (supplier ? ' · ' + supplier.name : ''); if (labels[label]) return ''; labels[label] = id; return '<option value="' + esc(label) + '">'; }).join('');
 		var rows = list.map(function (x, i) {
 			var k = KINDS[x.kind], size = x.kind === 'panel' ? [x.th ? x.th + ' мм' : '', x.L && x.W ? x.L + '×' + x.W : ''].filter(Boolean).join(', ') : (x.L ? 'L ' + x.L : '');
 			return '<tr data-i="' + i + '"><td><input type="checkbox" class="mk" checked></td><td class="mute">' + k.what + '</td>' +
 				'<td><input type="text" class="nm" value="' + esc(x.name) + '" style="width:100%"></td><td><input type="text" class="ar" value="' + esc(x.art) + '" style="width:110px"></td>' +
 				'<td class="mute">' + esc(x.unit) + (size ? ' · ' + esc(size) : '') + '</td>' +
-				'<td><select class="gr" style="max-width:220px">' + groupOpts(b, k.t, grp[k.t]) + '</select></td></tr>';
+				'<td><select class="smMode"><option value="link">Сопоставить</option><option value="new">Записать новый</option></select><input class="smExisting" list="smExistingList" placeholder="Найти существующий материал" aria-label="Материал в базе"><select class="gr" hidden style="max-width:220px">' + groupOpts(b, k.t, grp[k.t], true) + '</select></td></tr>';
 		}).join('');
 		var res = await U.modal({ title: 'Нет в базе материалов: ' + list.length, width: 1000, cls: 'sthMiss',
-			body: '<p>Эти материалы и комплектующие есть в модели, но не найдены в базе. В смете они уже стоят с данными модели. Отметьте, что записать в базу, — дальше смета будет брать из базы цену, поставщика и формат листа.</p>' +
-				'<div style="max-height:52vh;overflow:auto"><table class="grid" style="width:100%"><thead><tr><th><input type="checkbox" id="smAll" checked></th><th>Вид</th><th>Наименование</th><th>Артикул</th><th>Ед. и размер</th><th>Группа в базе</th></tr></thead><tbody>' + rows + '</tbody></table></div>',
-			buttons: [{ label: 'Не сейчас', value: null }, { label: 'Записать в базу', primary: true, run: function (m) {
+			body: '<p>Эти материалы и комплектующие есть в модели, но не найдены в базе. В смете они уже стоят с данными модели. Для каждой строки выберите сопоставление с существующим материалом или новую запись. Сопоставление сохраняет название и количество модели и не создаёт дубль.</p>' +
+				'<div style="max-height:52vh;overflow:auto"><table class="grid" style="width:100%"><thead><tr><th><input type="checkbox" id="smAll" checked></th><th>Вид</th><th>Наименование</th><th>Артикул</th><th>Ед. и размер</th><th>Действие и материал / группа</th></tr></thead><tbody>' + rows + '</tbody></table></div><datalist id="smExistingList">' + choices + '</datalist>',
+			buttons: [{ label: 'Не сейчас', value: null }, { label: 'Применить', primary: true, run: function (m) {
 				var pick = [];
 				m.querySelectorAll('tbody tr').forEach(function (tr) {
 					if (!tr.querySelector('.mk').checked) return;
 					var x = list[Number(tr.dataset.i)];
-					pick.push({ x: x, name: tr.querySelector('.nm').value.trim() || x.name, art: tr.querySelector('.ar').value.trim(), group: tr.querySelector('.gr').value });
+					pick.push({ x: x, name: tr.querySelector('.nm').value.trim() || x.name, art: tr.querySelector('.ar').value.trim(), group: tr.querySelector('.gr').value, mode: tr.querySelector('.smMode').value, mat: labels[tr.querySelector('.smExisting').value] || '' });
 				});
+				if (pick.some(function (p) { return p.mode === 'link' ? !p.mat : p.group === '__choose'; })) { U.toast('Выберите материал для сопоставления или группу для каждой новой записи.', { bad: true }); return false; }
 				return pick;
 			} }],
 			onOpen: function (m) {
 				var all = m.querySelector('#smAll');
+				m.addEventListener('change', function (e) { if (!e.target.matches('.smMode')) return; var tr = e.target.closest('tr'), link = e.target.value === 'link'; tr.querySelector('.gr').hidden = link; tr.querySelector('.smExisting').hidden = !link; });
 				all.onchange = function () { m.querySelectorAll('.mk').forEach(function (c) { c.checked = all.checked; }); };
 			} });
 		seenMap[s.path] = sig; s.set.sthMiss = seenMap; A.saveSettings();
 		if (!res || !res.length) return;
 		await K.refresh(); b = MB.cur;
-		var made = {}, n = 0, errs = [];
+		var made = {}, n = 0, linked = 0, errs = [];
 		res.forEach(function (p) {
 			var k = KINDS[p.x.kind], gid = p.group;
+			if (p.mode === 'link') { if (b.mats[p.mat]) { window.STH.linkSet(p.x.row, p.mat); linked++; } else errs.push(p.x.name + ': материал больше не существует'); return; }
+			/* STHGroup: повторно проверяем имя, чтобы не записать дубль после сопоставления. */
+			var duplicate = Object.keys(b.mats).some(function (id) { return String(b.mats[id].name).trim().toLowerCase() === p.name.trim().toLowerCase(); });
+			if (duplicate) { errs.push(p.name + ': уже есть в базе, используйте сопоставление'); return; }
 			if (!gid || !MB.group(b, gid)) {
 				if (!made[k.t]) { var ex = b.groups.filter(function (g) { return g.type === k.t && g.name === KINDS0[k.t]; })[0]; made[k.t] = ex ? ex.id : MB.addGroup(b, '', KINDS0[k.t], k.t).id; }
 				gid = made[k.t];
@@ -138,7 +145,7 @@
 		await K.changed();
 		count = missing().length; drawChip();
 		if (S().section === 'est' && window.Est) window.Est.render();
-		U.toast('Записано в базу материалов: ' + n + '. Цены впишите в базе («База» слева) — смета возьмёт их сама.' + (errs.length ? ' Не записано: ' + errs.slice(0, 3).join('; ') : ''), { ms: 14000, actions: [{ label: 'Открыть базу', run: function () { K.open(); } }] });
+		U.toast('Сопоставлено: ' + linked + '. Записано новых: ' + n + '. Цены впишите в базе («База» слева) — смета возьмёт их сама.' + (errs.length ? ' Не записано: ' + errs.slice(0, 3).join('; ') : ''), { ms: 14000, actions: [{ label: 'Открыть базу', run: function () { K.open(); } }] });
 	}
 	function drawChip() {
 		var host = document.getElementById('eChips'); if (!host) return;

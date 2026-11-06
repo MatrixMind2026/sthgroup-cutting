@@ -31,6 +31,7 @@
 		/* STHGroup 2.0: CRM — пароль отправляется только в локальную серверную часть программы. */
 		crm: {
 			state: function () { return call('GET', '/api/sth/crm/state'); },
+			settings: function (o) { return call('POST', '/api/sth/crm/settings', o); }, // STHGroup: без входа
 			connect: function (o) { return call('POST', '/api/sth/crm/connect', o); },
 			test: function () { return call('POST', '/api/sth/crm/test', {}); },
 			sync: function () { return call('POST', '/api/sth/crm/sync', {}); },

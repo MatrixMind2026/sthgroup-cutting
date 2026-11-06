@@ -15,6 +15,19 @@
 		if (head.cells.length !== 10) return;
 		Array.from(table.rows).forEach(function (tr) {
 			if (tr.cells.length === 10) Array.from(tr.cells).forEach(function (cell, i) { cell.dataset.ci = i; });
+			else if (tr.matches('.ghdr,.gtop,.gsub')) {
+				/* STHGroup: итоги разделов привязаны к настоящей колонке суммы. */
+				var old = Array.from(tr.cells).filter(function (c) { return !c.classList.contains('sthSelCell'); }), title = old[0], sum = old[1];
+				if (tr.classList.contains('gsub')) { title = old[1] || old[0]; sum = null; }
+				var content = title ? Array.from(title.childNodes) : [], amount = sum ? Array.from(sum.childNodes) : [];
+				tr.replaceChildren();
+				ids.forEach(function (id) { var cell = document.createElement('td'); cell.dataset.ci = id;
+					if (visible.indexOf(id) < 0) cell.className = 'sthDetailCol';
+					if (id === 3) content.forEach(function (n) { cell.appendChild(n); });
+					if (id === 8) { cell.classList.add('sthSectionSum'); amount.forEach(function (n) { cell.appendChild(n); }); }
+					tr.appendChild(cell);
+				});
+			}
 			else if (!tr.classList.contains('sthDetail')) {
 				var td = document.createElement('td'), wrap = document.createElement('div'); wrap.className = 'sthSpanLine'; td.colSpan = 10;
 				Array.from(tr.cells).forEach(function (cell) { var box = document.createElement('span'); while (cell.firstChild) box.appendChild(cell.firstChild); if (box.childNodes.length) wrap.appendChild(box); });

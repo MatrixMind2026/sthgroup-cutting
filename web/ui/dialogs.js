@@ -252,7 +252,7 @@
 				'<label>Запас на хлыст профиля, мм</label><div><input type="text" class="s" id="eProfRes" value="' + nv(ec.profReserve) + '"> <span class="mute">— столько с каждого хлыста уходит в отход</span></div>' +
 				'<label>Пропил профиля, мм</label><div><input type="text" class="s" id="eProfKerf" value="' + nv(ec.profKerf) + '"></div></div>' +
 				'<h4>Что считать</h4><div class="form">' +
-				'<label>Разделы</label><div><label class="chk"><input type="checkbox" id="eShowCuts"' + chk(ec.showCuts) + '> пазы и выемки</label>&emsp;<label class="chk"><input type="checkbox" id="eShowHoles"' + chk(ec.showHoles) + '> отверстия</label>&emsp;<label class="chk"><input type="checkbox" id="eShowFast"' + chk(ec.showFast) + '> фурнитура</label>&emsp;<label class="chk"><input type="checkbox" id="eShowProf"' + chk(ec.showProf) + '> профили</label></div>' +
+				(BM.est.noWorks ? '' : '<label>Разделы</label><div><label class="chk"><input type="checkbox" id="eShowCuts"' + chk(ec.showCuts) + '> пазы и выемки</label>&emsp;<label class="chk"><input type="checkbox" id="eShowHoles"' + chk(ec.showHoles) + '> отверстия</label>&emsp;<label class="chk"><input type="checkbox" id="eShowFast"' + chk(ec.showFast) + '> фурнитура</label>&emsp;<label class="chk"><input type="checkbox" id="eShowProf"' + chk(ec.showProf) + '> профили</label></div>') +
 				'<label>Скрытые панели</label><div><label class="chk"><input type="checkbox" id="eHidden"' + chk(ec.hidden) + '> включать в раскрой и смету</label> <span class="mute">— иначе только предупреждение</span></div>' +
 				'<label>Отверстия в справке</label><div><select id="eHolesMode"><option value="0"' + (ec.holesSort > 0 ? '' : ' selected') + '>одной строкой «всего»</option><option value="1"' + (ec.holesSort > 0 ? ' selected' : '') + '>до и более диаметра</option></select> <input type="text" class="s" id="eHolesSort" value="' + nv(ec.holesSort > 0 ? ec.holesSort : 15) + '"> мм</div></div>' +
 				'<h4>Как узнавать материал</h4><div class="form">' +
@@ -582,6 +582,7 @@
 		function read(m) {
 			/* запомнить то, что введено на открытой вкладке */
 			var g = function (id) { return m.querySelector('#' + id); };
+			if (cur === 'crm' && g('crmAuto') && m._sthCrmAuto !== undefined) m._sthCrmAuto = g('crmAuto').checked; // STHGroup
 			if (CutSet.has(cur)) {
 				CutSet.read(cur, m, p, set);
 			} else if (cur === 'look') {
@@ -619,7 +620,8 @@
 				q.labelWhat = g('xWhat').value; q.textH = num(g('xTextH').value, 3, 200, q.textH); q.drillByDia = g('xByDia').checked ? 1 : 0; q.arcs = g('xArcs').checked ? 1 : 0; q.margin = g('xMargin').checked ? 1 : 0; q.enc = g('xEnc').value;
 			} else if (cur === 'eCalc') {
 				ec.edgeReserve = num(g('eEdgeRes').value, 0, 499, ec.edgeReserve); if (g('eEdgeMode')) { ec.edgeMode = g('eEdgeMode').value === 'mm' ? 'mm' : 'pct'; ec.edgeMm = num(g('eEdgeMm').value, 0, 999, ec.edgeMm === undefined ? 30 : ec.edgeMm); } ec.profReserve = num(g('eProfRes').value, 0, 499, ec.profReserve); ec.profKerf = num(g('eProfKerf').value, 0, 49, ec.profKerf);
-				ec.showCuts = g('eShowCuts').checked ? 1 : 0; ec.showHoles = g('eShowHoles').checked ? 1 : 0; ec.showFast = g('eShowFast').checked ? 1 : 0; ec.showProf = g('eShowProf').checked ? 1 : 0;
+				/* STHGroup: скрытые параметры не читаются из отсутствующих полей. */
+				if (g('eShowCuts')) { ec.showCuts = g('eShowCuts').checked ? 1 : 0; ec.showHoles = g('eShowHoles').checked ? 1 : 0; ec.showFast = g('eShowFast').checked ? 1 : 0; ec.showProf = g('eShowProf').checked ? 1 : 0; }
 				ec.hidden = g('eHidden').checked ? 1 : 0;
 				ec.holesSort = Number(g('eHolesMode').value) ? num(g('eHolesSort').value, 1, 200, 15) : 0;
 				ec.thinMask = g('eThin').value.trim(); ec.thinTh = g('eThinTh').value.trim(); ec.glassMask = g('eGlass').value.trim();
@@ -685,7 +687,7 @@
 			var g = function (id) { return m.querySelector('#' + id); };
 			body.querySelector('.tabs').onclick = function (e) { var b = e.target.closest('button'); if (!b) return; read(m); cur = b.dataset.t; show(m); };
 			body.querySelector('.snav').onclick = function (e) { var b = e.target.closest('button[data-s]'); if (!b) return; read(m); var sx = SECS.filter(function (x) { return x.id === b.dataset.s; })[0]; cur = last[sx.id] || sx.tabs[0][0]; show(m); };
-			if (cur === 'crm' && window.STHCRM) window.STHCRM.bindSettings(m); // STHGroup 2.0
+			if (cur === 'crm' && window.STHCRM) m._sthCrmLoad = window.STHCRM.bindSettings(m); // STHGroup
 			if (cur === 'dDraw') g('qMode').onchange = function () { g('qModeHint').textContent = MODE_HINT[this.value] || ''; };
 			if (CutSet.has(cur)) CutSet.bind(body);
 			if (cur === 'cgen' && g('sMine')) g('sMine').onclick = function () { var mp = P.paramsFrom(set); for (var k in mp) if (mp.hasOwnProperty(k) && k !== 'quality') p[k] = mp[k]; differ = false; mine = true; show(m); };
@@ -1026,7 +1028,12 @@
 		var before = st ? JSON.stringify(st.work) : '';
 		return U.modal({
 			title: 'Настройки', width: 920, body: '',
-			buttons: [{ label: 'Отмена', value: false }, { label: 'Сохранить', primary: true, run: function (m) { read(m); return true; } }],
+			buttons: [{ label: 'Отмена', value: false }, { label: 'Сохранить', primary: true, run: async function (m) {
+				if (m._sthCrmLoad) await m._sthCrmLoad;
+				read(m);
+				if (m._sthCrmAuto !== undefined) window.STHCRM.state = await U.api.crm.settings({ auto: m._sthCrmAuto });
+				return true;
+			} }], // STHGroup: сохраняется также автопроверка CRM, без подключения
 			onOpen: function (m) { show(m); }
 		}).then(function (ok) {
 			if (!ok) {

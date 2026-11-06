@@ -16,7 +16,7 @@
 			return { row: w, price: price, total: Math.round(w.val * price) };
 		}) };
 	};
-	K.active = function (w) { return !!w && !w.off && !w.info; };
+	K.active = function (w) { return !!w && !w.off && !w.info && !w.sthSplit && !w.sthInKit; };
 	K.noPrice = function (w) { return K.active(w) && !w.own && !w.card && w.kind !== 'own' && w.kind !== 'extra' && w.val > 0 && !(Number(w.price) > 0); };
 	K.problem = function (w, info) {
 		if (!K.active(w) || w.own || w.card || w.kind === 'extra') return false;

@@ -192,9 +192,10 @@
 			<aside id="eLeft" data-pane="eLeft" data-side="l"><div class="sec">Смета</div><div id="eSecs"></div></aside>
 			<section id="eCenter">
 				<div class="bar1">
+					<div class="sthEstHeading"><!-- STHGroup: заголовок и показатели в одной группе -->
 					<b id="eTitle">Смета</b>
 					<span id="eView" class="mseg" title="Вид окна: таблица, где всё правится, или смета, как она выйдет на бумаге"><button data-v="0">Цены и количества</button><button data-v="1">Как на бумаге</button></span>
-					<span id="eChips"></span>
+					<span id="eChips"></span></div>
 					<div class="grow"></div>
 					<label class="fld" title="Прайс — свой набор цен и правил. Прайсы независимы друг от друга">Прайс <select id="ePl"></select></label>
 				</div>
@@ -290,6 +291,7 @@
 <script src="ui/sth_drag.js"></script><!-- STHGroup -->
 <script src="ui/sth_est_columns.js"></script><!-- STHGroup: ширина и порядок столбцов -->
 <script src="core/sth_order.js"></script>
+<script src="core/sth_price_samples.js"></script><!-- STHGroup: цены-образцы -->
 <script src="core/sth_crm.js"></script><!-- STHGroup 2.0: заявки CRM -->
 <script src="ui/sth_orders.js"></script>
 <script src="ui/sth_kanban.js"></script><!-- STHGroup 2.0: карточки заказов -->
@@ -299,6 +301,7 @@
 <script src="ui/sth_cut_simple.js"></script><!-- STHGroup 2.0: простой раскрой -->
 <script src="core/sth_stock.js"></script>
 <script src="ui/sth_stock.js"></script>
+<script src="ui/sth_inventory.js"></script><!-- STHGroup: инвентаризация и CSV -->
 <script src="ui/sth_embed.js"></script>
 <script src="core/sth_restruct.js"></script><!-- STHGroup: упаковка из названия -->
 <script src="core/linkparse.js"></script><!-- STHGroup -->

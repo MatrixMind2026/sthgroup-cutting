@@ -46,7 +46,15 @@ const fetchMock = async (url, opt) => {
   assert.ok(calls.every(x => x.url.startsWith('https://crm.example.test/api/'))); ok('вход и чтение заявок идут через серверную часть, cookie-сессия сохраняется');
   const restored = new CRM.Client({ dataDir: dir, safeStorage: safe, fetch: fetchMock });
   assert.strictEqual(restored.password(), 'секретный-пароль'); assert.strictEqual(restored.cookies.sid, 'session-value');
-  assert.ok(restored.publicState().configured && restored.publicState().hasPassword); ok('пароль и сессия на диске зашифрованы, окно получает только признак их наличия');
+  assert.ok(restored.publicState().configured && restored.publicState().hasPassword);
+  const secrets = JSON.parse(fs.readFileSync(restored.file,'utf8')); const requestsBefore=calls.length;
+  restored.saveAuto(false);
+  const restarted = new CRM.Client({dataDir:dir,safeStorage:safe,fetch:fetchMock});
+  assert.strictEqual(restarted.state.auto,false);assert.strictEqual(restarted.password(),'секретный-пароль');assert.strictEqual(restarted.cookies.sid,'session-value');assert.strictEqual(calls.length,requestsBefore);
+  const secretsAfter=JSON.parse(fs.readFileSync(restored.file,'utf8'));assert.strictEqual(secretsAfter.password,secrets.password);assert.strictEqual(secretsAfter.cookies,secrets.cookies);
+  restarted.saveAuto(true);assert.strictEqual(new CRM.Client({dataDir:dir,safeStorage:safe,fetch:fetchMock}).state.auto,true);
+  ok('галочка автопроверки переживает перезапуск без сетевого входа и изменения секретов');
+ ok('пароль и сессия на диске зашифрованы, окно получает только признак их наличия');
   const noSafe = new CRM.Client({ dataDir: fs.mkdtempSync(path.join(os.tmpdir(), 'sth-crm-nosafe-')), fetch: fetchMock });
   assert.throws(() => noSafe.save('secret'), /Защищённое хранилище/); ok('без системного шифрования пароль не записывается открытым текстом');
   assert.strictEqual(CRM.baseUrl('https://crm.migman.ru/app/'), 'https://crm.migman.ru'); assert.deepStrictEqual(CRM.list({ data: { requests: [1] } }, ['requests']), [1]);

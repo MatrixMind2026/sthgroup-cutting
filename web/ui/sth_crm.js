@@ -30,7 +30,12 @@
 		var sync = m.querySelector('#crmSync'); if (sync) sync.disabled = !s.configured;
 	}
 	X.bindSettings = async function (m) {
+		var auto = m.querySelector('#crmAuto');
+		if (m._sthCrmAuto !== undefined) auto.checked = m._sthCrmAuto;
+		auto.addEventListener('change', function () { m._sthCrmAuto = auto.checked; });
 		try { X.state = await U.api.crm.state(); } catch (e) { X.state = { url: 'https://crm.migman.ru/app/', auto: true, lastError: e.message }; }
+		if (!auto.isConnected) return;
+		if (m._sthCrmAuto === undefined) auto.checked = X.state.auto !== false;
 		fill(m);
 		function values() { return { url: m.querySelector('#crmUrl').value.trim(), email: m.querySelector('#crmEmail').value.trim(), password: m.querySelector('#crmPassword').value, auto: m.querySelector('#crmAuto').checked }; }
 		async function run(btn, job) {

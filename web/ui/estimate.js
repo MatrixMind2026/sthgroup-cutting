@@ -81,7 +81,8 @@
 			if (w.off) { c.off++; return; }
 			c.rows++;
 			if (w.manual) c.manual++;
-			if (w.kind !== 'extra' && w.val > 0 && !(w.price > 0) && !w.info) c.noPrice++;
+			/* STHGroup: счётчик и фильтр используют одно правило служебных строк. */
+			if (BM.sthEst ? BM.sthEst.noPrice(w) : (w.kind !== 'extra' && w.val > 0 && !(w.price > 0) && !w.info)) c.noPrice++;
 		});
 		return c;
 	}

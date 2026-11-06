@@ -85,6 +85,14 @@ class Client {
     this.config = next;
   }
   password() { return this.config && this.config.password ? this.decrypt(this.config.password) : ''; }
+  // STHGroup: настройка автопроверки не требует входа и не переписывает секреты.
+  saveAuto(auto) {
+    const next = Object.assign({}, this.config || {}, { url: this.state.url, email: this.state.email, auto: auto === true });
+    fs.mkdirSync(this.opt.dataDir, { recursive: true });
+    fs.writeFileSync(this.file + '.tmp', JSON.stringify(next), { mode: 0o600 });
+    fs.renameSync(this.file + '.tmp', this.file);
+    this.config = next; this.state.auto = next.auto;
+  }
   cookieHeader() { return Object.keys(this.cookies).map(function (k) { return k + '=' + this.cookies[k]; }, this).join('; '); }
   takeCookies(response) {
     const rows = typeof response.headers.getSetCookie === 'function' ? response.headers.getSetCookie() : [];
@@ -132,6 +140,12 @@ class Client {
     async function handle(req, res, action) {
       try {
         if (action === 'state') return json(res, 200, self.publicState());
+        if (action === 'settings') {
+          const d = await body(req);
+          if (typeof d.auto !== 'boolean') return json(res, 400, { error: 'Укажите состояние автопроверки CRM.' });
+          self.saveAuto(d.auto);
+          return json(res, 200, self.publicState());
+        }
         if (action === 'disconnect') {
           self.config = null; self.cookies = {}; self.state.connected = false; self.state.lastError = '';
           try { fs.unlinkSync(self.file); } catch (e) { /* уже нет */ }
@@ -155,6 +169,7 @@ class Client {
     }
     return {
       'GET /api/sth/crm/state': function (req, res) { return handle(req, res, 'state'); },
+      'POST /api/sth/crm/settings': function (req, res) { return handle(req, res, 'settings'); },
       'POST /api/sth/crm/connect': function (req, res) { return handle(req, res, 'connect'); },
       'POST /api/sth/crm/test': function (req, res) { return handle(req, res, 'test'); },
       'POST /api/sth/crm/sync': function (req, res) { return handle(req, res, 'sync'); },

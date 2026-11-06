@@ -9,6 +9,49 @@
 	function r6(v) { return Math.round(v * 1e6) / 1e6; }
 	K.TABS = [['sheet', 'Листы'], ['off', 'Обрезки'], ['lin', 'Кромка, погонаж'], ['fit', 'Фурнитура'], ['moves', 'Движения'], ['history', 'История']];
 
+	/* STHGroup: инвентаризация отдельным документом, без потери резервов и истории. */
+	K.inventoryPlan = function (b, entries) {
+		K.fix(b); var seen = {};
+		return entries.map(function (e) {
+			var raw = String(e.actual === undefined ? '' : e.actual).trim().replace(',', '.'), qty = Number(raw);
+			if (!b.mats[e.mat] || seen[e.mat] || raw === '' || !Number.isFinite(qty) || qty < 0) throw new Error('Проверьте материал и фактическое количество.');
+			seen[e.mat] = true;
+			var before = r6(MB.balance(b, e.mat));
+			return { mat: e.mat, before: before, actual: r6(qty), delta: r6(qty - before) };
+		});
+	};
+	K.applyInventory = function (b, plan) {
+		/* Сначала проверить весь снимок; чужие движения нельзя молча перезаписать. */
+		var check = K.inventoryPlan(b, plan);
+		check.forEach(function (e, i) { if (e.before !== plan[i].before) throw new Error('Остатки изменились после пересчёта. Откройте инвентаризацию заново.'); });
+		var lines = check.filter(function (e) { return e.delta !== 0; }).map(function (e) { return { mat: e.mat, qty: e.delta }; });
+		if (!lines.length) return null;
+		var doc = MB.addDoc(b, { kind: 'adj', note: 'Инвентаризация', lines: lines });
+		doc.inventory = check;
+		K.log(b, 'stock', 'Инвентаризация', 'Скорректировано позиций: ' + lines.length, { doc: doc.id });
+		return doc;
+	};
+	function csv(rows) {
+		return '\ufeff' + rows.map(function (row) { return row.map(function (value) {
+			var s = String(value === undefined || value === null ? '' : value);
+			if (typeof value === 'string' && /^[\s]*[=+@-]/.test(s)) s = "'" + s;
+			return '"' + s.replace(/"/g, '""') + '"';
+		}).join(';'); }).join('\r\n') + '\r\n';
+	}
+	K.csvSnapshot = function (b, at) {
+		K.fix(b); at = at || new Date().toISOString();
+		var balances = {}, reserves = {};
+		b.stock.docs.forEach(function (d) { if (!d.off) d.lines.forEach(function (l) { balances[l.mat] = (balances[l.mat] || 0) + (d.kind === 'out' ? -num(l.qty) : num(l.qty)); }); });
+		b.stock.res.forEach(function (r) { reserves[r.mat] = (reserves[r.mat] || 0) + num(r.qty); });
+		var rows = [['Дата', 'ID', 'Артикул', 'Материал', 'Единица', 'Остаток', 'Резерв', 'Свободно', 'Ячейка']];
+		Object.keys(b.mats).sort().forEach(function (id) { var m = b.mats[id], balance = r6(balances[id] || 0), reserved = r6(reserves[id] || 0);
+			rows.push([at, id, m.art, m.name, m.unit, balance, reserved, r6(balance - reserved), b.stock.cells[id] || '']);
+		});
+		var off = [['Дата', 'ID остатка', 'ID материала', 'Артикул', 'Материал', 'Длина, мм', 'Ширина, мм', 'Количество', 'Ячейка', 'ID заказа', 'Номер заказа', 'Происхождение']];
+		MB.offcuts(b).forEach(function (o) { var m = b.mats[o.mat]; if (m) off.push([at, o.id, o.mat, m.art, m.name, o.L, o.W, o.n, K.offCell(b, o), o.res || '', o.resNo || '', o.project || o.originNo || '']); });
+		return { materials: csv(rows), offcuts: csv(off) };
+	};
+
 	K.fix = function (b) {
 		if (!b.stock || typeof b.stock !== 'object') b.stock = { docs: [], offcuts: [] };
 		if (!Array.isArray(b.stock.res)) b.stock.res = [];

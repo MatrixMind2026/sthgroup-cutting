@@ -1,0 +1,24 @@
+/* STHGroup: инвентаризация, CSV, происхождение цен и служебные строки сметы. */
+const assert=require('node:assert/strict');
+for(const f of ['geom','cut','project','matbase','sth_stock','sth_order','sth_price_samples','sth_est'])require('../web/core/'+f+'.js');
+const MB=BM.mb,SK=BM.stock,O=BM.sth,E=BM.sthEst,b=SK.fix(MB.empty()),g=MB.addGroup(b,'','Листы','sheet');
+const mat=MB.saveMat(b,Object.assign(MB.defMat(g.id),{name:'=Формула; "материал"\nстрока',unit:'лист'})).mat;
+SK.move(b,'in',mat.id,12,{});SK.reserve(b,mat.id,5,{id:'o1',no:'1'});
+const plan=SK.inventoryPlan(b,[{mat:mat.id,actual:'0'}]);assert.equal(plan[0].delta,-12);
+const doc=SK.applyInventory(b,plan);assert.equal(doc.kind,'adj');assert.equal(MB.balance(b,mat.id),0);assert.equal(SK.reserved(b,mat.id),5);assert.equal(b.stock.docs.length,2);
+assert.throws(()=>SK.applyInventory(b,plan),/изменились/);assert.equal(b.stock.docs.length,2);
+assert.throws(()=>SK.inventoryPlan(b,[{mat:mat.id,actual:''}]),/количество/);assert.throws(()=>SK.inventoryPlan(b,[{mat:mat.id,actual:-1}]),/количество/);
+MB.cancelDoc(b,doc.id);assert.equal(MB.balance(b,mat.id),12);
+const saved=SK.inventoryPlan(b,[{mat:mat.id,actual:11}]);SK.move(b,'in',mat.id,1,{});assert.throws(()=>SK.applyInventory(b,saved),/изменились/);
+const snap=SK.csvSnapshot(b,'2026-11-07');assert.ok(snap.materials.startsWith('\ufeff'));assert.ok(snap.materials.includes('"\'='+mat.name.slice(1).replace(/"/g,'""')+'"'));assert.ok(snap.materials.includes('"13";"5";"8"'));assert.ok(snap.offcuts.includes('ID остатка'));
+const book=O.empty(),work=book.cat.sheetWorks.find(r=>r.id==='f_ldsp16');assert.ok(O.isSamplePrice(work));
+const old=JSON.parse(JSON.stringify(book));delete old.cat.sheetWorks[0].sampleSource;delete old.cat.sheetWorks[0].samplePrice;delete old.cat.sheetWorks[0].priceVerified;
+const migrated=O.fix(old);assert.ok(O.isSamplePrice(migrated.cat.sheetWorks[0]));
+const personal=JSON.parse(JSON.stringify(book));const custom=personal.cat.sheetWorks[0];delete custom.sampleSource;custom.price=1234;O.fix(personal);assert.equal(custom.price,1234);assert.equal(O.isSamplePrice(custom),false);
+Object.assign(work,O.priceMeta(work,work.price,true));assert.equal(O.isSamplePrice(work),false);assert.equal(O.isSamplePrice(O.fix(JSON.parse(JSON.stringify(book))).cat.sheetWorks[0]),false);
+const quoteBook=O.empty(),order=O.addOrder(quoteBook,{}),quote=O.calc(quoteBook,order);assert.ok(quote.samplePrices.length>0);assert.ok(quote.warn.some(w=>w.includes('цены-образцы')));
+const service=quoteBook.cat.services.find(r=>r.on&&r.unit==='order');order.svc[service.id]={price:service.price};assert.equal(O.calc(quoteBook,order).blocks.flatMap(b=>b.lines).find(l=>l.key===service.id).samplePrice,false);
+const plain={kind:'fastener',val:2,price:0};assert.equal(E.noPrice(plain),true);
+for(const flag of ['info','sthSplit','sthInKit','off'])assert.equal(E.noPrice({...plain,[flag]:true}),false,flag);
+assert.equal(E.noPrice({...plain,sthPart:'parent'}),true,'расчётные части без цены остаются в фильтре');
+console.log('Склад, CSV, образцы цен и служебные строки — OK');

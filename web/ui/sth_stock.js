@@ -23,6 +23,7 @@
 	/* STHGroup: быстрые последовательные действия не должны перезаписывать друг друга. */
 	X.pending = Promise.resolve();
 	function edit(fn) { var result = X.pending.then(function () { return applyEdit(fn); }); X.pending = result.catch(function () {}); return result; }
+	X.edit = edit;
 	/* заказы для выбора: открытые (не закрытые и не отгруженные) — сначала */
 	async function orders() {
 		var O = BM.sth, H = window.STHO; if (!H) return [];
@@ -48,7 +49,7 @@
 		var b = base(), view = X.view;
 		var tabs = [['orders', 'Под заказы'], ['free', 'Свободные запасы'], ['off', 'Деловые остатки']].map(function (t) { return '<button data-skv="' + t[0] + '" class="' + (view === t[0] ? 'on' : '') + '" aria-pressed="' + (view === t[0]) + '">' + t[1] + '</button>'; }).join('');
 		var head = '<header class="scHead"><div><h1>Склад</h1><p class="mute">Материалы под заказы и свободные остатки</p></div><div class="scTools"><button data-skv="moves" aria-pressed="' + (view === 'moves') + '">Движения</button><button data-skv="history" aria-pressed="' + (view === 'history') + '">История</button></div></header>';
-		var bar = '<div class="scTabs tabs">' + tabs + '</div><div class="scToolbar"><input type="search" id="skQ" aria-label="Поиск по складу" placeholder="Поиск по материалу, размеру, заказу" value="' + esc(X.q) + '"><div class="grow"></div>' + (view === 'off' ? '<button class="primary" data-sk-off-add>＋ Добавить остаток</button>' : '') + '<button data-sk-in>Принять материал</button><button id="skRecv">Приход по заказу…</button><details class="scMore"><summary>Ещё</summary><div><button id="skWo">Списать по заказу…</button><button id="skImport">Импорт остатков</button><button id="scClearHistory">Очистить историю…</button><button id="scClearAll">Очистить склад…</button></div></details></div>';
+		var bar = '<div class="scTabs tabs">' + tabs + '</div><div class="scToolbar"><input type="search" id="skQ" aria-label="Поиск по складу" placeholder="Поиск по материалу, размеру, заказу" value="' + esc(X.q) + '"><div class="grow"></div>' + (view === 'off' ? '<button class="primary" data-sk-off-add>＋ Добавить остаток</button>' : '') + '<button data-sk-in>Принять материал</button><button id="skRecv">Приход по заказу…</button><details class="scMore"><summary>Ещё</summary><div><button id="skWo">Списать по заказу…</button><button id="skInventory">Инвентаризация…</button><button id="skExport">Экспорт CSV…</button><button id="skExportSettings">Периодический экспорт…</button><button id="skImport">Импорт остатков</button><button id="scClearHistory">Очистить историю…</button><button id="scClearAll">Очистить склад…</button></div></details></div>';
 		var categories = [['all', 'Все материалы'], ['sheet', 'Листовые'], ['lin', 'Кромка и погонаж'], ['fit', 'Фурнитура']];
 		if (view === 'off') categories = [['all', 'Все материалы'], ['chip', 'ЛДСП'], ['mdf', 'МДФ'], ['ply', 'Фанера'], ['other', 'Другие']];
 		var filters = view === 'moves' || view === 'history' ? '' : '<div class="scFilters">' + categories.map(function (c) { return '<button data-skc="' + c[0] + '" aria-pressed="' + (c[0] === X.category) + '"' + (c[0] === X.category ? ' class="on"' : '') + '>' + c[1] + '</button>'; }).join('') + '</div>';

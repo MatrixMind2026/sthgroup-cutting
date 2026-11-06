@@ -45,6 +45,38 @@ for (const f of ['geom', 'cut', 'project', 'draw', 'zip', 'out_tab', 'base', 'es
   for (let i = 0; i < 3 && await page.locator('#modals .modal').count(); i++) await page.locator('#modals .modal').last().locator('h2 button').click();
   try { const skip = page.getByRole('button', { name: 'Не сейчас', exact: true }); await skip.waitFor({ timeout: 3000 }); await skip.click(); } catch (_) {}
   await go('est'); await page.locator('table.sthCompact colgroup').waitFor();
+  // Панели разделены одинаковыми зазорами; таблица следует за обеими границами.
+  await page.setViewportSize({ width: 2200, height: 1100 });
+  await page.waitForFunction(() => Math.abs(document.querySelector('table.sthCompact').getBoundingClientRect().width - document.getElementById('eBody').clientWidth) < 2);
+  const docking = () => page.evaluate(() => { const l = document.getElementById('eLeft').getBoundingClientRect(), c = document.getElementById('eCenter').getBoundingClientRect(), r = document.getElementById('eRight').getBoundingClientRect(), t = document.querySelector('table.sthCompact').getBoundingClientRect(); return { leftGap: c.left - l.right, rightGap: r.left - c.right, table: t.width, body: document.getElementById('eBody').clientWidth }; });
+  assert.strictEqual((await docking()).leftGap, 12); assert.strictEqual((await docking()).rightGap, 12);
+  const rightGrip = page.locator('#eRight').locator('xpath=preceding-sibling::*[1]');
+  let grip = await rightGrip.boundingBox();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + 30); await page.mouse.down(); await page.mouse.move(grip.x + grip.width / 2 + 95, grip.y + 30, { steps: 8 }); await page.mouse.up();
+  await page.waitForFunction(() => Math.abs(document.querySelector('table.sthCompact').getBoundingClientRect().width - document.getElementById('eBody').clientWidth) < 2);
+  assert.strictEqual((await docking()).rightGap, 12);
+  const leftGrip = page.locator('#eLeft + .splitH'); grip = await leftGrip.boundingBox();
+  await page.mouse.move(grip.x + grip.width / 2, grip.y + 30); await page.mouse.down(); await page.mouse.move(grip.x + grip.width / 2 + 75, grip.y + 30, { steps: 8 }); await page.mouse.up();
+  await page.waitForFunction(() => Math.abs(document.querySelector('table.sthCompact').getBoundingClientRect().width - document.getElementById('eBody').clientWidth) < 2);
+  assert.strictEqual((await docking()).leftGap, 12);
+  await rightGrip.locator('.tng.r').click();
+  await page.waitForFunction(() => Math.abs(document.querySelector('table.sthCompact').getBoundingClientRect().width - document.getElementById('eBody').clientWidth) < 2);
+  await rightGrip.locator('.tng.r').click();
+  await page.waitForFunction(() => Math.abs(document.querySelector('table.sthCompact').getBoundingClientRect().width - document.getElementById('eBody').clientWidth) < 2);
+  assert.strictEqual(await page.locator('.sthCompactRow:not(.sthCardActive)').first().locator('td.nm').evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)');
+  assert.strictEqual(await page.locator('table.sthCompact').evaluate(el => getComputedStyle(el).zoom), '1');
+  await page.mouse.move(30, 25); await page.waitForFunction(() => !document.querySelector('#toasts').children.length);
+  await page.screenshot({ path: path.join(out, 'estimate-docked.png') });
+  await page.setViewportSize({ width: 1100, height: 1000 });
+  const controlsFit = await page.locator('.sthEstBar').evaluate(el => { const r = el.getBoundingClientRect(); return Array.from(el.children).filter(child => getComputedStyle(child).display !== 'none').every(child => { const b = child.getBoundingClientRect(); return b.left >= r.left - 1 && b.right <= r.right + 1 && b.bottom <= r.bottom + 1; }); });
+  assert.ok(controlsFit, 'панель действий переносится по строкам, не накладываясь на соседние панели');
+  await page.screenshot({ path: path.join(out, 'estimate-narrow.png') });
+  await page.setViewportSize({ width: 1600, height: 1000 });
+  await go('model');
+  assert.ok(await page.locator('#mBar .pill button').first().evaluate(el => parseFloat(getComputedStyle(el).borderRadius) >= 20));
+  assert.ok(await page.locator('#mBar .pill button.on').first().evaluate(el => getComputedStyle(el).backgroundImage.includes('linear-gradient')));
+  await page.screenshot({ path: path.join(out, 'model-buttons.png') });
+  await go('est');
   const kitKey = await page.evaluate(() => {
    const candidates = Est.R.rows.filter(w => w.kind === 'fastener' && !w.own && !w.off && !w.info && w.val > 0).slice(0, 2), pl = Est.pl();
    if (candidates.length < 2) throw Error('Нет строк для проверки комплекта');
@@ -92,6 +124,14 @@ for (const f of ['geom', 'cut', 'project', 'draw', 'zip', 'out_tab', 'base', 'es
   assert.strictEqual(Object.keys(JSON.parse(fs.readFileSync(baseFile, 'utf8')).mats).length, 1); assert.strictEqual(JSON.parse(fs.readFileSync(path.join(data, O.FILE), 'utf8')).orders.length, 1);
   assert.ok(fs.existsSync(baseFile + '.bak'));
   for (const width of [1600, 1100, 900]) { await page.setViewportSize({ width, height: 900 }); assert.ok(await page.locator('#rail').evaluate(el => el.scrollWidth <= el.clientWidth)); }
+  await page.setViewportSize({ width: 1600, height: 1000 }); await go('mbase');
+  const baseFrame = page.frameLocator('#mbase iframe'); await baseFrame.locator('#mbMain').waitFor();
+  const baseGap = () => baseFrame.locator('#mbMain').evaluate(() => document.getElementById('mbRight').getBoundingClientRect().left - document.getElementById('mbLeft').getBoundingClientRect().right);
+  assert.strictEqual(await baseGap(), 12);
+  await baseFrame.locator('#mbLeft').evaluate(el => { el.style.width = '330px'; }); assert.strictEqual(await baseGap(), 12);
+  assert.strictEqual(await baseFrame.locator('#mbScroll').evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)');
+  await page.waitForFunction(() => !document.querySelector('#toasts').children.length);
+  await page.screenshot({ path: path.join(out, 'base-gaps.png') });
   // Оформление экспортёра проверяется в браузере с заменой файлового интерфейса HTA; настоящий БАЗИС отдельно.
   const source = fs.readFileSync(path.join(__dirname, '../bazis/STHGroup_Export.js'), 'utf8');
   const hta = vm.runInNewContext(source.match(/var BM_WIN_HTA = (\[[\s\S]*?\])\.join\('\\n'\);/)[1]).join('\n');

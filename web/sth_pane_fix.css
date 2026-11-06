@@ -1,0 +1,45 @@
+/* STHGroup: единые зазоры, стеклянные строки и группы кнопок. */
+html[data-sth-style="glass"] #est{gap:0}
+html[data-sth-style="glass"] #est>.splitH{flex:0 0 12px;width:12px;margin:0;background:transparent;border:0}
+html[data-sth-style="glass"] #est>.splitH:before{content:'';position:absolute;left:5px;width:2px;top:12px;bottom:12px;border-radius:2px;background:transparent}
+html[data-sth-style="glass"] #est>.splitH:hover:before,html[data-sth-style="glass"] #est>.splitH.on:before{background:var(--accent)}
+html[data-sth-style="glass"] #est>.splitH .tng{width:16px;min-width:16px;border:1px solid var(--sg-edge);border-radius:8px;background:var(--sg-data);box-shadow:var(--sg-shadow)}
+html[data-sth-style="glass"] #est>.splitH .tng.l{left:-2px}html[data-sth-style="glass"] #est>.splitH .tng.r{right:-2px}
+html[data-sth-style="glass"] #eCenter{overflow:hidden;min-width:0;container-type:inline-size;container-name:estimatePane}
+html[data-sth-style="glass"] #eCenter>.bar1,html[data-sth-style="glass"] #eBar{gap:8px;padding:10px 12px;flex-wrap:wrap;align-items:center;min-width:0}
+html[data-sth-style="glass"] #eChips{display:flex;gap:6px;flex-wrap:wrap;min-width:0}
+html[data-sth-style="glass"] #eCenter>.bar1>.fld{margin:0;flex:0 1 auto}
+html[data-sth-style="glass"] #ePl{max-width:220px;min-width:120px}
+html[data-sth-style="glass"] #sthEstTools{position:static;flex:0 0 auto;background:transparent;border-color:var(--sg-edge);min-width:0}
+html[data-sth-style="glass"] .sthEstBar{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:8px 12px;min-width:0}
+html[data-sth-style="glass"] .sthEstHint{flex:1 1 220px;min-width:0;line-height:1.4;overflow-wrap:anywhere}
+html[data-sth-style="glass"] .sthEstShown{flex:0 1 auto;margin-left:auto;white-space:normal;overflow-wrap:anywhere}
+html[data-sth-style="glass"] .sthEstBar>button{flex:none;min-height:32px}
+/* Старое zoom таблицы нарушало совпадение её ширины с шириной панели. */
+html[data-sth-style="glass"] #est table.sthCompact{zoom:1;background:transparent}
+html[data-sth-style="glass"] #eBody table.sthCompact tr.sthCompactRow>td{background:transparent;border-bottom-color:color-mix(in srgb,var(--text) 10%,transparent)}
+html[data-sth-style="glass"] #eBody table.sthCompact tr.sthCompactRow:hover>td{background:color-mix(in srgb,var(--text) 5%,transparent)}
+html[data-sth-style="glass"] #eBody table.sthCompact tr.sthCompactRow:is(.sthCardActive,.sthSelected)>td{background:color-mix(in srgb,var(--accent) 22%,transparent)}
+html[data-sth-style="glass"] #eBody table.sthCompact :is(tr.ghdr,tr.gsub,tr.gtop)>td{background:color-mix(in srgb,var(--text) 5%,transparent);border-color:var(--sg-edge)}
+html[data-sth-style="glass"] #eBody table.sthCompact thead{background:var(--sg-glass);backdrop-filter:var(--sg-blur);-webkit-backdrop-filter:var(--sg-blur)}
+html[data-sth-style="glass"] #eBody table.sthCompact thead th{background:transparent;border-color:var(--sg-edge)}
+/* Группы видов, режимов и отражений — те же капсулы, что в навигации. */
+html[data-sth-style="glass"] :is(.mseg,.seg,#mBar .pill){display:inline-flex;gap:4px;padding:4px;border:1px solid var(--sg-edge);border-radius:999px;background:var(--sg-glass);box-shadow:var(--sg-shadow);align-items:center;flex-wrap:nowrap}
+html[data-sth-style="glass"] :is(.mseg,.seg,#mBar .pill)>button{min-height:30px;padding:6px 12px;border:0;border-radius:999px;background:transparent;color:var(--text);font-weight:500;box-shadow:none}
+html[data-sth-style="glass"] :is(.mseg,.seg,#mBar .pill)>button.on{background:linear-gradient(155deg,color-mix(in srgb,var(--accent) 42%,transparent),color-mix(in srgb,var(--accent) 18%,transparent));color:var(--text);box-shadow:inset 0 1px 0 #ffffff38;border:0;font-weight:500}
+html[data-sth-style="glass"] #mBar{padding:10px 12px;gap:8px}
+html[data-sth-style="glass"] #mBar :is(.mseg,.seg,.pill){margin:0}
+html[data-sth-style="glass"] #mScheme{max-width:240px;min-width:160px}
+/* База материалов: отдельные панели с тем же зазором, без общей серой заливки. */
+html[data-sth-style="glass"] body.mb{padding:10px;gap:10px}
+html[data-sth-style="glass"] #mbMain{gap:12px;min-width:0}
+html[data-sth-style="glass"] #mbLeft{flex:0 0 auto;max-width:45%;border:1px solid var(--sg-edge);border-radius:20px}
+html[data-sth-style="glass"] #mbRight{border:1px solid var(--sg-edge);border-radius:20px;overflow:hidden;min-width:0}
+html[data-sth-style="glass"] #mbBar{border:1px solid var(--sg-edge);border-radius:18px;background:var(--sg-glass);box-shadow:var(--sg-shadow);flex-wrap:wrap}
+html[data-sth-style="glass"] #mbScroll{background:transparent}
+html[data-sth-style="glass"] :is(#mbHeadWrap,#mbSumBar,#mbBottom){background:color-mix(in srgb,var(--text) 4%,transparent);border-color:var(--sg-edge)}
+html[data-sth-style="glass"] #mbRows .tr{background:transparent;border-color:color-mix(in srgb,var(--text) 9%,transparent)}
+html[data-sth-style="glass"] #mbRows .tr:hover{background:color-mix(in srgb,var(--text) 5%,transparent)}
+html[data-sth-style="glass"] #mbRows .tr.s{background:color-mix(in srgb,var(--accent) 22%,transparent)}
+html[data-sth-style="glass"] #mbBottom{margin-top:8px;border-radius:16px 16px 0 0}
+@container estimatePane (max-width:600px){html[data-sth-style="glass"] .sthEstHint{display:none}html[data-sth-style="glass"] .sthEstShown{order:3;flex-basis:100%;font-size:11px}html[data-sth-style="glass"] .sthEstBar{gap:6px}}

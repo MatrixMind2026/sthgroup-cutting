@@ -9,6 +9,7 @@
 	var C = window.STHEstColumns = {};
 	C.attach = function (table) {
 		if (!table.classList.contains('sthCompact') || table._sthSizing) return;
+		if (C.observer) C.observer.disconnect();
 		table._sthSizing = true;
 		var head = table.tHead.rows[0], set = settings(), ids = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9];
 		if (head.cells.length !== 10) return;
@@ -28,6 +29,10 @@
 		if (!Number.isFinite(Number(stored[3]))) widths[3] = Math.max(340, table.parentElement.clientWidth - 32 - 34 - 156 - 176 - 110);
 		if (!Number.isFinite(Number(stored[5]))) widths[5] = 156;
 		if (!Number.isFinite(Number(stored[7]))) widths[7] = 176;
+		var initialWidth = table.parentElement.clientWidth, initialTotal = visible.reduce(function (sum, id) { return sum + widths[id]; }, 0);
+		var savedPane = Number(stored._paneWidth);
+		if (savedPane > 0 && initialWidth < savedPane) widths[3] = Math.max(minimum[3], widths[3] + initialWidth - savedPane);
+		else if (!(savedPane > 0) || initialWidth > savedPane) { if (initialTotal < initialWidth) widths[3] += initialWidth - initialTotal; }
 		var group = document.createElement('colgroup'); table.insertBefore(group, table.firstChild);
 		function layout() {
 			group.replaceChildren(); var total = 0;
@@ -43,7 +48,7 @@
 			Array.from(table.rows).forEach(function (tr) { if (tr.cells.length !== 10) return; var cells = Array.from(tr.cells); order.forEach(function (id) { tr.appendChild(cells.find(function (cell) { return Number(cell.dataset.ci) === id; })); }); });
 			layout();
 		}
-		function persist() { set.sthCols = set.sthCols || {}; set.sthCols.est = order.slice(); set.sthColWidths = set.sthColWidths || {}; set.sthColWidths.est = Object.assign({}, widths); save(); }
+		function persist() { set.sthCols = set.sthCols || {}; set.sthCols.est = order.slice(); set.sthColWidths = set.sthColWidths || {}; set.sthColWidths.est = Object.assign({}, widths, { _paneWidth: table.parentElement.clientWidth }); save(); }
 		function reset() { if (set.sthCols) delete set.sthCols.est; if (set.sthColWidths) delete set.sthColWidths.est; save(); window.Est.render(); }
 		Array.from(head.cells).forEach(function (th) {
 			var id = Number(th.dataset.ci); if (visible.indexOf(id) < 0 || id < 3) return;
@@ -86,5 +91,18 @@
 		head.addEventListener('contextmenu', function (e) { e.preventDefault(); window.UI.menu(e.clientX, e.clientY, [['Сбросить ширину и порядок', reset]]); });
 		var bar = document.querySelector('#sthEstTools .sthEstBar'); if (bar && !bar.querySelector('.sthColumnsReset')) { var button = document.createElement('button'); button.className = 'sthColumnsReset'; button.textContent = 'Сбросить столбцы'; button.onclick = reset; bar.appendChild(button); }
 		reorder();
+		/* STHGroup: таблица следует за стыком панелей, а не остаётся прежней ширины. */
+		var previousWidth = table.parentElement.clientWidth;
+		if (window.ResizeObserver) {
+			var observer = new ResizeObserver(function () {
+				if (!table.isConnected) { observer.disconnect(); return; }
+				var available = table.parentElement.clientWidth; if (!(available > 0)) return;
+				var delta = available - previousWidth; if (Math.abs(delta) < 1) return;
+				previousWidth = available;
+				var total = visible.reduce(function (sum, id) { return sum + widths[id]; }, 0);
+				widths[3] = Math.max(minimum[3], widths[3] + (delta > 0 ? Math.max(0, available - total) : delta)); layout();
+			});
+			C.observer = observer; observer.observe(table.parentElement);
+		}
 	};
 })();

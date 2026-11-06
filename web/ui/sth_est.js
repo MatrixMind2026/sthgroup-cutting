@@ -56,6 +56,12 @@
 			'<div class="cbody"><h3>' + esc(w.title || w.label || '') + '</h3><div class="sthCardFields"></div></div>';
 		var fields = card.querySelector('.sthCardFields'); X.cardHome = detail.firstElementChild;
 		moveChildren(X.cardHome, fields);
+		/* STHGroup: частое действие — крупная подписанная кнопка, исходный обработчик сохранён. */
+		var supplierButton = fields.querySelector('.supE');
+		if (supplierButton) {
+			supplierButton.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7 .1l3-3a5 5 0 0 0-7-7l-2 2M14 11a5 5 0 0 0-7-.1l-3 3a5 5 0 0 0 7 7l2-2"/></svg><span>Поставщик, ссылка и фото…</span>';
+			supplierButton.setAttribute('aria-label', 'Поставщик, ссылка и фото');
+		}
 		var kit = C.kitDetails(rows(), w);
 		if (kit) {
 			var contents = document.createElement('section'); contents.className = 'sthKitContents';

@@ -73,7 +73,9 @@ for (const f of ['geom', 'cut', 'project', 'draw', 'zip', 'out_tab', 'base', 'es
   await page.waitForFunction(() => Math.abs(document.querySelector('table.sthCompact').getBoundingClientRect().width - document.getElementById('eBody').clientWidth) < 2);
   await rightGrip.locator('.tng.r').click();
   await page.waitForFunction(() => Math.abs(document.querySelector('table.sthCompact').getBoundingClientRect().width - document.getElementById('eBody').clientWidth) < 2);
-  assert.strictEqual(await page.locator('.sthCompactRow:not(.sthCardActive)').first().locator('td.nm').evaluate(el => getComputedStyle(el).backgroundColor), 'rgba(0, 0, 0, 0)');
+  // STHGroup: согласованная стеклянная плашка имеет слабую заливку, а не непрозрачный прямоугольник.
+  const rowAlpha = await page.locator('.sthCompactRow:not(.sthCardActive)').first().locator('td.nm').evaluate(el => { const c=document.createElement('canvas'); c.width=c.height=1; const x=c.getContext('2d'); x.fillStyle=getComputedStyle(el).backgroundColor; x.fillRect(0,0,1,1); return x.getImageData(0,0,1,1).data[3]/255; });
+  assert.ok(rowAlpha > 0 && rowAlpha < .25);
   assert.strictEqual(await page.locator('table.sthCompact').evaluate(el => getComputedStyle(el).zoom), '1');
   await page.mouse.move(30, 25); await page.waitForFunction(() => !document.querySelector('#toasts').children.length);
   await page.screenshot({ path: path.join(out, 'estimate-docked.png') });

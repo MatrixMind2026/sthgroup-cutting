@@ -1,0 +1,55 @@
+/* STHGroup: оформление, согласованное владельцем 07.11.2026. */
+html[data-sth-style="glass"] #mbase,
+html[data-sth-style="glass"] #mbase iframe{background:transparent}
+html[data-sth-embedded="1"],html[data-sth-embedded="1"] body.mb{background:transparent!important;background-image:none!important}
+html[data-sth-style="glass"] #eBody table.sthCompact .sthCardPick{
+ display:block;box-sizing:border-box;width:100%;min-width:0;min-height:32px;margin:0;padding:4px 0;
+ border:0;border-radius:0;background:transparent;box-shadow:none;text-align:left;font:inherit;line-height:1.45;color:var(--text);white-space:normal;overflow-wrap:anywhere
+}
+html[data-sth-style="glass"] #eBody table.sthCompact .sthCardPick:hover{background:transparent;box-shadow:none;color:var(--accent)}
+html[data-sth-style="glass"] #eBody table.sthCompact .sthCardPick:focus-visible{outline:2px solid var(--accent);outline-offset:-2px;border-radius:4px}
+html[data-sth-style="glass"] #eCard .sthDetailSupplier button.supE{
+ display:flex;align-items:center;justify-content:center;gap:8px;box-sizing:border-box;
+ width:100%;min-width:0;min-height:44px;margin:10px 0 0;padding:10px 12px;
+ border:1px solid var(--accent);border-radius:12px;background:color-mix(in srgb,var(--accent) 20%,transparent);
+ color:var(--text);font-size:14px;line-height:1.3;font-weight:600;opacity:1;white-space:normal;box-shadow:inset 0 1px 0 #ffffff18
+}
+html[data-sth-style="glass"] #eCard .sthDetailSupplier button.supE:hover{background:color-mix(in srgb,var(--accent) 32%,transparent)}
+html[data-sth-style="glass"] #eCard .sthDetailSupplier button.supE svg{flex:none;width:18px;height:18px}
+html[data-sth-style="glass"] #eCard select.uv{box-sizing:border-box;min-height:36px;width:100%;max-width:100%}
+html[data-sth-style="glass"] button.qm{
+ display:inline-flex;align-items:center;justify-content:center;box-sizing:border-box;flex:0 0 24px;
+ width:24px;min-width:24px;height:24px;min-height:24px;max-height:24px;padding:0;margin:0 0 0 8px;
+ border-radius:50%;font:600 13px/1 'Segoe UI',Arial,sans-serif;text-align:center;vertical-align:middle;box-shadow:none
+}
+html[data-sth-style="glass"] .cform>label:has(>.qm){display:flex;align-items:center;justify-content:space-between;gap:10px;text-align:left}
+html[data-sth-style="glass"] .cform>label>.qm{margin-left:0}
+
+/* STHGroup: каждая строка — отдельная согласованная стеклянная плашка. */
+html[data-sth-style="glass"] #eBody table.sthCompact{border-collapse:separate;border-spacing:0 8px;background:transparent;padding:0}
+html[data-sth-style="glass"] #eBody table.sthCompact tr.sthCompactRow{background:transparent;box-shadow:none}
+html[data-sth-style="glass"] #eBody table.sthCompact tr.sthCompactRow>td{
+ background:color-mix(in srgb,var(--panel) 16%,transparent);
+ border-top:1px solid color-mix(in srgb,var(--text) 16%,transparent);
+ border-bottom:1px solid color-mix(in srgb,var(--text) 9%,transparent);
+ border-left:0;border-right:0;padding-top:11px;padding-bottom:11px;
+ box-shadow:inset 0 1px 0 #ffffff09,inset 0 -1px 0 #ffffff04;
+ backdrop-filter:blur(18px) saturate(130%);-webkit-backdrop-filter:blur(18px) saturate(130%)
+}
+html[data-sth-style="glass"] #eBody table.sthCompact tr.sthCompactRow>td.sthGlassStart{border-left:1px solid color-mix(in srgb,var(--text) 16%,transparent);border-radius:13px 0 0 13px}
+html[data-sth-style="glass"] #eBody table.sthCompact tr.sthCompactRow>td.sthGlassEnd{border-right:1px solid color-mix(in srgb,var(--text) 16%,transparent);border-radius:0 13px 13px 0}
+html[data-sth-style="glass"] #eBody table.sthCompact tr.sthCompactRow:hover>td{background:color-mix(in srgb,var(--text) 5%,transparent)}
+html[data-sth-style="glass"] #eBody table.sthCompact tr.sthCompactRow:is(.sthCardActive,.sthSelected)>td{background:color-mix(in srgb,var(--accent) 11%,transparent);border-top-color:color-mix(in srgb,var(--accent) 50%,transparent);border-bottom-color:color-mix(in srgb,var(--accent) 32%,transparent)}
+html[data-sth-style="glass"] #eBody table.sthCompact tr.sthCompactRow:is(.sthCardActive,.sthSelected)>td.sthGlassStart{border-left-color:color-mix(in srgb,var(--accent) 50%,transparent)}
+html[data-sth-style="glass"] #eBody table.sthCompact tr.sthCompactRow:is(.sthCardActive,.sthSelected)>td.sthGlassEnd{border-right-color:color-mix(in srgb,var(--accent) 50%,transparent)}
+html[data-sth-style="glass"] #eBody table.sthCompact :is(tr.ghdr,tr.gsub,tr.gtop)>td{border:0;border-radius:8px;background:transparent;padding-top:14px;padding-bottom:5px}
+
+/* STHGroup: угол прокрутки без светлого клина; ширина дополняется в sth_est_columns.js. */
+html[data-sth-style="glass"] #eBody table.sthCompact{min-width:100%}
+
+html[data-sth-style="glass"] :is(#eBody,#eRight)::-webkit-scrollbar{width:10px;height:10px}
+html[data-sth-style="glass"] :is(#eBody,#eRight)::-webkit-scrollbar-track,
+html[data-sth-style="glass"] :is(#eBody,#eRight)::-webkit-scrollbar-corner,
+html[data-sth-style="glass"] :is(#eBody,#eRight)::-webkit-resizer{background:transparent;border:0}
+html[data-sth-style="glass"] :is(#eBody,#eRight)::-webkit-scrollbar-button{display:none;width:0;height:0}
+html[data-sth-style="glass"] :is(#eBody,#eRight)::-webkit-scrollbar-thumb{background:color-mix(in srgb,var(--text) 26%,transparent);background-clip:padding-box;border:2px solid transparent;border-radius:8px}

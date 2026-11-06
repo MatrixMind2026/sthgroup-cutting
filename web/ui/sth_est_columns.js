@@ -25,30 +25,57 @@
 		// Служебные галочки и номера всегда слева; прежний пользовательский порядок данных сохраняется.
 		order = [0, 1].concat(order.filter(function (id) { return id !== 0 && id !== 1; }));
 		var stored = set.sthColWidths && set.sthColWidths.est || {}, widths = {};
-		visible.forEach(function (id) { var value = Number(stored[id]); widths[id] = Number.isFinite(value) ? Math.max(minimum[id], Math.min(1600, value)) : minimum[id]; });
-		if (!Number.isFinite(Number(stored[3]))) widths[3] = Math.max(340, table.parentElement.clientWidth - 32 - 34 - 156 - 176 - 110);
+		var savedPane = Number(stored._paneWidth), storedLimit = Number.isFinite(savedPane) && savedPane > 0 ? Math.max(1600, savedPane) : 1600;
+		visible.forEach(function (id) { var value = Number(stored[id]); widths[id] = Number.isFinite(value) ? Math.max(minimum[id], Math.min(storedLimit, value)) : minimum[id]; });
+		if (!Number.isFinite(Number(stored[3]))) widths[3] = Math.max(minimum[3], table.parentElement.clientWidth - 32 - 34 - 156 - 176 - 110);
 		if (!Number.isFinite(Number(stored[5]))) widths[5] = 156;
 		if (!Number.isFinite(Number(stored[7]))) widths[7] = 176;
-		var initialWidth = table.parentElement.clientWidth, initialTotal = visible.reduce(function (sum, id) { return sum + widths[id]; }, 0);
-		var savedPane = Number(stored._paneWidth);
-		if (savedPane > 0 && initialWidth < savedPane) widths[3] = Math.max(minimum[3], widths[3] + initialWidth - savedPane);
-		else if (!(savedPane > 0) || initialWidth > savedPane) { if (initialTotal < initialWidth) widths[3] += initialWidth - initialTotal; }
+		var referencePaneWidth = Number(stored._paneWidth) || table.parentElement.clientWidth, rendered = {};
 		var group = document.createElement('colgroup'); table.insertBefore(group, table.firstChild);
 		function layout() {
+			/* STHGroup: предпочтения пользователя отдельно от текущей ширины панели.
+			   При сужении сначала переносится название, при расширении свободное место
+			   распределяется по столбцам данных — пустой полосы справа не остаётся. */
+			var actual = Object.assign({}, widths), available = table.parentElement.clientWidth;
+			if (!(referencePaneWidth > 0) && available > 0) referencePaneWidth = available;
+			var requested = visible.reduce(function (sum, id) { return sum + actual[id]; }, 0);
+			/* Сужение панели — адаптация. Явное расширение столбца пользователем —
+			   его размер и горизонтальная прокрутка, без возврата ширины назад. */
+			if (available > 0 && available < referencePaneWidth && requested > available) {
+				var reduction = Math.min(referencePaneWidth - available, requested - available);
+				var fromName = Math.min(reduction, actual[3] - minimum[3]); actual[3] -= fromName; reduction -= fromName;
+				var others = visible.filter(function (id) { return id > 3; });
+				var slack = others.reduce(function (sum, id) { return sum + actual[id] - minimum[id]; }, 0);
+				if (slack > 0 && reduction > 0) others.forEach(function (id) { actual[id] -= (actual[id] - minimum[id]) * Math.min(1, reduction / slack); });
+			}
+			var fixed = actual[0] + actual[1], flexible = visible.filter(function (id) { return id >= 3; });
+			var flexibleTotal = flexible.reduce(function (sum, id) { return sum + actual[id]; }, 0);
+			if (available > fixed + flexibleTotal) {
+				var scale = (available - fixed) / flexibleTotal;
+				flexible.forEach(function (id) { actual[id] *= scale; });
+			}
+			rendered = actual;
 			group.replaceChildren(); var total = 0;
 			order.forEach(function (id) {
 				var col = document.createElement('col'); col.dataset.ci = id;
-				if (visible.indexOf(id) < 0) { col.style.display = 'none'; col.style.width = '0px'; } else { col.style.width = widths[id] + 'px'; total += widths[id]; }
+				if (visible.indexOf(id) < 0) { col.style.display = 'none'; col.style.width = '0px'; } else { col.style.width = actual[id] + 'px'; total += actual[id]; }
 				group.appendChild(col);
 			});
 			table.style.width = total + 'px';
-			Array.from(head.cells).forEach(function (th) { var id = Number(th.dataset.ci); th.style.width = visible.indexOf(id) < 0 ? '0px' : widths[id] + 'px'; });
+			Array.from(head.cells).forEach(function (th) { var id = Number(th.dataset.ci); th.style.width = visible.indexOf(id) < 0 ? '0px' : actual[id] + 'px'; });
+			/* Скругления следуют за видимыми крайними ячейками даже после переноса столбцов. */
+			table.querySelectorAll('tr.sthCompactRow').forEach(function (tr) {
+				var cells = Array.from(tr.cells); cells.forEach(function (cell) { cell.classList.remove('sthGlassStart', 'sthGlassEnd'); });
+				cells = cells.filter(function (cell) { return visible.indexOf(Number(cell.dataset.ci)) >= 0; });
+				if (cells.length) { cells[0].classList.add('sthGlassStart'); cells[cells.length - 1].classList.add('sthGlassEnd'); }
+			});
 		}
 		function reorder() {
 			Array.from(table.rows).forEach(function (tr) { if (tr.cells.length !== 10) return; var cells = Array.from(tr.cells); order.forEach(function (id) { tr.appendChild(cells.find(function (cell) { return Number(cell.dataset.ci) === id; })); }); });
 			layout();
 		}
-		function persist() { set.sthCols = set.sthCols || {}; set.sthCols.est = order.slice(); set.sthColWidths = set.sthColWidths || {}; set.sthColWidths.est = Object.assign({}, widths, { _paneWidth: table.parentElement.clientWidth }); save(); }
+		function rememberDisplayed() { visible.forEach(function (id) { if (rendered[id] > 0) widths[id] = rendered[id]; }); referencePaneWidth = table.parentElement.clientWidth; }
+		function persist() { rememberDisplayed(); set.sthCols = set.sthCols || {}; set.sthCols.est = order.slice(); set.sthColWidths = set.sthColWidths || {}; set.sthColWidths.est = Object.assign({}, widths, { _paneWidth: referencePaneWidth }); save(); }
 		function reset() { if (set.sthCols) delete set.sthCols.est; if (set.sthColWidths) delete set.sthColWidths.est; save(); window.Est.render(); }
 		Array.from(head.cells).forEach(function (th) {
 			var id = Number(th.dataset.ci); if (visible.indexOf(id) < 0 || id < 3) return;
@@ -57,13 +84,14 @@
 			th.appendChild(handle);
 			handle.addEventListener('pointerdown', function (e) {
 				if (e.button !== 0) return; e.preventDefault(); e.stopPropagation();
+				rememberDisplayed();
 				var start = e.clientX, original = widths[id]; document.body.classList.add('sthResizing');
-				function move(ev) { widths[id] = Math.round(Math.max(minimum[id], Math.min(1600, original + ev.clientX - start))); layout(); }
+				function move(ev) { widths[id] = Math.round(Math.max(minimum[id], Math.min(Math.max(1600, referencePaneWidth, original), original + ev.clientX - start))); layout(); }
 				function end() { document.removeEventListener('pointermove', move); document.removeEventListener('pointerup', end); document.removeEventListener('pointercancel', cancel); document.body.classList.remove('sthResizing'); persist(); }
 				function cancel() { widths[id] = original; layout(); end(); }
 				document.addEventListener('pointermove', move); document.addEventListener('pointerup', end); document.addEventListener('pointercancel', cancel);
 			});
-			handle.addEventListener('keydown', function (e) { if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return; e.preventDefault(); e.stopPropagation(); widths[id] = Math.max(minimum[id], Math.min(1600, widths[id] + (e.key === 'ArrowRight' ? 20 : -20))); layout(); persist(); });
+			handle.addEventListener('keydown', function (e) { if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return; e.preventDefault(); e.stopPropagation(); rememberDisplayed(); widths[id] = Math.max(minimum[id], Math.min(Math.max(1600, referencePaneWidth, widths[id]), widths[id] + (e.key === 'ArrowRight' ? 20 : -20))); layout(); persist(); });
 			th.addEventListener('keydown', function (e) {
 				if (e.target !== th || !e.altKey || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
 				e.preventDefault(); var data = order.filter(function (i) { return i >= 3 && visible.indexOf(i) >= 0; }), at = data.indexOf(id), to = at + (e.key === 'ArrowRight' ? 1 : -1); if (to < 0 || to >= data.length) return;
@@ -97,10 +125,9 @@
 			var observer = new ResizeObserver(function () {
 				if (!table.isConnected) { observer.disconnect(); return; }
 				var available = table.parentElement.clientWidth; if (!(available > 0)) return;
-				var delta = available - previousWidth; if (Math.abs(delta) < 1) return;
+				if (Math.abs(available - previousWidth) < 1) return;
 				previousWidth = available;
-				var total = visible.reduce(function (sum, id) { return sum + widths[id]; }, 0);
-				widths[3] = Math.max(minimum[3], widths[3] + (delta > 0 ? Math.max(0, available - total) : delta)); layout();
+				layout();
 			});
 			C.observer = observer; observer.observe(table.parentElement);
 		}

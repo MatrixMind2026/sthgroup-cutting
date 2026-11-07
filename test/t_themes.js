@@ -31,4 +31,8 @@ assert.ok(fs.readFileSync(__dirname + '/../web/ui/sth_embed.js', 'utf8').include
 // 2.6.3: внутри окна программы у панелей базы нет внешних теней (иначе прямоугольная серая подложка)
 assert.ok(mb.includes("dataset.sthFramed = '1'"));
 assert.ok(fs.readFileSync(__dirname + '/../web/sth_visual_repairs.css', 'utf8').includes('[data-sth-framed="1"]{--sg-shadow:inset'));
-console.log('проверок 15 | ошибок нет: каталог тем, стили, загрузка до окна и настроек');
+// 2.6.3: стекло как в iOS — тонкая тень у всех стеклянных панелей (большая обрезалась и давала прямоугольные подложки), строка состояния — стекло
+const vr = fs.readFileSync(__dirname + '/../web/sth_visual_repairs.css', 'utf8');
+assert.ok(vr.includes('html[data-sth-style="glass"]{--sg-shadow:0 1px 2px #00000014'));
+assert.ok(/html\[data-sth-style="glass"\] #status\{[^}]*background:var\(--sg-glass\)/.test(vr));
+console.log('проверок 17 | ошибок нет: каталог тем, стили, загрузка до окна и настроек');

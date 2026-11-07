@@ -115,3 +115,11 @@ body.mb .sthBaseResize:is(:hover,:focus-visible,.on):before{background:var(--acc
 /* STHGroup 2.6.3: внутри окна программы у панелей базы только светлые кромки стекла, без внешней тени —
    иначе тени обрезаются по прямоугольнику встроенной страницы и дают серую прямоугольную подложку за скруглёнными панелями */
 html[data-sth-style="glass"][data-sth-framed="1"]{--sg-shadow:inset 0 1px 0 #ffffff30,inset 0 -1px 0 #ffffff08}
+/* STHGroup 2.6.3: стекло как в iOS — один общий фон окна, панели прозрачные, глубину дают светлые кромки, а не тяжёлая тень.
+   Прежняя тень 0 12px 32px обрезалась по прямоугольным границам рабочей области и прокручиваемых блоков
+   и давала серые прямоугольные подложки за скруглёнными панелями во всех разделах. */
+html[data-sth-style="glass"]{--sg-shadow:0 1px 2px #00000014,inset 0 1px 0 #ffffff30,inset 0 -1px 0 #ffffff08}
+/* панель выбора материала парит над разделом и ничем не обрезается — ей мягкая тень оставлена */
+html[data-sth-style="glass"] #mbOverlay.sthPanel{box-shadow:0 12px 32px #00000025,inset 0 1px 0 #ffffff30,inset 0 -1px 0 #ffffff08}
+/* STHGroup 2.6.3: строка состояния внизу — такое же стекло, как шапка, вместо сплошной белой полосы; края — по сетке окна */
+html[data-sth-style="glass"] #status{border:1px solid var(--sg-edge);border-radius:14px;padding:6px 16px;background:var(--sg-glass);box-shadow:var(--sg-shadow);backdrop-filter:var(--sg-blur);-webkit-backdrop-filter:var(--sg-blur)}

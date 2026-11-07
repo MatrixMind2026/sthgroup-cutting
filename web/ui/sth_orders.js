@@ -261,11 +261,11 @@
 		var q = O.calc(b, o), c = O.client(b, o.clientId);
 		var clients = '<option value="">— клиент —</option>' + b.clients.map(function (x) { return '<option value="' + x.id + '"' + (x.id === o.clientId ? ' selected' : '') + '>' + esc(x.name) + '</option>'; }).join('') + '<option value="__new">＋ новый клиент…</option>';
 		var tabs = [['calc', 'Расчёт'], ['items', 'Изделия (' + o.items.length + ')'], ['pay', 'Оплаты' + (o.payments.length ? ' (' + o.payments.length + ')' : '')]];
-		if (X.productionTabs) tabs = tabs.concat(X.productionTabs); // STHGroup: производственные вкладки заказа
+		if (X.productionTabs) tabs = tabs.concat(X.productionTabs); tabs = tabs.concat([['cut', 'Раскрой', 'open'], ['est', 'Смета', 'open']]); // STHGroup: раскрой и смета открываются из заказа // STHGroup: производственные вкладки заказа
 		var center = '<section class="soC" data-sg-order="' + esc(o.id) + '" data-sg-tab="' + esc(X.tab) + '">' + X.orderHeroHtml(o, c) + '<details class="sgOrderMeta"><summary>Данные заказа · ' + esc(O.statusName(o.status, b)) + '</summary><div class="sgOrderMetaBody"><div class="soHead"><input id="soNo" class="soNo" aria-label="Номер заказа" value="' + esc(o.no) + '"><select id="soCl" aria-label="Клиент">' + clients + '</select><input type="date" id="soDate" aria-label="Дата заказа" value="' + esc(o.date) + '"><select id="soStat" aria-label="Статус заказа">' + opt(O.stages(X.book), o.status) + '</select><button class="icon" id="soDel" title="Удалить заказ">✕</button></div>' +
 			'<div class="mute sm">' + esc(c ? [c.phone, c.email].filter(Boolean).join(' · ') : '') + '</div>' +
 			'<input id="soNote" class="soNote" aria-label="Комментарий к заказу" placeholder="Комментарий к заказу" value="' + esc(o.note || '') + '"></div></details>' +
-			'<div class="tabs soTabs">' + tabs.map(function (t) { return '<button data-tb="' + t[0] + '"' + (X.tab === t[0] ? ' class="on"' : '') + '>' + t[1] + '</button>'; }).join('') + '</div>' +
+			'<div class="tabs soTabs">' + tabs.map(function (t) { if (t[2] === 'open') return '<button data-open="' + t[0] + '">' + t[1] + '</button>'; return '<button data-tb="' + t[0] + '"' + (X.tab === t[0] ? ' class="on"' : '') + '>' + t[1] + '</button>'; }).join('') + '</div>' +
 			'<div class="soBody">' + X.orderCenterHtml(o, q) + '</div></section>';
 		host.innerHTML = left + center + '<aside class="soS">' + (X.productionSideHtml && X.productionTabs.some(function (t) { return t[0] === X.tab; }) ? X.productionSideHtml(o, q) : sideHtml(o, q)) + '</aside>';
 		X.dnd();
@@ -333,6 +333,7 @@
 		if ((d = t.closest('[data-c]'))) { X.client = d.dataset.c; X.render(); return; }
 		if ((d = t.closest('[data-gi]'))) { var oo = O.order(X.book, d.dataset.go), ii = Number(d.dataset.gi); X.cur = oo ? oo.id : X.cur; X.openModels(oo, ii).then(function (ok) { if (ok) go('model'); }).catch(U.error); return; }
 		if ((d = t.closest('[data-go]'))) { X.cur = d.dataset.go; X.sgFocusOrder = true; go('orders'); X.openModels(O.order(X.book, X.cur)).catch(U.error); return; }
+		if ((d = t.closest('[data-open]'))) { X.openModels(O.order(X.book, X.cur)).then(function (ok) { if (ok) go(d.dataset.open); }).catch(U.error); return; } // STHGroup
 		if ((d = t.closest('[data-tb]'))) { X.tab = d.dataset.tb; X.render(); return; }
 		switch (t.id) {
 			case 'sgAllOrders': X.sgFocusOrder = false; X.render(); return;

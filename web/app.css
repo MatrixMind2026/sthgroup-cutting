@@ -483,6 +483,8 @@ button.fbkBtn { border-color: var(--accent); color: var(--accent); font-weight: 
 .modal.pvFull .pvTitle { font-size: 14px; white-space: nowrap; }
 .modal.pvFull .pvCtl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .modal.pvFull .pvCtl .chk { white-space: nowrap; }
+.modal.pvFull .pvPath { padding: 5px 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--mute); }
+.modal.pvFull .pvPath:empty { display: none; }
 .modal.pvFull .pvZoom { display: flex; align-items: center; gap: 6px; margin-left: auto; white-space: nowrap; }
 .modal.pvFull .pvZoom button { padding: 3px 10px; }
 .modal.pvFull .pvPct { min-width: 48px; text-align: center; cursor: pointer; }
@@ -1293,6 +1295,7 @@ body[data-sec="orders"] #welcome, body[data-sec="clients"] #welcome, body[data-s
 #orders input.soXu { width: 110px; }
 #orders .soX button.icon { margin-left: 4px; padding: 0 5px; }
 .modal.sthPrev .body { padding: 6px; }
+.modal.sthPrev .sthDocControls { padding: 6px 8px 10px; }
 #sthPickBar { display: flex; align-items: center; gap: 8px; padding: 7px 12px; background: var(--accent); color: #fff; font-size: 13px; }
 #sthPickBar .grow { flex: 1; }
 #sthPickBar button { background: #fff; color: #222; border: 0; border-radius: 4px; padding: 4px 12px; }

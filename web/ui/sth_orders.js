@@ -480,26 +480,28 @@
 	};
 
 	/* ----------------------------- документы PDF ----------------------------- */
-	var LOGO = '';
-	async function logo() { if (LOGO) return LOGO; try { LOGO = await (await fetch('img/sth_logo.svg')).text(); } catch (e) { LOGO = '<b style="font-size:22px">STH<span style="color:#F26B1D">Group</span></b>'; } return LOGO; }
-	/* Документы (оформление выбрано автором 03.11.2026): шапка — логотип и номер, «Исполнитель | Заказчик», полоса заказа;
-	   счёт — вариант «A» (таблица, итог, сумма прописью, подписи сторон), КП — вариант «2» (блоки слева, карточка итога справа). */
-	X.docHtml = function (o, q, kind, logoSvg) {
+	async function logo() { return await window.Preview.logo() || '<b style="font-size:22px">STHGroup</b>'; }
+	/* STHGroup: КП и счёт в двух темах Liquid Glass. */
+	X.docHtml = function (o, q, kind, logoSvg, theme) {
 		var b = X.book, cat = b.cat, co = cat.company, cl = O.client(b, o.clientId), m = O.money, inv = kind === 'inv';
 		var t = Object.assign({}, cat.terms, o.terms || {}), days = o.urgent ? (cat.urgentDays || 3) : t.days;
-		var css = '@page{size:A4;margin:12mm 13mm 14mm}*{box-sizing:border-box}body{margin:0;font:11.5px/1.4 "Segoe UI",Arial,sans-serif;color:#23262B}.n{text-align:right;white-space:nowrap}.mu{color:#7a7d82}table{width:100%;border-collapse:collapse}' +
-			'.top{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #F26B1D;padding-bottom:12px}.top svg{width:180px;height:auto;display:block}.ttl{text-align:right}.ttl b{font-size:19px;display:block}.ttl span{font-size:12.5px}' +
-			'.par{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:13px 0}.par h4{margin:0 0 3px;font-size:9.5px;letter-spacing:.08em;color:#F26B1D;text-transform:uppercase}.par .v{font-size:12.5px;font-weight:700}.par .bk{white-space:pre-line;font-size:10.5px}' +
-			'.ord{display:flex;flex-wrap:wrap;gap:8px 24px;background:#f5f3ef;border-radius:6px;padding:8px 13px;margin-bottom:10px}.ord span{color:#7a7d82;font-size:9.5px;display:block}.ord b{font-size:12px}' +
-			'h3{font-size:10.5px;margin:13px 0 2px;color:#F26B1D;text-transform:uppercase;letter-spacing:.05em;display:flex;justify-content:space-between}h3 span{color:#23262B}' +
-			'.it th{font-size:9.5px;color:#7a7d82;text-align:left;border-bottom:1.5px solid #23262B;padding:5px}.it th.n{text-align:right}.it td{border-bottom:1px solid #e6e6e6;padding:5px;vertical-align:top}.it small{display:block;color:#7a7d82;font-size:9.5px}.dc{color:#c0560f}' +
-			'.wrap{display:grid;grid-template-columns:1fr 196px;gap:16px}.side{background:#f5f3ef;border-radius:9px;padding:12px;align-self:start;break-inside:avoid}.side .tt{font-size:18px;font-weight:800;margin:3px 0 8px}.side .r{display:flex;justify-content:space-between;gap:6px;padding:3px 0;border-bottom:1px dashed #ddd;font-size:10.5px}.side .r span:last-child{white-space:nowrap}' +
-			'.pay{background:#23262B;color:#fff;border-radius:7px;padding:9px;margin-top:10px}.pay .r{border:0}.pay b{color:#F26B1D}.pay small{color:#aaa;font-size:9px}.w{font-size:9.5px;color:#55585e;margin-top:6px}' +
-			'.tot{width:300px;margin:12px 0 0 auto}.tot>div{display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid #eee}.tot .big{font-size:15px;font-weight:800;border-bottom:2px solid #F26B1D}.tot .w{display:block;border:0}' +
-			'.cnd{background:#fff6ef;border-left:4px solid #F26B1D;padding:8px 13px;margin-top:14px;break-inside:avoid}.cnd ol{margin:4px 0 0;padding-left:18px}.cnd li{margin:2px 0}' +
-			'.sig{display:flex;justify-content:space-between;margin-top:36px;break-inside:avoid}.sig div{width:45%;border-top:1px solid #23262B;padding-top:4px;font-size:10px;color:#7a7d82}';
+		var css = BM.out.docThemeCSS(theme) +
+			'@page{size:A4;margin:9mm 10mm 11mm}*{box-sizing:border-box}html{background:var(--doc-surface);background-repeat:no-repeat;background-attachment:fixed;background-size:100% 100%}body{margin:0;font:11.5px/1.4 "Segoe UI",Arial,sans-serif;color:var(--doc-text)}' +
+			'@media print{html{background:var(--doc-bg)}body{padding:3mm;box-decoration-break:clone}body::before{content:"";position:fixed;inset:0;z-index:-1;background:var(--doc-surface)}}@media screen{body{max-width:184mm;margin:auto;padding:16px}}.n{text-align:right;white-space:nowrap;font-variant-numeric:tabular-nums}.mu{color:var(--doc-mute)}table{width:100%;border-collapse:separate;border-spacing:0 3px}' +
+			'.top{display:flex;justify-content:space-between;align-items:center;gap:12px;border-bottom:1px solid var(--doc-line);padding-bottom:12px;break-inside:avoid}.top svg{width:134px;height:auto;display:block}.docLogo{background:#f7f4ef;border-radius:7px;padding:5px 9px;color:#26332f}.ttl{text-align:right}.ttl b{font-size:21px;display:block}.ttl span{font-size:11.5px;color:var(--doc-mute)}' +
+			'.par,.ord,.side,.cnd{background:var(--doc-glass);border:1px solid var(--doc-line);border-radius:9px;padding:8px 12px}.par{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin:12px 0;overflow-wrap:anywhere}.par h4{margin:0 0 3px;font-size:10px;color:var(--doc-mute)}.par .v{font-size:12.5px;font-weight:700}.par .bk{white-space:pre-line;font-size:10.5px}' +
+			'.ord{display:flex;flex-wrap:wrap;gap:6px 20px;margin-bottom:9px}.ord span{color:var(--doc-mute);font-size:10px;display:block}.ord b{font-size:12px}' +
+			'h3{font-size:11.5px;margin:11px 0 2px;display:flex;justify-content:space-between;gap:8px;break-after:avoid}h3 span{white-space:nowrap}' +
+			'.it th{font-size:10px;color:var(--doc-mute);text-align:left;padding:3px 5px}.it th.n{text-align:right}.it tr{break-inside:avoid}.it td{background:var(--doc-glass);border-block:1px solid var(--doc-line);padding:4px 5px;vertical-align:middle;overflow-wrap:anywhere}' +
+			'.it td:first-child{border-left:1px solid var(--doc-line);border-radius:6px 0 0 6px}.it td:last-child{border-right:1px solid var(--doc-line);border-radius:0 6px 6px 0}.it small{display:block;color:var(--doc-mute);font-size:9.5px}.dc{color:var(--doc-warn)}' +
+			'.side{margin-top:10px;break-inside:avoid}.side .tt,.tot .big{font-size:17px;font-weight:800;background:var(--doc-tint);border:1px solid var(--doc-accent);border-radius:7px;padding:5px 9px}.side .tt{margin:4px 0 6px;text-align:right}.side .r{display:flex;justify-content:space-between;gap:8px;padding:2px 0;border-bottom:1px solid var(--doc-line);font-size:10.5px}.side .r span:last-child{white-space:nowrap}' +
+			'.sideDetail{display:grid;grid-template-columns:3fr 2fr;gap:14px}.pay b{white-space:nowrap}.pay .r{border:0}.pay small,.w{color:var(--doc-mute);font-size:10px}.w{margin-top:4px}' +
+			'@media screen and (max-width:470px){.sideDetail{grid-template-columns:1fr}}' +
+			'.tot{width:min(100%,320px);margin:10px 0 0 auto;break-inside:avoid}.tot>div{display:flex;justify-content:space-between;padding:4px 0;gap:8px}.tot .big{margin-top:4px}.tot .w{display:block}' +
+			'.cnd{margin-top:11px;break-inside:avoid}.cnd ol{margin:4px 0 0;padding-left:18px}.cnd li{margin:2px 0;break-inside:avoid}' +
+			'.sig{display:flex;justify-content:space-between;margin-top:24px;break-inside:avoid}.sig div{width:45%;border-top:1px solid var(--doc-line);padding-top:4px;font-size:10px;color:var(--doc-mute)}';
 		var items = o.items.map(function (i) { return i.title || U.stemOf(i.path); }).join(', ');
-		var head = '<div class="top">' + logoSvg + '<div class="ttl"><b>' + (inv ? 'Счёт на оплату' : 'Коммерческое предложение') + ' № ' + esc(o.no) + '</b><span>от ' + esc(O.ruDate(o.date)) + (!inv && cat.kpDays ? ' · действительно ' + cat.kpDays + ' дн.' : '') + '</span></div></div>' +
+		var head = '<div class="top"><div class="docLogo">' + logoSvg + '</div><div class="ttl"><b>' + (inv ? 'Счёт на оплату' : 'Коммерческое предложение') + ' № ' + esc(o.no) + '</b><span>от ' + esc(O.ruDate(o.date)) + (!inv && cat.kpDays ? ' · действительно ' + cat.kpDays + ' дн.' : '') + '</span></div></div>' +
 			'<div class="par"><div><h4>Исполнитель</h4><div class="v">' + esc(co.name || 'STHGroup') + '</div>' + [co.inn, co.address, [co.phone, co.email].filter(Boolean).join(' · '), co.site].filter(Boolean).map(function (x) { return '<div>' + esc(x) + '</div>'; }).join('') + (inv && co.bank ? '<div class="bk mu">' + esc(co.bank) + '</div>' : '') + '</div>' +
 			'<div><h4>Заказчик</h4>' + (cl ? '<div class="v">' + esc(cl.name) + '</div>' + [cl.phone, cl.email, cl.note].filter(Boolean).map(function (x) { return '<div>' + esc(x) + '</div>'; }).join('') : '<div class="mu">—</div>') + '</div></div>' +
 			'<div class="ord"><div><span>Заказ</span><b>' + esc(o.no) + '</b></div>' + (items ? '<div><span>Изделия</span><b>' + esc(items) + '</b></div>' : '') + (q.sheets ? '<div><span>Листов</span><b>' + q.sheets + '</b></div>' : '') + (days ? '<div><span>Срок изготовления</span><b>до ' + esc(days) + ' раб. дн.' + (o.urgent ? ' (срочно)' : '') + '</b></div>' : '') + '</div>';
@@ -530,12 +532,12 @@
 		var ml = q.matLines.filter(function (l) { return l.on; });
 		if (ml.length) body += '<h3>Материалы и фурнитура<span>' + m(q.mats) + ' ₽</span></h3><table class="it">' + cols + '<thead><tr><th>Позиция</th><th></th><th class="n">Кол-во</th><th class="n">Цена, ₽</th><th class="n">Сумма, ₽</th></tr></thead><tbody>' + rows(ml) + '</tbody></table><div class="mu" style="font-size:10px;margin-top:3px">Материал можно привезти свой или купить через нас: ' + esc(cat.markupText) + '.</div>';
 		if (q.matList.length) body += '<h3>Материалы в заказе</h3><table class="it"><tbody>' + q.matList.map(function (x) { return '<tr><td>' + esc(x.name) + '</td><td class="mu">' + esc(x.th ? P.dim(x.th) + ' мм' : '') + '</td><td class="n">' + x.n + ' л</td></tr>'; }).join('') + '</tbody></table>';
-		var side = '<div class="side"><div class="mu">Итого по заказу</div><div class="tt">' + m(q.total) + ' ₽</div><div class="r"><span>Услуги</span><span>' + m(q.serv) + '</span></div>' +
+		var side = '<div class="side"><div class="mu">Итого по заказу</div><div class="tt">' + m(q.total) + ' ₽</div><div class="sideDetail"><div><div class="r"><span>Услуги</span><span>' + m(q.serv) + '</span></div>' +
 			(q.discount ? '<div class="r dc"><span>' + esc(cat.complexText) + ' ' + cat.complexPct + '%</span><span>−' + m(q.discount) + '</span></div>' : '') +
 			(q.urgent ? '<div class="r"><span>' + esc(cat.urgentText || 'Срочный заказ') + ' +' + cat.urgentPct + '%</span><span>' + m(q.urgent) + '</span></div>' : '') +
 			(q.pctSum ? '<div class="r"><span>Безналичная оплата</span><span>' + m(q.pctSum) + '</span></div>' : '') +
-			'<div class="r"><span>Материалы и фурнитура</span><span>' + m(q.mats) + '</span></div><div class="w">' + esc(O.words(q.total)) + '</div>' +
-			'<div class="pay"><div class="r"><span>Аванс</span><b>' + m(q.advance) + ' ₽</b></div><small>' + cat.advance.serv + '% услуг + ' + cat.advance.mat + '% материалов</small><div class="r" style="margin-top:5px"><span>Доплата</span><b>' + m(q.rest) + ' ₽</b></div><small>перед отгрузкой</small></div></div>';
+			'<div class="r"><span>Материалы и фурнитура</span><span>' + m(q.mats) + '</span></div><div class="w">' + esc(O.words(q.total)) + '</div></div>' +
+			'<div class="pay"><div class="r"><span>Аванс</span><b>' + m(q.advance) + ' ₽</b></div><small>' + cat.advance.serv + '% услуг + ' + cat.advance.mat + '% материалов</small><div class="r"><span>Доплата</span><b>' + m(q.rest) + ' ₽</b></div><small>перед отгрузкой</small></div></div></div>';
 		var terms = O.termsText(b, o, q);
 		return '<!doctype html><html><head><meta charset="utf-8"><style>' + css + '</style></head><body>' + head + '<div class="wrap"><div>' + body + '</div>' + side + '</div>' +
 			(terms.length ? '<div class="cnd"><b>' + esc((b.cat.terms && b.cat.terms.title) || 'Важно знать') + '</b><ol>' + terms.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></div>' : '') + sign + '</body></html>';
@@ -545,21 +547,31 @@
 		if (!q.total) { U.toast('В заказе нет позиций — добавьте изделие на вкладке «Изделия».'); return; }
 		var cl = O.client(X.book, o.clientId), name = (kind === 'inv' ? 'Счёт ' : 'КП ') + o.no + (cl ? ' ' + cl.name : '');
 		/* STHGroup: сначала предпросмотр в окне программы, сохранение в PDF — из него */
-		var html = X.docHtml(o, q, kind, await logo());
-		var go = await U.modal({ title: (kind === 'inv' ? 'Счёт' : 'Коммерческое предложение') + ' — предпросмотр', width: 900, cls: 'sthPrev',
-			body: (q.samplePrices && q.samplePrices.length ? '<div class="note warn">В документе используются цены-образцы. Проверьте свои цены перед отправкой заказчику.</div>' : '') + '<iframe id="soPrev" title="Предпросмотр" style="width:100%;height:72vh;border:1px solid #555;background:#fff"></iframe>',
-			buttons: [{ label: 'Закрыть', value: null }, { label: 'Сохранить в PDF', primary: true, value: 1 }],
-			onOpen: function (m) { m.querySelector('#soPrev').srcdoc = html; } });
-		if (!go) return;
+		var svg = await logo();
 		var dir = S().set.sthDocsDir || o.dir || (o.items[0] ? U.dirOf(o.items[0].path) : (S().set.lastDir || S().boot.docs));   // папка документов, иначе папка заказа
-		var p = await U.pick({ kind: 'save', title: kind === 'inv' ? 'Счёт в PDF' : 'КП в PDF', dir: dir, name: name.replace(/[\\/:*?"<>|]+/g, ' ') + '.pdf', filters: [{ name: 'PDF', ext: ['pdf'] }] });
-		if (!p) return;
-		if (!/\.pdf$/i.test(p)) p += '.pdf';
-		try {
-			await U.api.pdf(html, p);
-			(o.docs = o.docs || []).push({ kind: kind, path: p, date: O.today(), total: q.total }); X.save();
-			U.toast('Готово: ' + U.baseOf(p), { actions: [{ label: 'Открыть', run: function () { U.api.open(p).catch(U.error); } }, { label: 'Папка', run: function () { U.api.open(U.dirOf(p)).catch(U.error); } }] });
-		} catch (e) { U.error(e); }
+		function html(m) { return X.docHtml(o, q, kind, svg, m.querySelector('.docTheme').value); }
+		return U.modal({ title: (kind === 'inv' ? 'Счёт' : 'Коммерческое предложение') + ' — предпросмотр', width: 900, cls: 'sthPrev',
+			body: '<div class="sthDocControls">' + window.Preview.themeControl() + '</div>' +
+				(q.samplePrices && q.samplePrices.length ? '<div class="note warn">В документе используются цены-образцы. Проверьте свои цены перед отправкой заказчику.</div>' : '') +
+				'<iframe id="soPrev" title="Предпросмотр" style="display:block;width:100%;height:68vh;border:1px solid var(--line);border-radius:12px"></iframe>',
+			buttons: [{ label: 'Закрыть', value: null }, { label: 'Сохранить PDF', primary: true, id: 'pdf', run: async function (m) {
+				var btn = m.querySelector('[data-id="pdf"]'), snapshot = html(m);
+				btn.disabled = true;
+				try {
+					var p = await U.pick({ kind: 'save', title: kind === 'inv' ? 'Счёт в PDF' : 'КП в PDF', dir: dir, name: name.replace(/[\\/:*?"<>|]+/g, ' ') + '.pdf', filters: [{ name: 'PDF', ext: ['pdf'] }] });
+					if (!p) return false;
+					if (!/\.pdf$/i.test(p)) p += '.pdf';
+					await U.api.pdf(snapshot, p);
+					(o.docs = o.docs || []).push({ kind: kind, path: p, date: O.today(), total: q.total }); X.save();
+					U.toast('Готово: ' + U.baseOf(p), { actions: [{ label: 'Открыть', run: function () { U.api.open(p).catch(U.error); } }, { label: 'Папка', run: function () { U.api.open(U.dirOf(p)).catch(U.error); } }] });
+					return true;
+				} finally { btn.disabled = false; }
+			} }],
+			onOpen: function (m) {
+				function render() { m.querySelector('#soPrev').srcdoc = html(m); }
+				m.querySelector('.docTheme').addEventListener('change', render);
+				render();
+			} });
 	};
 
 	/* ------------------------ прайс-лист для клиента ------------------------ */

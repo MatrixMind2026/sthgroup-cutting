@@ -10,6 +10,21 @@
 	function r2(v) { return Math.round(v * 100) / 100; }
 	function r3(v) { return Math.round(v * 1000) / 1000; }
 
+	/* STHGroup: палитры документов соответствуют «Светлой» и «Тёмной» темам окна. */
+	function docPalette(theme) {
+		return theme === 'dark'
+			? { bg: '#191c20', text: '#eceef0', mute: '#bcc0c6', accent: '#f26b1d', line: '#4a4e55', panel: '#323539', tint: '#55331d', link: '#a5cdff', warn: '#ffd093' }
+			: { bg: '#f3f5f1', text: '#26332f', mute: '#4d6059', accent: '#197563', line: '#ccd8d1', panel: '#ffffff', tint: '#e1f1eb', link: '#1f5fbf', warn: '#8a4208' };
+	}
+	O.docThemeCSS = function (theme) {
+		var c = docPalette(theme);
+		return ':root{' + Object.keys(c).map(function (key) { return '--doc-' + key + ':' + c[key]; }).join(';') + ';' +
+			'--doc-glass:linear-gradient(155deg,#ffffff18,transparent 70%),color-mix(in srgb,var(--doc-panel) 70%,transparent);' +
+			'--doc-surface:radial-gradient(ellipse at 0% 4%,color-mix(in srgb,var(--doc-accent) 16%,transparent),transparent 48%),' +
+			'radial-gradient(ellipse at 100% 90%,#819cad27,transparent 65%),var(--doc-bg);' +
+			'color:var(--doc-text);print-color-adjust:exact;-webkit-print-color-adjust:exact}';
+	};
+
 	/* Стили ячеек: 0 обычный, 1 шапка, 2 текст в рамке, 3 целое, 4 число 0.0, 5 число 0.00, 6 заголовок, 7 жирный, 8 число 0.000 */
 	var STYLES = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">' +
 		'<numFmts count="5"><numFmt numFmtId="164" formatCode="0.0"/><numFmt numFmtId="165" formatCode="0.00"/><numFmt numFmtId="166" formatCode="0.000"/><numFmt numFmtId="167" formatCode="#,##0"/><numFmt numFmtId="168" formatCode="#,##0.00"/></numFmts>' +
@@ -48,7 +63,31 @@
 	}
 	O.cellRef = function (r, c) { return colName(c) + (r + 1); };
 	O.colName = colName;
-	O.xlsxBook = function (sheets) {
+	function documentStyles(theme) {
+		if (!theme) return STYLES;
+		var c = docPalette(theme), dark = theme === 'dark';
+		function rgb(hex) { return 'FF' + hex.slice(1).toUpperCase(); }
+		var colors = { FF0E6B5A: dark ? c.tint : c.accent, FF2B2F35: dark ? c.tint : '#365951',
+			FFDFE5E9: dark ? '#3a3d42' : c.tint, FFF6F8F9: dark ? c.panel : '#f5f9f6',
+			FFC9CFD5: c.line, FF5D6770: c.mute, FF1F5FBF: c.link };
+		var styles = STYLES.replace(/rgb="([A-F0-9]+)"/g, function (m, color) {
+			return colors[color] ? 'rgb="' + rgb(colors[color]) + '"' : m;
+		});
+		if (!dark) return styles;
+		styles = styles.replace(/<font>(.*?)<\/font>/g, function (tag, fields) {
+			return fields.indexOf('<color') >= 0 ? tag : '<font>' + fields.replace('<name', '<color rgb="' + rgb(c.text) + '"/><name') + '</font>';
+		});
+		return styles.replace(/<cellXfs count="31">(.*?)<\/cellXfs>/, function (tag, xfs) {
+			// Индексы и форматы ячеек сохраняются. Заливка нужна под светлым текстом.
+			return '<cellXfs count="31">' + xfs.replace(/<xf [^>]+>/g, function (xf) {
+				if (xf.indexOf('fillId="0"') < 0) return xf;
+				return xf.replace('fillId="0"', 'fillId="6"').replace(/\/?\>$/, function (end) {
+					return (xf.indexOf('applyFill=') < 0 ? ' applyFill="1"' : '') + end;
+				});
+			}) + '</cellXfs>';
+		});
+	}
+	O.xlsxBook = function (sheets, theme) {
 		var sst = [], sidx = {}, files = [], i, used = {};
 		function str(s) { s = String(s); if (!sidx.hasOwnProperty(s)) { sidx[s] = sst.length; sst.push(s); } return sidx[s]; }
 		function safeName(n) {
@@ -123,7 +162,7 @@
 			{ name: '_rels/.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>' },
 			{ name: 'xl/workbook.xml', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets>' + wbSheets + '</sheets>' + (names ? '<definedNames>' + names + '</definedNames>' : '') + '<calcPr calcId="191029" fullCalcOnLoad="1"/></workbook>' },
 			{ name: 'xl/_rels/workbook.xml.rels', data: '<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' + rels + '<Relationship Id="rId' + (n + 1) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/><Relationship Id="rId' + (n + 2) + '" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/></Relationships>' },
-			{ name: 'xl/styles.xml', data: STYLES }, { name: 'xl/sharedStrings.xml', data: ss }
+			{ name: 'xl/styles.xml', data: documentStyles(theme) }, { name: 'xl/sharedStrings.xml', data: ss }
 		];
 		return BM.zip(head.concat(files));
 	};

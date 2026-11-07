@@ -1084,7 +1084,12 @@
 		var sups = O.supList(R);
 		if (shop === undefined) shop = sups.length ? sups[0].shop : '';
 		function supOpts() { return sups.map(function (g) { return '<option value="' + esc(g.shop) + '"' + (g.shop === shop ? ' selected' : '') + '>' + esc((g.shop || 'Без поставщика') + ' — ' + g.n + ' ' + A.plural(g.n, 'позиция', 'позиции', 'позиций')) + '</option>'; }).join('') + (sups.length > 1 ? '<option value="*"' + (shop === '*' ? ' selected' : '') + '>Все поставщики — по листу на каждого</option>' : ''); }
-		function opt(m) { var k = m.querySelector('#eoKind').value; return { kind: k, noPrice: m.querySelector('#eoNoPrice').checked ? 1 : 0, totals: m.querySelector('#eoTotals').checked ? 1 : 0, det: (DET_K[k] && nDet && m.querySelector('#eoDet').checked) ? 1 : 0, shop: k === 'sup' ? m.querySelector('#eoShop').value : undefined }; }
+		function opt(m) { var k = m.querySelector('#eoKind').value; return { kind: k, theme: m.querySelector('.docTheme').value, noPrice: m.querySelector('#eoNoPrice').checked ? 1 : 0, totals: m.querySelector('#eoTotals').checked ? 1 : 0, det: (DET_K[k] && nDet && m.querySelector('#eoDet').checked) ? 1 : 0, shop: k === 'sup' ? m.querySelector('#eoShop').value : undefined }; }
+		async function pdfDoc(o) {
+			var svg = await window.Preview.logo();
+			if (svg) o.logo = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+			return O.estHtml(R, S.st, o);
+		}
 		function sync(m) {
 			var k = m.querySelector('#eoKind').value, d = m.querySelector('#eoDet');
 			m.querySelector('#eoShop').hidden = k !== 'sup';
@@ -1102,7 +1107,7 @@
 			try {
 				var dir = outDir(), name = fileStem() + FILES[o.kind] + (o.kind === 'sup' ? ' ' + O.fileSafe(o.shop === '*' ? 'все' : (o.shop || 'без поставщика')) : '') + (o.noPrice && o.kind !== 'mat' && o.kind !== 'det' ? ' (без цен)' : '') + (o.totals && (o.kind === 'client' || o.kind === 'full') ? ' (итоги)' : '');
 				if (what === 'pdf') {
-					var d = O.estHtml(R, S.st, o), path = U.join(dir, name + '.pdf');
+					var d = await pdfDoc(o), path = U.join(dir, name + '.pdf');
 					await U.api.pdf(d.html, path);
 					done(O.estKindTitle(o.kind) + ': PDF готов, ' + d.pages + ' ' + A.plural(d.pages, 'лист', 'листа', 'листов'), path, dir);
 				} else {
@@ -1123,15 +1128,16 @@
 				'<select id="eoShop" title="Какому поставщику"' + (kind === 'sup' ? '' : ' hidden') + '>' + supOpts() + '</select>' +
 				'<label class="chk"><input type="checkbox" id="eoNoPrice"' + chk(cfg.noPrice) + '> без цены</label><label class="chk"><input type="checkbox" id="eoTotals"' + chk(cfg.totals) + '> только итоги</label>' +
 				'<label class="chk" id="eoDetL"><input type="checkbox" id="eoDet"> чертежи фасадов' + (nDet ? ' <span class="mute">(' + nDet + ')</span>' : '') + '</label>' +
+				window.Preview.themeControl() +
 				'<button id="oPick" title="Папка: ' + esc(outDir()) + '">Папка…</button>',
-			build: function (m) {
+			build: async function (m) {
 				sync(m);
-				var o = opt(m), d = O.estHtml(R, S.st, o);
-				return { html: d.html, pages: d.pages, warn: warn ? esc(warn) : '' };
+				var d = await pdfDoc(opt(m));
+				return { html: d.html, pages: d.pages, dir: outDir(), warn: warn ? esc(warn) : '' };
 			},
 			buttons: [{ label: 'Сохранить Excel', primary: fmt === 'xlsx', id: 'xlsx', run: function (m) { return save(m, 'xlsx'); } },
 					  { label: 'Сохранить PDF', primary: fmt !== 'xlsx', id: 'pdf', run: function (m) { return save(m, 'pdf'); } }],
-			onOpen: function (m) { wirePick(m); }
+			onOpen: function (m, refresh) { wirePick(m, refresh); }
 		});
 	};
 
@@ -1168,7 +1174,7 @@
 	}
 	function wireDir(m) { m.querySelector('#oPick').onclick = async function () { var d = await chooseDir(); if (d) m.querySelector('#oDir').value = d; }; }
 	/* кнопка «Папка…» в предпросмотре: путь — в подсказке */
-	function wirePick(m) { var b = m.querySelector('#oPick'); if (b) b.onclick = async function () { var d = await chooseDir(); if (d) { b.title = 'Папка: ' + d; U.toast('Файлы будут сохраняться в: ' + d); } }; }
+	function wirePick(m, refresh) { var b = m.querySelector('#oPick'); if (b) b.onclick = async function () { var d = await chooseDir(); if (d) { b.title = 'Папка: ' + d; if (refresh) refresh(m); U.toast('Файлы будут сохраняться в: ' + d); } }; }
 
 	/* Пока в буфере лежат детали, документы не выпускаются: в них не хватало бы деталей. */
 	function outBlocked() {

@@ -36,7 +36,7 @@
 		'.fTab td{padding:0.9mm 1mm;border-bottom:0.15mm solid #d5d9dd;vertical-align:middle;text-align:left;white-space:normal}', '.fTab td.k{color:#5d6770;width:34%}', '.fTab td.v{font-weight:600}',
 		'.fTab small{display:block;font-weight:400;color:#5d6770;font-size:7.2pt;line-height:3.3mm}', '.fTab small a,.dTx a{color:#1f5fbf}',
 		'.dSw{display:inline-block;width:4mm;height:4mm;vertical-align:-0.9mm;margin-right:1.4mm;border-radius:0.6mm;border:0.15mm solid #c9ced3;object-fit:cover;box-sizing:border-box}',
-		'.dTx{font-size:8pt;color:#333;line-height:3.9mm}', '.dTx.w{color:#8a4208}'
+		'.dTx{font-size:8pt;color:#333;line-height:3.9mm}', '.dTx.w,.dMissing{color:#8a4208}', '.dHint{color:#5d6770}'
 	].join('\n');
 
 	/* ------------------------------- чертёж ----------------------------------- */
@@ -132,14 +132,14 @@
 		rows.push(['Размер (В×Ш)', o.h + ' × ' + o.w + ' мм']);
 		if (o.kind === 'frame') {
 			if (o.art) rows.push(['Артикул', esc(o.art)]);
-			rows.push(['Цвет профиля', o.prof ? sw(o, o.prof) + esc(o.prof) + supLine(o, o.prof) : '<span style="font-weight:400;color:#8a4208">в модели не найден</span>']);
-			rows.push(['Цвет стекла', o.glass ? sw(o, o.glass) + esc(o.glass) + supLine(o, o.glass) : '<span style="font-weight:400;color:#8a4208">в модели не найдено</span>']);
+			rows.push(['Цвет профиля', o.prof ? sw(o, o.prof) + esc(o.prof) + supLine(o, o.prof) : '<span class="dMissing" style="font-weight:400">в модели не найден</span>']);
+			rows.push(['Цвет стекла', o.glass ? sw(o, o.glass) + esc(o.glass) + supLine(o, o.glass) : '<span class="dMissing" style="font-weight:400">в модели не найдено</span>']);
 		} else {
 			rows.push(['Основа', esc(o.base) + supLine(o, o.base)]);
 			rows.push(['Покрытие', sw(o, o.coat) + esc(o.coat) + supLine(o, o.coat)]);
 			rows.push(['Стороны покрытия', P.sidesTitle(o.sides)]);
 		}
-		rows.push(['Площадь', E.num(o.area) + ' кв.м' + (o.n > 1 ? ' <span style="font-weight:400;color:#5d6770">(' + E.num(o.n) + ' шт)</span>' : '')]);
+		rows.push(['Площадь', E.num(o.area) + ' кв.м' + (o.n > 1 ? ' <span class="dHint" style="font-weight:400">(' + E.num(o.n) + ' шт)</span>' : '')]);
 		if (o.hinge.n) rows.push(['Петли', o.hinge.n + ' шт' + (o.hinge.name ? ' — ' + esc(o.hinge.name.replace(/\.\s*$/, '')) : '') + (o.hinge.side ? ', ' + SIDE[o.hinge.side] + (o.sideSet ? ' (вручную)' : '') : '') + supLine(o, o.hinge.name)]);
 		if (o.kind === 'frame') { var fs = supLine(o, o.name); if (fs) rows.push(['Поставщик', fs.replace(/^<small>|<\/small>$/g, '')]); }
 		var h = '<span class="dBadge">' + KIND[o.kind] + '</span><div class="dName">' + esc(o.name) + '</div><div class="dQty"><b>' + E.num(o.n) + ' шт</b> · ' + o.h + ' × ' + o.w + ' мм</div>' +
@@ -165,8 +165,8 @@
 	}
 
 	/* Листы документа: массив HTML-страниц (.dPg 273 × 186 мм). */
-	O.detPages = function (doc) {
-		var head = '<div class="eHead"><div><h1>' + esc(doc.title) + '</h1><div class="s">' + esc(doc.sub) + '</div></div><div class="r">' + esc(doc.right1) + '<br>' + esc(doc.right2) + '</div></div>';
+	O.detPages = function (doc, logo) {
+		var head = O.estPageHead(doc, logo);
 		var foot = doc.name + (doc.order ? ' · ' + doc.order : ''), list = doc.sheets || [], n = Math.max(1, list.length);
 		function page(body, q) { return '<div class="dPg"' + (list[q] && list[q].key ? ' data-fac="' + q + '"' : '') + '>' + head + body + '<div class="eFoot"><span>' + esc(foot) + '</span><span>лист ' + (q + 1) + ' из ' + n + '</span></div></div>'; }
 		if (!list.length) {
@@ -207,5 +207,5 @@
 		if (!list.length) full('Фасадов для деталировки нет.', 30);
 		return { name: 'Деталировка фасадов', cols: C.map(function (c) { return c[1]; }), rows: rows, heights: hs, merges: merges, links: links, images: images, freeze: head + 1, print: { titles: head + 1 } };
 	};
-	O.detXlsx = function (doc, st, opt) { return O.xlsxBook([O.detSheet(doc, st, opt)]); };
+	O.detXlsx = function (doc, st, opt) { return O.xlsxBook([O.detSheet(doc, st, opt)], opt && opt.theme); };
 })(typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : this));

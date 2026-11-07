@@ -82,15 +82,21 @@ const hooks = {
   },
   // PDF: страница печатается встроенным Chromium (у BazisReborn — через Edge)
   pdf: async function (html, out) {
-    const tmp = path.join(app.getPath('temp'), 'sth-pdf-' + Date.now() + '.html');
-    fs.writeFileSync(tmp, html, 'utf8');
-    const w = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: true } });
+    const dir = fs.mkdtempSync(path.join(app.getPath('temp'), 'sth-pdf-'));
+    const tmp = path.join(dir, 'document.html');
+    let w;
     try {
+      fs.writeFileSync(tmp, html, 'utf8');
+      w = new BrowserWindow({ show: false, webPreferences: { sandbox: true, javascript: true } });
       await w.loadFile(tmp);
       await new Promise(function (r) { setTimeout(r, 300); });
       const pdf = await w.webContents.printToPDF({ printBackground: true, preferCSSPageSize: true, margins: { marginType: 'none' } });
-      fs.writeFileSync(out, pdf);
-    } finally { w.destroy(); try { fs.unlinkSync(tmp); } catch (e) { /* нет */ } }
+      server.writeAtomic(out, pdf);
+    } finally {
+      if (w) w.destroy();
+      try { fs.unlinkSync(tmp); } catch (e) { /* файл мог не создаться */ }
+      try { fs.rmdirSync(dir); } catch (e) { /* временная папка */ }
+    }
   },
   open: async function (p) { const e = await shell.openPath(p); if (e) throw new Error(e); },
   openUrl: async function (u) { await shell.openExternal(u); },

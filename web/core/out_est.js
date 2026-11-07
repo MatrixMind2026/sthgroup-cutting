@@ -284,12 +284,17 @@
 	}
 
 	/* Листы документа: массив HTML-страниц (каждая — .ePg 186 × 273 мм). */
-	O.estPages = function (doc) {
-		if (doc.kind === 'det' && O.detPages) return O.detPages(doc);
+	O.estPageHead = function (doc, logo) {
+		return '<div class="eHead"><div><h1>' + esc(doc.title) + '</h1><div class="s">' + esc(doc.sub) + '</div></div><div class="r">' +
+			(logo ? '<img class="docLogo" src="' + esc(logo) + '" alt="STHGroup">' : '') +
+			esc(doc.right1) + '<br>' + esc(doc.right2) + '</div></div>';
+	};
+	O.estPages = function (doc, logo) {
+		if (doc.kind === 'det' && O.detPages) return O.detPages(doc, logo);
 		var PAGE = 273 - 7, pages = [], cur = [], used = 0, i, b = doc.blocks;
 		var first = 17 + (doc.client ? 6 : 0) + (doc.note ? 6 : 0) + (doc.strip.length ? 16 : 0) + 2 + 5.4;
 		function head() {
-			return '<div class="eHead"><div><h1>' + esc(doc.title) + '</h1><div class="s">' + esc(doc.sub) + '</div></div><div class="r">' + esc(doc.right1) + '<br>' + esc(doc.right2) + '</div></div>' +
+			return O.estPageHead(doc, logo) +
 				(doc.client ? '<div class="eCl"><i>Заказчик:</i> ' + esc(doc.client) + '</div>' : '') +
 				(doc.note ? '<div class="eCl eNote"><i>Примечание:</i> ' + esc(doc.note) + '</div>' : '') +
 				(doc.strip.length ? '<div class="eStrip">' + doc.strip.map(function (s) { return '<div' + (s.main ? ' class="m"' : '') + '><i>' + esc(s.label) + '</i><b>' + esc(s.value) + '</b></div>'; }).join('') + '</div>' : '') +
@@ -311,13 +316,34 @@
 		var n = pages.length, foot = doc.name + (doc.order ? ' · ' + doc.order : '');
 		return pages.map(function (p, q) { return '<div class="ePg' + (doc.art || doc.sup ? ' wa' : '') + (doc.sup ? ' ws' : '') + '"' + (doc.art ? ' style="--aw:' + doc.artW + 'mm"' : '') + '>' + p + '<div class="eFoot"><span>' + esc(foot) + '</span><span>лист ' + (q + 1) + ' из ' + n + '</span></div></div>'; });
 	};
+	/* STHGroup: стеклянные поверхности не меняют расчётную высоту печатных блоков. */
+	var EST_GLASS = [
+		':root{--doc-page-margin:9mm}html,body{background:var(--doc-bg)}.eDoc{color:var(--doc-text)}',
+		'.ePg,.dPg{padding:3mm;background:var(--doc-surface)}.ePg{width:192mm;height:279mm}.dPg{width:279mm;height:192mm}',
+		'.eFoot{left:3mm;right:3mm;bottom:3mm}',
+		'.eHead,.eGr,.eStrip,.eStrip div,.eRo.hd,.fTab td{border-color:var(--doc-line)}',
+		'.eHead .s,.eHead .r,.eCl i,.eStrip i,.eStrip .m i,.eRo .n small,.eRo .p,.eRo .ed,.eRo.hd,.eSh span,.eFoot,.dCap,.fTab td.k,.fTab small,.dHint{color:var(--doc-mute)}',
+		'.docLogo{display:block;width:27mm;height:5mm;object-fit:contain;margin:0 0 .4mm auto;padding:.45mm 1.4mm;box-sizing:border-box;border-radius:1.4mm;background:#f7f4ef}',
+		'.eStrip,.eSh{border-radius:2mm;background:var(--doc-glass);overflow:hidden}',
+		'.eStrip .m,.eSu.m{background:var(--doc-tint);color:var(--doc-text)}',
+		'.eGr,.eSe,.eSu.m span:last-child,.dQty b,.dBadge,.dTx{color:var(--doc-text)}',
+		'.eGr{padding-inline:1.6mm}.ws :is(.eGr,.eSe)>span:last-child{margin-right:30mm}',
+		'.eRo:not(.hd),.eLn{position:relative;isolation:isolate;border-color:transparent}',
+		'.eRo:not(.hd)::before,.eLn::before{content:"";position:absolute;inset:0 0 .5mm;z-index:-1;background:var(--doc-glass);border:.15mm solid var(--doc-line);border-radius:1.5mm}',
+		'.eSu.m{border:.2mm solid var(--doc-accent);border-radius:2mm;box-sizing:border-box}',
+		'.eSh .lg{background:var(--doc-tint);color:var(--doc-text)}',
+		'.eTx{color:var(--doc-mute)}.eTx.w,.eRo .n em,.dTx.w,.dMissing{color:var(--doc-warn)}',
+		'.eRo .sp a,.fTab small a,.dTx a{color:var(--doc-link)}',
+		'.dDraw{background:#fff;border-radius:2mm}.dBadge{border-color:var(--doc-accent)}'
+	].join('\n');
 	/* Документ для печати в PDF. */
 	O.estHtml = function (R, st, opt) {
-		var doc = O.estDoc(R, st, opt), pages = O.estPages(doc);
+		opt = opt || {};
+		var doc = O.estDoc(R, st, opt), pages = O.estPages(doc, opt.logo);
 		/* чертежи фасадов в конце сметы или заказа фасадов — альбомными листами (именованные страницы) */
-		var det = (doc.kind !== 'det' && opt && opt.det && O.detDoc) ? O.detDoc(R, st, opt) : null, dpages = det && det.sheets.length ? O.detPages(det) : [];
-		var html = '<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>' + esc(doc.name) + '</title><style>@page{size:A4 ' + (doc.kind === 'det' ? 'landscape' : 'portrait') + ';margin:12mm}@page det{size:A4 landscape;margin:12mm}html,body{margin:0;padding:0;background:#fff}.ePg{page-break-inside:avoid}.ePg + .ePg{page-break-before:always}' +
-			(doc.kind === 'det' ? '' : '.dPg{page:det;break-before:page;page-break-inside:avoid}') + '\n' + O.EST_CSS + '</style></head><body><div class="eDoc">' + pages.join('') + dpages.join('') + '</div></body></html>';
+		var det = (doc.kind !== 'det' && opt.det && O.detDoc) ? O.detDoc(R, st, opt) : null, dpages = det && det.sheets.length ? O.detPages(det, opt.logo) : [];
+		var html = '<!DOCTYPE html><html lang="ru"><head><meta charset="utf-8"><title>' + esc(doc.name) + '</title><style>@page{size:A4 ' + (doc.kind === 'det' ? 'landscape' : 'portrait') + ';margin:9mm}@page det{size:A4 landscape;margin:9mm}html,body{margin:0;padding:0}.ePg{page-break-inside:avoid}.ePg + .ePg,.dPg + .dPg{page-break-before:always}' +
+			(doc.kind === 'det' ? '' : '.dPg{page:det;break-before:page;page-break-inside:avoid}') + '\n' + O.EST_CSS + O.docThemeCSS(opt.theme) + EST_GLASS + '</style></head><body><div class="eDoc">' + pages.join('') + dpages.join('') + '</div></body></html>';
 		return { html: html, pages: pages.length + dpages.length, doc: doc, detPages: dpages.length };
 	};
 
@@ -477,6 +503,6 @@
 		if (doc.kind === 'det' && O.detXlsx) return O.detXlsx(doc, st, opt);
 		var book = [estSheet(doc, R)];
 		if (opt.det && O.detDoc) { var dd = O.detDoc(R, st, opt); if (dd.sheets.length) book.push(O.detSheet(dd, st, opt)); }
-		return O.xlsxBook(book);
+		return O.xlsxBook(book, opt.theme);
 	};
 })(typeof globalThis !== 'undefined' ? globalThis : (typeof self !== 'undefined' ? self : this));

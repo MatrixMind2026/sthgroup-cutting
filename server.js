@@ -382,7 +382,7 @@ function start(opt) {
   });
 }
 
-module.exports = { asciiScript: asciiScript, installScript: installScript, start: start, isPacked: isPacked, packRead: packRead, packPut: packPut, zipWrite: zipWrite };
+module.exports = { asciiScript: asciiScript, installScript: installScript, start: start, isPacked: isPacked, packRead: packRead, packPut: packPut, zipWrite: zipWrite, writeAtomic: writeAtomic };
 
 // Запуск без Electron — для проверок окна в Chromium: node server.js <папка данных> [проект.bmk] [порт]
 if (require.main === module) {

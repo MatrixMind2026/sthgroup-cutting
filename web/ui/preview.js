@@ -10,8 +10,21 @@
 	var Pv = window.Preview = {};
 	var zoom = 0;                                             // 0 — по ширине окна; иначе — как выбрал человек (на время работы программы)
 	var PAGE = '.ePg,.dPg,.cPg,.kPg';
+	var logo;
+	Pv.logo = function () {
+		if (!logo) logo = fetch('img/sth_logo.svg').then(function (r) {
+			if (!r.ok) throw new Error('Логотип недоступен');
+			return r.text();
+		}).catch(function () { logo = null; return ''; });
+		return logo;
+	};
+	Pv.themeControl = function () {
+		var dark = document.documentElement.dataset.theme === 'dark';
+		return '<label>Тема документа <select class="docTheme"><option value="light"' + (dark ? '' : ' selected') +
+			'>Светлая</option><option value="dark"' + (dark ? ' selected' : '') + '>Тёмная</option></select></label>';
+	};
 	var CSS = '<style id="pvCss">html,body{background:#d3d8dd!important}body{padding:64px 0 70px!important}' +
-		'.ePg,.dPg,.cPg,.kPg{margin:0 auto 92px!important;background:#fff;box-shadow:0 0 0 12mm #fff,0 0 0 calc(12mm + 1px) rgba(0,0,0,.10),0 8px 26px 12mm rgba(0,0,0,.16)}' +
+		'.ePg,.dPg,.cPg,.kPg{margin:0 auto 92px!important;box-shadow:0 0 0 var(--doc-page-margin,12mm) #fff,0 0 0 calc(var(--doc-page-margin,12mm) + 1px) rgba(0,0,0,.10),0 8px 26px var(--doc-page-margin,12mm) rgba(0,0,0,.16)}' +
 		'#cutPrint,.eDoc{width:auto!important;margin:0!important}a{cursor:pointer}</style>';
 
 	function plural(n, a, b, c) { return window.App && window.App.plural ? window.App.plural(n, a, b, c) : c; }
@@ -24,7 +37,8 @@
 			if (!d || !d.body) return;
 			var pg = d.querySelector(PAGE), z = zoom;
 			if (!z) {
-				var pw = pg ? pg.getBoundingClientRect().width / (parseFloat(d.body.style.zoom) || 1) + 92 : 900;
+				var margin = parseFloat(d.defaultView.getComputedStyle(d.documentElement).getPropertyValue('--doc-page-margin')) || 12;
+				var pw = pg ? pg.getBoundingClientRect().width / (parseFloat(d.body.style.zoom) || 1) + 2 * margin * 96 / 25.4 : 900;
 				z = Math.max(0.25, Math.min(1, (f.clientWidth - 40) / pw));
 			}
 			d.body.style.zoom = z;
@@ -40,6 +54,9 @@
 				if (!cur) return;
 				m.querySelector('.pvInfo').textContent = cur.pages + ' ' + plural(cur.pages, 'лист', 'листа', 'листов');
 				m.querySelector('.pvWarn').innerHTML = cur.warn || '';
+				var dest = m.querySelector('.pvPath');
+				dest.textContent = cur.dir ? 'Папка сохранения · ' + cur.dir : '';
+				dest.title = cur.dir || '';
 				var html = String(cur.html).replace('</head>', CSS + '</head>');
 				await new Promise(function (res) {
 					f.onload = function () {
@@ -63,7 +80,7 @@
 		}
 		return U.modal({
 			title: o.title, cls: 'pvFull',
-			body: '<div class="pvWarn"></div><div class="pvWrap"><iframe class="pvFrame" title="Предпросмотр: листы так, как они уйдут в PDF"></iframe></div>',
+			body: '<div class="pvPath"></div><div class="pvWarn"></div><div class="pvWrap"><iframe class="pvFrame" title="Предпросмотр: листы так, как они уйдут в PDF"></iframe></div>',
 			buttons: [{ label: '← Назад', value: false, left: true, id: 'back' }].concat(o.buttons || []),
 			onOpen: function (m, close) {
 				var left = m.querySelector('.foot .left');

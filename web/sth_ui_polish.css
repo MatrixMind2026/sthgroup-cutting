@@ -42,3 +42,6 @@ html[data-sth-style="glass"] :is(.mat,.thumb,.todayMetric,.todayBlock,.cutSimple
 html[data-sth-style="glass"] :is(.mat,.thumb).on{border-color:var(--accent);background:var(--sg-tint)}
 html[data-sth-style="glass"] :is(#dPages,#kPages,#aPages){background:transparent}
 @media(max-width:800px){#orders.soCollection .soViewBar{gap:6px;padding:8px 4px}#orders.soCollection .soViewBar input{flex:1;width:110px}#orders.soCollection .soViewBar .tabs button{padding:8px 10px}}
+
+/* STHGroup: в светлой теме подписи левой полосы тёмные (стеклянный стиль) */
+html[data-sth-style="glass"][data-theme="light"] #rail button:not(.on){color:var(--text)!important}

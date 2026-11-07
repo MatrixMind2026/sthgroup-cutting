@@ -28,4 +28,7 @@ for (const f of ['sth.js', 'sth_replace.js']) {
   assert.ok(!/window\.open\(url, 'sth(pick|replace)'/.test(s), f + ': выбор материала не должен открывать отдельное окно');
 }
 assert.ok(fs.readFileSync(__dirname + '/../web/ui/sth_embed.js', 'utf8').includes('function placeOverlay'));
-console.log('проверок 13 | ошибок нет: каталог тем, стили, загрузка до окна и настроек');
+// 2.6.3: внутри окна программы у панелей базы нет внешних теней (иначе прямоугольная серая подложка)
+assert.ok(mb.includes("dataset.sthFramed = '1'"));
+assert.ok(fs.readFileSync(__dirname + '/../web/sth_visual_repairs.css', 'utf8').includes('[data-sth-framed="1"]{--sg-shadow:inset'));
+console.log('проверок 15 | ошибок нет: каталог тем, стили, загрузка до окна и настроек');

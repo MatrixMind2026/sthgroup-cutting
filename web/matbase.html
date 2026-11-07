@@ -13,6 +13,8 @@
 <link rel="stylesheet" href="sth_visual_repairs.css"><!-- STHGroup: прозрачная подложка встроенной базы -->
 <script>/* STHGroup: фон основного окна виден между панелями встроенной базы. */
 if (new URLSearchParams(location.search).get('embed') === '1') document.documentElement.dataset.sthEmbedded = '1';
+/* STHGroup 2.6.3: база внутри окна программы (раздел или панель выбора) — без внешних теней, их обрезает граница встроенной страницы */
+if (window.parent !== window) document.documentElement.dataset.sthFramed = '1';
 </script>
 </head>
 <body class="mb">

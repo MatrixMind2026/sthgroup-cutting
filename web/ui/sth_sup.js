@@ -50,11 +50,14 @@
 				var p = el.querySelector('#spPrice').value.trim();
 				if (p !== '' && !(num(p) >= 0)) { U.toast('Цена — число не меньше нуля.', { bad: true }); return false; }
 				var nw = el.querySelector('#spNew');
-				return { url: el.querySelector('#sUrl').value.trim(), price: p === '' ? null : num(p), shop: el.querySelector('#sShop').value.trim(), art: el.querySelector('#spArt').value.trim(),
-						 img: st.img, stock: st.stock, note: st.note, pack: st.pack || 0, packPrice: st.packPrice || 0, make: !m && nw && nw.checked, grp: el.querySelector('#spGrp') ? el.querySelector('#spGrp').value : '' };
+				var price = p === '' || (m && !st.priceEdited) || (st.priceRejected && !st.priceEdited) ? null : num(p);
+				var quote = st.quote && price === st.quote.price ? st.quote : null;
+				return { url: el.querySelector('#sUrl').value.trim(), price: price, shop: el.querySelector('#sShop').value.trim(), art: el.querySelector('#spArt').value.trim(),
+					 img: st.img, stock: st.stock, note: st.note, quote: quote, make: !m && nw && nw.checked, grp: el.querySelector('#spGrp') ? el.querySelector('#spGrp').value : '' };
 			} }],
 			onOpen: function (el, close) {
 				prev(el);
+				el.querySelector('#spPrice').addEventListener('input', function () { st.priceEdited = true; st.quote = null; });
 				el.querySelector('#spMatch').onclick = function () { close({ match: 1 }); };
 				el.querySelector('#spLogin').onclick = function () { T.login(el.querySelector('#sUrl').value); };
 				/* STHGroup: встроенный браузер — нашли товар, «Взять эту ссылку» → ссылка в поле и сразу «Заполнить по ссылке» */
@@ -73,19 +76,24 @@
 					var f = null;
 					try { f = await T.read(url); } catch (e) { U.error(e); }
 					btn.disabled = false; btn.textContent = 'Заполнить по ссылке';
-					if (!f) return;
+					if (!f || !el.isConnected || normUrl(el.querySelector('#sUrl').value) !== url) return;
 					var got = [], pr = el.querySelector('#spPrice'), was = pr.value.trim();
-					var pk = f.priceBuy ? T.packFor({ name: name, pack: m ? m.pack : 0 }, f) : 0;
-					if (pk > 1) { st.pack = pk; st.packPrice = f.priceBuy; got.push('упаковка ' + pk + ' шт по ' + val(f.priceBuy) + ' ₽ → за штуку'); f = Object.assign({}, f, { priceBuy: Math.round(f.priceBuy / pk * 10000) / 10000 }); }
-					if (f.priceBuy) { pr.value = val(f.priceBuy); got.push('цена ' + val(f.priceBuy) + ' ₽'); el.querySelector('#spWas').textContent = (unit ? 'за ' + unit : '') + (was && num(was) !== f.priceBuy ? ' · было ' + was : ''); }
+					var quote = T.priceForUnit(f, unit, m && m.pack);
+					st.priceRejected = !!quote.error;
+					if (quote.error && st.quote) { st.quote = null; st.priceEdited = false; pr.value = val(st.price); }
+					if (!quote.error) {
+						st.quote = quote; st.priceEdited = true;
+						pr.value = val(quote.price); got.push('цена ' + val(quote.price) + ' ₽ за ' + unit);
+						el.querySelector('#spWas').textContent = 'за ' + unit + (was && num(was) !== quote.price ? ' · было ' + was : '');
+					}
 					if (f.article) { el.querySelector('#spArt').value = f.article; got.push('артикул ' + f.article); }
 					var shop = f.supplier || host(url); if (shop && !el.querySelector('#sShop').value.trim()) el.querySelector('#sShop').value = shop;
 					if (f.image) { var dimg = await T.image(f.image, Es.shrink); if (dimg) { st.img = dimg; prev(el); got.push('фото'); } else got.push('фото не скачалось'); }
 					if (f.inStock !== undefined) { st.stock = f.inStock ? 1 : 0; got.push(f.inStock ? 'в наличии' : 'нет в наличии'); }
 					st.note = [f.stockNote, f.characteristics].filter(Boolean).join('. ');
 					var box = el.querySelector('#spGot');
-					box.hidden = false; box.className = 'sthGot' + (f.priceBuy ? '' : ' bad');
-					box.textContent = f.priceBuy ? 'С сайта: ' + got.join(', ') : 'Цену на странице найти не удалось: скорее всего, ссылка ведёт на список товаров, а не на карточку одного товара. Если цены видны только после входа — «Войти на сайт».';
+					box.hidden = false; box.className = 'sthGot' + (quote.error ? ' bad' : '');
+					box.textContent = quote.error ? quote.error + (got.length ? ' С сайта: ' + got.join(', ') : '') : 'С сайта: ' + got.join(', ');
 				};
 				el.querySelector('#sImgX').onclick = function () { st.img = ''; prev(el); };
 				el.querySelector('#sImgPick').onclick = async function () {
@@ -111,7 +119,7 @@
 		if (!mm) {
 			if (!res.make) {     /* в базу не пишем — как раньше: поставщик, ссылка и фото по названию, цена — в прайс сметы */
 				var Bs = BM.base, bs = Bs && Bs.cur;
-				if (bs) { Bs.setMat(bs, w.skey, { shop: res.shop, url: url, img: res.img, art: w.art0 }); window.Base.save(true); }
+				if (bs) { Bs.setMat(bs, w.skey, { shop: res.shop, url: url, img: res.img, art: res.art || w.art0 }); window.Base.save(true); }
 				else { BM.est.setSup(S().prices, w.skey, { shop: res.shop, url: url, img: res.img }); }
 				var pl0 = Es.pl(); if (res.price !== null && pl0 && pl0.P && w.priceId) pl0.P[w.priceId] = res.price;
 				Es.saveStore(true); Es.render();
@@ -127,12 +135,12 @@
 			made = true;
 		}
 		mm.url = url;
-		if (res.price !== null) mm.price = res.price;
+		if (res.quote) T.setPrice(mm, res.quote);
+		else if (res.price !== null) mm.price = res.price;
 		if (res.art) mm.art = res.art;
 		var sp2 = supByName(b, res.shop, url); mm.sup = sp2 ? sp2.id : '';
 		mm.photo = res.img || '';
 		if (res.stock !== undefined) mm.noStock = res.stock ? 0 : 1;
-		if (res.pack > 1) { mm.pack = res.pack; mm.packPrice = res.packPrice; }
 		if (res.note) mm.note = String(mm.note || '').replace(/\n?\[сайт\][^\n]*/g, '').trim() + (mm.note ? '\n' : '') + '[сайт] ' + res.note;
 		if (made) {
 			var r = MB.saveMat(b, mm);
@@ -168,10 +176,14 @@
 				U.toast('Обновляю ' + (i + 1) + ' из ' + list.length + ': ' + String(m.name).slice(0, 50), { ms: 6000 });
 				try {
 					var f = await T.read(m.url);
-					if (!f.priceBuy) { bad.push(m.name); continue; }
 					var cur = b.mats[m.id] || m, was = cur.price, wasNo = cur.noStock;
-					T.setPrice(cur, f.priceBuy, f); if (f.inStock !== undefined) cur.noStock = f.inStock ? 0 : 1;   // упаковка — в цену за штуку
-					if (was !== cur.price || wasNo !== cur.noStock) ch.push({ id: cur.id, name: cur.name + (cur.pack > 1 ? ' (упаковка ' + cur.pack + ' по ' + val(cur.packPrice) + ' ₽)' : ''), was: was, now: cur.price, stock: cur.noStock !== wasNo ? (cur.noStock ? 'нет в наличии' : 'в наличии') : '' });
+					var quote = T.priceForUnit(f, cur.unit, cur.pack);
+					if (quote.error) bad.push(m.name + ' — ' + quote.error);
+					else {
+						var wasPack = cur.pack, wasPackPrice = cur.packPrice;
+						T.setPrice(cur, quote); if (f.inStock !== undefined) cur.noStock = f.inStock ? 0 : 1;
+						if (was !== cur.price || wasNo !== cur.noStock || (wasPack || 0) !== cur.pack || (wasPackPrice || 0) !== cur.packPrice) ch.push({ id: cur.id, name: cur.name + (cur.pack > 1 ? ' (упаковка ' + cur.pack + ' по ' + val(cur.packPrice) + ' ₽)' : ''), was: was, now: cur.price, stock: cur.noStock !== wasNo ? (cur.noStock ? 'нет в наличии' : 'в наличии') : '' });
+					}
 				} catch (e) { bad.push(m.name); }
 				if (i < list.length - 1) await new Promise(function (r) { setTimeout(r, 1500); });
 			}

@@ -321,14 +321,14 @@
 				el.querySelector('#mPhoto').onclick = pickPhoto; el.querySelector('#mSw').onclick = pickPhoto;
 				el.querySelector('#mPhotoX').onclick = function () { setPhoto(''); };
 				el.addEventListener('paste', async function (e) { var it = (e.clipboardData && e.clipboardData.items) || [], f = null; for (var i = 0; i < it.length; i++) if (!f && it[i].kind === 'file' && /^image\//.test(it[i].type)) f = it[i].getAsFile(); if (!f) return; e.preventDefault(); try { setPhoto(await W.photoOf(f)); } catch (er) { U.error(er); } });
-				if (window.STHShop) { el.querySelector('#mUrlFill').onclick = function () { window.STHShop.fillCard(el, b); }; el.querySelector('#mShopLogin').onclick = function () { window.STHShop.login(el.querySelector('#mUrl').value); };
+				if (window.STHShop) { el.querySelector('#mUrlFill').onclick = function () { window.STHShop.fillCard(el, b, !!m.id); }; el.querySelector('#mShopLogin').onclick = function () { window.STHShop.login(el.querySelector('#mUrl').value); };
 					/* STHGroup: встроенный браузер — из окна программы (база открыта внутри неё); нашли товар → ссылка и «Заполнить по ссылке» */
 					el.querySelector('#mBrw').onclick = async function () {
 						var BR = window.STHBrowser || (window.parent !== window && window.parent.STHBrowser) || (window.opener && window.opener.STHBrowser);
 						if (!BR) { U.toast('Браузер доступен, когда база открыта внутри программы.'); return; }
 						var u = await BR.open({ url: el.querySelector('#mUrl').value, query: (el.querySelector('#mName') || {}).value || '' });
 						if (!u) return;
-						el.querySelector('#mUrl').value = u; window.STHShop.fillCard(el, b);
+						el.querySelector('#mUrl').value = u; window.STHShop.fillCard(el, b, !!m.id);
 					}; }          // STHGroup
 				el.querySelector('#mUrlGo').onclick = function () { var u = el.querySelector('#mUrl').value.trim(); if (!u) { U.toast('Ссылки нет'); return; } if (!/^https?:\/\//i.test(u)) u = 'https://' + u; U.api.openUrl(u).catch(U.error); };
 				var chips = function () {

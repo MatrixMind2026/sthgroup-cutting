@@ -33,7 +33,7 @@
 		'.dQty{font-size:10.5pt;line-height:6.4mm}', '.dQty b{font-size:18pt;color:' + ACC + ';margin-right:1mm}',
 		'.dCap{font-size:6.8pt;color:#7a838b;letter-spacing:.07em;text-transform:uppercase;margin:3.2mm 0 0.8mm}',
 		'.fTab{width:100%;border-collapse:collapse;font-size:8.5pt;line-height:3.8mm}',
-		'.fTab td{padding:0.9mm 1mm;border-bottom:0.15mm solid #d5d9dd;vertical-align:middle;text-align:left;white-space:normal}', '.fTab td.k{color:#5d6770;width:34%}', '.fTab td.v{font-weight:600}',
+		'.fTab td{padding:0.9mm 1.7mm;border-bottom:0.15mm solid #d5d9dd;vertical-align:top;text-align:left;overflow-wrap:anywhere}', '.fTab td.k{color:#5d6770;width:34%}', '.fTab td.v{font-weight:600;border-left:1px solid var(--doc-rule,#d5d9dd)}',
 		'.fTab small{display:block;font-weight:400;color:#5d6770;font-size:7.2pt;line-height:3.3mm}', '.fTab small a,.dTx a{color:#1f5fbf}',
 		'.dSw{display:inline-block;width:4mm;height:4mm;vertical-align:-0.9mm;margin-right:1.4mm;border-radius:0.6mm;border:0.15mm solid #c9ced3;object-fit:cover;box-sizing:border-box}',
 		'.dTx{font-size:8pt;color:#333;line-height:3.9mm}', '.dTx.w,.dMissing{color:#8a4208}', '.dHint{color:#5d6770}'

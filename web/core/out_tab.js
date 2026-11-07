@@ -19,6 +19,7 @@
 	O.docThemeCSS = function (theme) {
 		var c = docPalette(theme);
 		return ':root{' + Object.keys(c).map(function (key) { return '--doc-' + key + ':' + c[key]; }).join(';') + ';' +
+			'--doc-rule:color-mix(in srgb,var(--doc-text) 21%,transparent);' +
 			'--doc-glass:linear-gradient(155deg,#ffffff18,transparent 70%),color-mix(in srgb,var(--doc-panel) 70%,transparent);' +
 			'--doc-surface:radial-gradient(ellipse at 0% 4%,color-mix(in srgb,var(--doc-accent) 16%,transparent),transparent 48%),' +
 			'radial-gradient(ellipse at 100% 90%,#819cad27,transparent 65%),var(--doc-bg);' +
@@ -72,6 +73,8 @@
 			FFC9CFD5: c.line, FF5D6770: c.mute, FF1F5FBF: c.link };
 		var styles = STYLES.replace(/rgb="([A-F0-9]+)"/g, function (m, color) {
 			return colors[color] ? 'rgb="' + rgb(colors[color]) + '"' : m;
+		}).replace(/<alignment([^>]*?)\/>/g, function (_, attrs) {
+			return '<alignment horizontal="left" vertical="top" indent="1"' + attrs.replace(/ (?:horizontal|vertical)="[^"]+"/g, '') + '/>';
 		});
 		if (!dark) return styles;
 		styles = styles.replace(/<font>(.*?)<\/font>/g, function (tag, fields) {

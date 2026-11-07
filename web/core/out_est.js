@@ -196,16 +196,15 @@
 		'.eStrip .m{background:' + ACC + ';color:#fff;flex:1.25 1 0}', '.eStrip .m i{color:#d6ebe6}', '.eStrip .m b{font-size:13.5pt;line-height:6mm}',
 		'.eGr{display:flex;justify-content:space-between;align-items:flex-end;height:8.6mm;box-sizing:border-box;padding-bottom:1mm;border-bottom:0.3mm solid ' + ACC + ';color:' + ACC + ';font-weight:700;font-size:8pt;letter-spacing:.06em}',
 		'.eSe{display:flex;justify-content:space-between;align-items:flex-end;height:6.6mm;box-sizing:border-box;padding:0 1.6mm 0.7mm;font-weight:700;font-size:9pt}',
-		'.eRo{display:flex;align-items:center;height:5.4mm;box-sizing:border-box;padding:0 1.6mm;border-bottom:0.15mm solid #d5d9dd;white-space:nowrap}',
-		'.eRo.t2{height:9.2mm;align-items:flex-start;padding-top:0.9mm}',
-		'.eRo .n{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}', '.eRo.t2 .n{white-space:normal;line-height:3.7mm;max-height:7.4mm}',
-		'.eRo .n small{color:#5d6770;font-size:7.5pt}', '.eRo .n em{font-style:normal;color:#b4540a;font-size:7.5pt}',
-		'.eRo .q{flex:0 0 34mm;text-align:right}', '.eRo .p{flex:0 0 34mm;text-align:right;color:#5d6770}', '.eRo .u{flex:0 0 27mm;text-align:right;font-weight:700}',
-		'.eRo .a,.eLn .a{flex:0 0 var(--aw,30mm);box-sizing:border-box;padding-right:3mm;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}',
-		'.eLn .a + span{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}',
-		'.eRo.t2 .a{white-space:normal;overflow-wrap:anywhere;line-height:3.7mm;max-height:7.4mm}',
-		'.ePg.wa .eRo .q{flex-basis:27mm}', '.ePg.wa .eRo .p{flex-basis:30mm}', '.ePg.wa .eRo .u{flex-basis:25mm}', '.ePg.wa .eRo .ed{flex-basis:50mm}',
-		'.eRo .th{flex:0 0 17mm;text-align:right}', '.eRo .q.s{flex-basis:27mm}', '.eRo .ed{flex:0 0 62mm;padding-left:5mm;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;color:#333}', '.eRo.t2 .ed{white-space:normal;line-height:3.7mm;max-height:7.4mm}',
+		'.eRo,.eLn{display:grid;grid-template-columns:var(--e-cols);box-sizing:border-box;padding:.8mm 1.6mm 1.2mm;border-bottom:.15mm solid #d5d9dd;min-height:6mm;line-height:3.8mm;text-align:left;font-variant-numeric:tabular-nums}',
+		'.eRo>*,.eLn>*{position:relative;min-width:0;padding:0 1.7mm;overflow-wrap:anywhere}',
+		':is(.eRo,.eLn)>:not(:first-child):not(.im + .n)::before{content:"";position:absolute;inset:-.5mm auto -.6mm 0;width:1px;background:var(--doc-rule,#d5d9dd)}',
+		':is(.eRo,.eLn)>:first-child,:is(.eRo,.eLn) .im + .n{padding-left:0}',
+		'.eRo small,.eLn small{color:#5d6770;font-size:7.5pt}.eRo .q small,.eLn .q small{display:block}.eRo .n em{font-style:normal;color:#b4540a;font-size:7.5pt}',
+		'.eRo .p{color:#5d6770}.eRo .u{font-weight:700}.eRo:not(.hd) :is(.a,.sp){font-size:8pt}',
+		'.eLn .n{grid-column:var(--e-name-col)/var(--e-qty-col)}.eLn .q{grid-column:var(--e-qty-col)}',
+		'.eGr,.eSe{padding-inline:1.6mm}.eHasSum{display:grid;grid-template-columns:var(--e-cols);text-align:left}',
+		'.eHasSum>span:first-child{grid-column:1/var(--e-sum-col)}.eHasSum>span:last-child{grid-column:var(--e-sum-col)/-1;padding-left:1.7mm}',
 		'.eRo.hd{border-bottom:0.25mm solid #1a1d21;color:#5d6770;font-size:7.5pt}', '.eRo.hd .u{font-weight:400}',
 		'.eRo[data-row]{cursor:default}',
 		'.eLi{height:7mm;box-sizing:border-box;padding:2.2mm 1.6mm 0;font-weight:700;font-size:9pt}',
@@ -213,73 +212,107 @@
 		'.eSh img,.eSh .lg{width:11mm;height:11mm;flex:none;border-radius:1.5mm;object-fit:contain}',
 		'.eSh .lg{display:flex;align-items:center;justify-content:center;background:#0E6B5A;color:#fff;font-weight:700}',
 		'.eSh b{font-size:10pt}.eSh span{color:#5d6770}',
-		'.eLn{display:flex;justify-content:space-between;height:5mm;line-height:5mm;padding:0 1.6mm;border-bottom:0.15mm solid #d5d9dd;white-space:nowrap}',
-		'.eLn span:first-child{overflow:hidden;text-overflow:ellipsis;min-width:0}', '.eLn span:last-child{flex:none;padding-left:4mm}',
 		'.eTx{padding:1mm 1.6mm 0;color:#444;font-size:8.5pt;line-height:4.2mm;box-sizing:border-box;overflow:hidden}', '.eTx.w{color:#8a4208}',
-		'.eSu{display:flex;justify-content:flex-end;gap:8mm;height:6.4mm;line-height:6.4mm;padding:0 1.6mm;font-size:9.5pt}',
+		'.eSu{display:grid;grid-template-columns:1fr 42mm;gap:8mm;height:6.4mm;line-height:6.4mm;padding:0 1.6mm;font-size:9.5pt;text-align:left}',
 		'.eSu.m{height:10mm;line-height:8.6mm;margin-top:1.4mm;border-top:0.35mm solid #1a1d21;font-size:13pt;font-weight:700}', '.eSu.m span:last-child{color:' + ACC + '}',
-		'.eSu span:last-child{min-width:42mm;text-align:right;font-weight:700}',
+		'.eSu span:last-child{font-weight:700}',
 		'.eFoot{position:absolute;left:0;right:0;bottom:0;height:5mm;line-height:5mm;display:flex;justify-content:space-between;color:#7a838b;font-size:7.5pt}',
-		'.ePg.ws .eRo .q{flex-basis:24mm}', '.ePg.ws .eRo .p{flex-basis:23mm}', '.ePg.ws .eRo .u{flex-basis:21mm}',
-		'.eRo .sp{flex:0 0 30mm;padding-left:2.5mm;box-sizing:border-box;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:7.5pt;line-height:3.6mm}', '.eRo .sp b{font-weight:600}',
-		'.eRo .sp a{color:#1f5fbf;text-decoration:underline}', '.eRo.hd .sp{font-size:7.5pt}',
-		'.eRo .im{flex:0 0 5.6mm;align-self:center;padding-right:1.2mm;box-sizing:border-box}', '.eRo.t2 .im{align-self:flex-start}',
-		'.eRo .im img{display:block;width:4.4mm;height:4.4mm;object-fit:cover;border-radius:0.6mm;border:0.15mm solid #c9ced3;box-sizing:border-box}',
+		'.eRo .sp b{font-weight:600}.eRo .sp a{color:#1f5fbf;text-decoration:underline}',
+		'.eRo .im{padding-inline:1mm}.eRo .im img{display:block;width:3.5mm;height:3.5mm;object-fit:cover;border-radius:.6mm;border:.15mm solid #c9ced3;box-sizing:border-box}',
 		'*{-webkit-print-color-adjust:exact;print-color-adjust:exact}'
 	].join('\n');
 
-	var ART_MIN = 17, ART_MAX = 34, ART_MAX_S = 28, SUP_W = 30, IMG_W = 5.6;
+	var EM = 9 * 0.3528, ART_MIN = 17, ART_MAX = 34, ART_MAX_S = 28;
 	/* ссылка поставщика в строке: адрес без «https://» и «www.» */
 	function urlText(u) { return String(u || '').replace(/^https?:\/\//i, '').replace(/^www\./i, '').replace(/\/$/, ''); }
 	O.urlText = urlText;
-	var EM = 9 * 0.3528, NAME_W = 186 - 3.2 - 34 - 34 - 27, NAME_W_NP = 186 - 3.2 - 34;
-	var MAT_W = 186 - 3.2 - 17 - 27 - 62;
-	function fitLines(text, widthMm, pt) { var w = D.textW(text) * (pt || 9) * 0.3528 * 1.08; return w <= widthMm ? 1 : 2; } // STHGroup: запас на метрики Chromium — не заменять конец названия многоточием
-	/* со столбцом «Артикул» количество, цена и сумма идут плотнее — название не должно сжиматься вдвое */
-	function nameW(doc) {
-		if (doc.sup) return 186 - 3.2 - 24 - (doc.noPrice ? 0 : 23 + 21) - (doc.art ? doc.artW : 0) - SUP_W - (doc.img ? IMG_W : 0);
-		return (doc.art ? (186 - 3.2 - 27 - (doc.noPrice ? 0 : 30 + 25) - doc.artW) : (doc.noPrice ? NAME_W_NP : NAME_W)) - (doc.img ? IMG_W : 0);
+	/* STHGroup: одна сетка для шапки, строк и подытогов; те же ширины в расчёте страниц. */
+	function columns(doc) {
+		var mat = doc.kind === 'mat', w = {};
+		if (doc.art) w.a = Math.min(doc.artW || 23, 23);
+		if (doc.img && !mat) w.im = 5.6;
+		w.n = 0;
+		if (mat) w.th = 17;
+		w.q = mat ? 26 : 23;
+		if (mat) w.ed = 48;
+		else if (!doc.noPrice) { w.p = 24; w.u = 20; }
+		if (doc.sup && !mat) w.sp = 22;
+		var keys = Object.keys(w), css = keys.map(function (k) { return w[k] ? w[k] + 'mm' : 'minmax(0,1fr)'; }).join(' ');
+		w.n = 182.8 - keys.reduce(function (total, k) { return total + w[k]; }, 0);
+		return { widths: w, style: '--e-cols:' + css + ';--e-name-col:' + (keys.indexOf('n') + 1) +
+			';--e-qty-col:' + (keys.indexOf('q') + 1) + (w.u ? ';--e-sum-col:' + (keys.indexOf('u') + 1) : '') };
 	}
-	function artTwo(b, doc) { return !!(doc.art && b.art && D.textW(b.art) * EM > doc.artW - 3.2); }
-	function blockH(b, doc) {
+	function wrapLines(text, width, pt, bold) {
+		var capacity = Math.max(1, width - 3.4) / (pt * 0.3528 * 1.08), lines = 1, used = 0;
+		String(text || '').trim().split(/[ \t]+/).forEach(function (word) {
+			var size = D.textW(word, bold);
+			if (used && used + .28 + size > capacity) { lines++; used = 0; }
+			if (size > capacity) {
+				var extra = Math.ceil(size / capacity) - 1;
+				lines += extra;
+				size -= extra * capacity;
+			}
+			used += (used ? .28 : 0) + size;
+		});
+		return lines;
+	}
+	function quantityParts(text) {
+		var qty = String(text || ''), at = qty.search(/ (?:\(|по )/);
+		return at < 0 ? [qty, ''] : [qty.slice(0, at), qty.slice(at + 1)];
+	}
+	function blockH(b, w) {
 		if (b.t === 'group') return 8.6;
 		if (b.t === 'sect') return 6.6;
-		if (b.t === 'row') {
-			var full = b.name + (b.sub ? ' (' + b.sub + ')' : '') + (b.note ? ' [' + b.note + ']' : '');
-			b.two = (b.bad || fitLines(full, nameW(doc)) > 1 || artTwo(b, doc) || (doc.sup && b.url && (b.shop || fitLines(urlText(b.url), SUP_W - 2, 7.5) > 1))) ? 1 : 0;
-			return b.two ? 9.2 : 5.4;
+		if (b.t === 'row' || b.t === 'mat' || b.t === 'line') {
+			var mat = b.t === 'mat', line = b.t === 'line';
+			var full = b.name + (b.sub ? (mat ? ' ' + b.sub : ' (' + b.sub + ')') : '') + (b.note ? ' [' + b.note + ']' : '');
+			var qty = quantityParts(line ? b.val : b.qty);
+			var lines = Math.max(w.a ? wrapLines(b.art, w.a, line ? 9 : 8) : 1,
+				wrapLines(full, w.n + (line ? (w.th || 0) : 0), 9) + (b.bad ? wrapLines(b.bad, w.n, 7.5) : 0),
+				wrapLines(qty[0], w.q, 9) + (qty[1] ? wrapLines(qty[1], w.q, 7.5) : 0));
+			if (mat) lines = Math.max(lines, wrapLines(b.th, w.th, 9), wrapLines(b.edges, w.ed, 9));
+			if (w.p && !line) lines = Math.max(lines, wrapLines(b.price, w.p, 9), wrapLines(b.sum, w.u, 9, true));
+			if (w.sp && !line && (b.shop || b.url)) lines = Math.max(lines,
+				(b.shop ? wrapLines(b.shop, w.sp, 8, true) : 0) + (b.url ? wrapLines(urlText(b.url), w.sp, 8) : 0));
+			return 2.2 + lines * 3.8;
 		}
-		if (b.t === 'mat') { b.two = (fitLines(b.name + (b.sub ? ' ' + b.sub : ''), doc.art ? MAT_W + 12 - doc.artW : MAT_W) > 1 || fitLines(b.edges, doc.art ? 45 : 57) > 1 || artTwo(b, doc)) ? 1 : 0; return b.two ? 9.2 : 5.4; }
 		if (b.t === 'list') return 7;
 		if (b.t === 'shead') return 16;
 		if (b.t === 'page') return 0;
-		if (b.t === 'line') return 5;
 		if (b.t === 'text') { b.lines = Math.max(1, Math.ceil(D.textW(b.text) * 1.1 * 8.5 * 0.3528 / 180)); return 1 + b.lines * 4.2; }
 		if (b.t === 'sum') return b.main ? 11.4 : 6.4;
 		return 5;
 	}
 	function artCell(b, doc, tag) { return doc.art ? '<' + tag + ' class="a">' + esc(b.art || '') + '</' + tag + '>' : ''; }
+	function quantity(text) {
+		var parts = quantityParts(text);
+		return esc(parts[0]) + (parts[1] ? ' <small>' + esc(parts[1]) + '</small>' : '');
+	}
 	function blockHtml(b, doc) {
-		if (b.t === 'group') return '<div class="eGr"><span>' + esc(b.title) + '</span><span>' + esc(b.sum) + '</span></div>';
-		if (b.t === 'sect') return '<div class="eSe"><span>' + esc(b.title) + '</span><span>' + esc(b.sum) + '</span></div>';
+		if (b.t === 'group' || b.t === 'sect') {
+			var sum = b.sum && !doc.noPrice && doc.kind !== 'mat';
+			return '<div class="' + (b.t === 'group' ? 'eGr' : 'eSe') + (sum ? ' eHasSum' : '') + '"><span>' + esc(b.title) + '</span>' +
+				(sum ? '<span>' + esc(b.sum) + '</span>' : '') + '</div>';
+		}
 		if (b.t === 'row') {
 			var supC = doc.sup ? '<div class="sp">' + (b.shop ? '<b>' + esc(b.shop) + '</b>' : '') + (b.url ? (b.shop ? '<br>' : '') + '<a href="' + esc(b.url) + '">' + esc(urlText(b.url)) + '</a>' : '') + '</div>' : '';
 			var imgC = doc.img ? '<div class="im">' + (b.img ? '<img src="' + esc(b.img) + '" alt="">' : '') + '</div>' : '';
-			return '<div class="eRo' + (b.two ? ' t2' : '') + '"' + (b.row !== undefined ? ' data-row="' + b.row + '"' : '') + '>' + artCell(b, doc, 'div') + imgC + '<div class="n">' + esc(b.name) + (b.sub ? ' <small>(' + esc(b.sub) + ')</small>' : '') + (b.note ? ' <small>[' + esc(b.note) + ']</small>' : '') +
-				(b.bad ? '<br><em>' + esc(b.bad) + '</em>' : '') + '</div><div class="q">' + esc(b.qty) + '</div>' + (doc.noPrice ? '' : '<div class="p">' + esc(b.price) + '</div><div class="u">' + esc(b.sum) + '</div>') + supC + '</div>';
+			return '<div class="eRo"' + (b.row !== undefined ? ' data-row="' + b.row + '"' : '') + '>' + artCell(b, doc, 'div') + imgC + '<div class="n">' + esc(b.name) + (b.sub ? ' <small>(' + esc(b.sub) + ')</small>' : '') + (b.note ? ' <small>[' + esc(b.note) + ']</small>' : '') +
+				(b.bad ? '<br><em>' + esc(b.bad) + '</em>' : '') + '</div><div class="q">' + quantity(b.qty) + '</div>' + (doc.noPrice ? '' : '<div class="p">' + esc(b.price) + '</div><div class="u">' + esc(b.sum) + '</div>') + supC + '</div>';
 		}
-		if (b.t === 'mat') return '<div class="eRo' + (b.two ? ' t2' : '') + '">' + artCell(b, doc, 'div') + '<div class="n">' + esc(b.name) + (b.sub ? ' <small>' + esc(b.sub) + '</small>' : '') + '</div><div class="th">' + esc(b.th) + '</div><div class="q s">' + esc(b.qty) + '</div><div class="ed">' + esc(b.edges) + '</div></div>';
+		if (b.t === 'mat') return '<div class="eRo">' + artCell(b, doc, 'div') + '<div class="n">' + esc(b.name) + (b.sub ? ' <small>' + esc(b.sub) + '</small>' : '') + '</div><div class="th">' + esc(b.th) + '</div><div class="q">' + quantity(b.qty) + '</div><div class="ed">' + esc(b.edges) + '</div></div>';
 		if (b.t === 'list') return '<div class="eLi">' + esc(b.title) + '</div>';
 		if (b.t === 'shead') return '<div class="eSh">' + (b.logo ? '<img src="' + esc(b.logo) + '" alt="">' : '<span class="lg">' + esc(b.name.replace(/[^0-9A-Za-zА-Яа-яЁё]/g, '').slice(0, 2).toUpperCase()) + '</span>') + '<div><b>' + esc(b.name) + '</b>' + (b.line ? ' · ' + esc(b.line) : '') + '<br><span>' + esc(b.line2 || '') + '</span></div></div>';
 		if (b.t === 'page') return '';
-		if (b.t === 'line') return '<div class="eLn"' + (b.row !== undefined ? ' data-row="' + b.row + '"' : '') + '>' + artCell(b, doc, 'span') + '<span>' + esc(b.name) + '</span><span>' + esc(b.val) + '</span></div>';
+		if (b.t === 'line') return '<div class="eLn"' + (b.row !== undefined ? ' data-row="' + b.row + '"' : '') + '>' + artCell(b, doc, 'span') +
+			(doc.img && doc.kind !== 'mat' ? '<span class="im"></span>' : '') + '<span class="n">' + esc(b.name) + '</span><span class="q">' + quantity(b.val) + '</span></div>';
 		if (b.t === 'text') return '<div class="eTx' + (b.warn ? ' w' : '') + '" style="height:' + (1 + b.lines * 4.2).toFixed(1) + 'mm">' + esc(b.text) + '</div>';
 		if (b.t === 'sum') return '<div class="eSu' + (b.main ? ' m' : '') + '"><span>' + esc(b.label) + '</span><span>' + esc(b.value) + '</span></div>';
 		return '';
 	}
 	function colHead(doc) {
 		var ah = doc.art ? '<div class="a">Артикул</div>' : '';
-		if (doc.kind === 'mat') return '<div class="eRo hd">' + ah + '<div class="n">Материал</div><div class="th">Толщина</div><div class="q s">Количество</div><div class="ed">' + (doc.art ? 'Кромка к нему' : 'Кромка: толщина/ширина — длина') + '</div></div>';
+		if (doc.kind === 'mat') return '<div class="eRo hd">' + ah + '<div class="n">Материал</div><div class="th">Толщина</div><div class="q">Количество</div><div class="ed">' + (doc.art ? 'Кромка к нему' : 'Кромка: толщина/ширина — длина') + '</div></div>';
 		return '<div class="eRo hd">' + ah + (doc.img ? '<div class="im"></div>' : '') + '<div class="n">Наименование</div><div class="q">Количество</div>' + (doc.noPrice ? '' : '<div class="p">Цена</div><div class="u">Сумма</div>') + (doc.sup ? '<div class="sp">Поставщик</div>' : '') + '</div>';
 	}
 
@@ -291,8 +324,8 @@
 	};
 	O.estPages = function (doc, logo) {
 		if (doc.kind === 'det' && O.detPages) return O.detPages(doc, logo);
-		var PAGE = 273 - 7, pages = [], cur = [], used = 0, i, b = doc.blocks;
-		var first = 17 + (doc.client ? 6 : 0) + (doc.note ? 6 : 0) + (doc.strip.length ? 16 : 0) + 2 + 5.4;
+		var PAGE = 273 - 7, pages = [], cur = [], used = 0, i, b = doc.blocks, grid = columns(doc), headH = 6.2;
+		var first = 17 + (doc.client ? 6 : 0) + (doc.note ? 6 : 0) + (doc.strip.length ? 16 : 0) + 2 + headH;
 		function head() {
 			return O.estPageHead(doc, logo) +
 				(doc.client ? '<div class="eCl"><i>Заказчик:</i> ' + esc(doc.client) + '</div>' : '') +
@@ -304,17 +337,17 @@
 		used = first; cur.push(head());
 		for (i = 0; i < b.length; i++) {
 			if (b[i].t === 'page') { if (cur.length > 1) { flush(); cur.push(head()); used = first; } continue; }     // следующий поставщик — с нового листа
-			var h = blockH(b[i], doc), need = h, k = i + 1;
+			var h = blockH(b[i], grid.widths), need = h, k = i + 1;
 			/* заголовок не отрывается от первой строки под ним; итоги — друг от друга */
-			if (b[i].t === 'group' || b[i].t === 'sect' || b[i].t === 'list' || b[i].t === 'shead') { while (k < b.length && (b[k].t === 'sect' || b[k].t === 'group')) need += blockH(b[k++], doc); if (k < b.length) need += blockH(b[k], doc); }
-			if (b[i].t === 'sum') { while (k < b.length && b[k].t === 'sum') need += blockH(b[k++], doc); }
-			if (used + need > PAGE && cur.length) { flush(); cur.push(colHead(doc)); used = 5.4; }
+			if (b[i].t === 'group' || b[i].t === 'sect' || b[i].t === 'list' || b[i].t === 'shead') { while (k < b.length && (b[k].t === 'sect' || b[k].t === 'group')) need += blockH(b[k++], grid.widths); if (k < b.length) need += blockH(b[k], grid.widths); }
+			if (b[i].t === 'sum') { while (k < b.length && b[k].t === 'sum') need += blockH(b[k++], grid.widths); }
+			if (used + need > PAGE && cur.length > 1) { flush(); cur.push(colHead(doc)); used = headH; }
 			cur.push(blockHtml(b[i], doc));
 			used += h;
 		}
 		flush();
 		var n = pages.length, foot = doc.name + (doc.order ? ' · ' + doc.order : '');
-		return pages.map(function (p, q) { return '<div class="ePg' + (doc.art || doc.sup ? ' wa' : '') + (doc.sup ? ' ws' : '') + '"' + (doc.art ? ' style="--aw:' + doc.artW + 'mm"' : '') + '>' + p + '<div class="eFoot"><span>' + esc(foot) + '</span><span>лист ' + (q + 1) + ' из ' + n + '</span></div></div>'; });
+		return pages.map(function (p, q) { return '<div class="ePg" style="' + grid.style + '">' + p + '<div class="eFoot"><span>' + esc(foot) + '</span><span>лист ' + (q + 1) + ' из ' + n + '</span></div></div>'; });
 	};
 	/* STHGroup: стеклянные поверхности не меняют расчётную высоту печатных блоков. */
 	var EST_GLASS = [
@@ -322,12 +355,11 @@
 		'.ePg,.dPg{padding:3mm;background:var(--doc-surface)}.ePg{width:192mm;height:279mm}.dPg{width:279mm;height:192mm}',
 		'.eFoot{left:3mm;right:3mm;bottom:3mm}',
 		'.eHead,.eGr,.eStrip,.eStrip div,.eRo.hd,.fTab td{border-color:var(--doc-line)}',
-		'.eHead .s,.eHead .r,.eCl i,.eStrip i,.eStrip .m i,.eRo .n small,.eRo .p,.eRo .ed,.eRo.hd,.eSh span,.eFoot,.dCap,.fTab td.k,.fTab small,.dHint{color:var(--doc-mute)}',
+		'.eHead .s,.eHead .r,.eCl i,.eStrip i,.eStrip .m i,.eRo small,.eLn small,.eRo .p,.eRo.hd,.eSh span,.eFoot,.dCap,.fTab td.k,.fTab small,.dHint{color:var(--doc-mute)}',
 		'.docLogo{display:block;width:27mm;height:5mm;object-fit:contain;margin:0 0 .4mm auto;padding:.45mm 1.4mm;box-sizing:border-box;border-radius:1.4mm;background:#f7f4ef}',
 		'.eStrip,.eSh{border-radius:2mm;background:var(--doc-glass);overflow:hidden}',
 		'.eStrip .m,.eSu.m{background:var(--doc-tint);color:var(--doc-text)}',
 		'.eGr,.eSe,.eSu.m span:last-child,.dQty b,.dBadge,.dTx{color:var(--doc-text)}',
-		'.eGr{padding-inline:1.6mm}.ws :is(.eGr,.eSe)>span:last-child{margin-right:30mm}',
 		'.eRo:not(.hd),.eLn{position:relative;isolation:isolate;border-color:transparent}',
 		'.eRo:not(.hd)::before,.eLn::before{content:"";position:absolute;inset:0 0 .5mm;z-index:-1;background:var(--doc-glass);border:.15mm solid var(--doc-line);border-radius:1.5mm}',
 		'.eSu.m{border:.2mm solid var(--doc-accent);border-radius:2mm;box-sizing:border-box}',

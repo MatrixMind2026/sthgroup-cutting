@@ -268,28 +268,35 @@ for (const [kind, o] of [['client', {}], ['full', {}], ['mat', {}], ['furn', {}]
 	if (o.noPrice) ok(!/руб\.|р\./.test(text.replace(/руб\.\/|р\.\//g, '')) && !/ИТОГО/.test(text), name + ': денег в документе нет', text.match(/.*(руб\.|ИТОГО).*/));
 	if (o.totals) ok(!/Петля накладная/.test(text) && /Фурнитура/.test(text), name + ': только итоги разделов');
 	if (kind === 'client' && !o.noPrice && !o.totals) ok(text.indexOf('Срок изготовления 14 рабочих дней') >= 0 && !/Не учтено/.test(text) && !/наценка/i.test(text), name + ': примечание есть, внутренних сведений нет');
-	if (kind === 'full') ok(/Материал погонный/.test(text) && /Стол\. Slotex Dominicana/.test(text) && /шт по 3,05 м/.test(text) && /наценка в ценах: материал 15 %/.test(text) && !/Внимание/.test(text) && !/Не учтено в смете/.test(text) && /прайс «Розница»/.test(text), name + ': справка и наценка; без «Внимание» и «Не учтено»');
+	if (kind === 'full') ok(/Материал погонный/.test(text) && /Стол\. Slotex Dominicana/.test(text) && /по 3,05 м/.test(text) && /наценка в ценах: материал 15 %/.test(text) && !/Внимание/.test(text) && !/Не учтено в смете/.test(text) && /прайс «Розница»/.test(text), name + ': справка и наценка; без «Внимание» и «Не учтено»');
 	if (kind === 'mat') ok(/Кашемир/.test(text) && /19 — \d+ метр/.test(text) && /Погонные материалы/.test(text) && !/руб\./.test(text), name + ': декоры с кромкой, без цен');
-	if (!o.totals) ok(d.doc.art === 1 && /Артикул\s+(Наименование|Материал)/.test(text) && (kind === 'mat' ? /16 мм_Кашемир \(Р\)\s+Nordeco|16 мм_Кашемир/.test(text) && /1\.0 x 19_Кашемир/.test(text) : (d.doc.sup ? /ZM-\s+Петля накладная[^\n]*\n\s*ECHC09BEO/.test(text) : /ZM-ECHC09BEO\s+Петля накладная/.test(text))), name + ': столбец «Артикул»', text.split('\n').filter(x => /Артикул|Петля|Кашемир/.test(x)).slice(0, 6));
+	if (!o.totals) ok(d.doc.art === 1 && /Артикул\s+(Наименование|Материал)/.test(text) && (kind === 'mat'
+		? /16 мм_Кашемир/.test(text) && /19_Кашемир/.test(text) && /class="a">1\.0 x 19_Кашемир/.test(d.html)
+		: /ZM-/.test(text) && /ECHC09BEO/.test(text) && /class="a">ZM-ECHC09BEO<\/div>(?:<div class="im">[\s\S]*?<\/div>)?<div class="n">Петля накладная/.test(d.html)),
+	name + ': столбец «Артикул» допускает перенос, артикул остаётся у своей строки', text.split('\n').filter(x => /Артикул|Петля|Кашемир/.test(x)).slice(0, 6));
 	if (kind === 'furn') ok(/GOLA-L\s+Профиль-ручка Gola L/.test(text) && /RS-128\s+Ручка-скоба/.test(text), name + ': артикулы профиля и комплекта');
-	if (kind === 'furn') ok(/Петля накладная/.test(text) && /Профиль-ручка Gola L/.test(text) && /шт по 3 м/.test(text) && !/ЛДСП/.test(text), name + ': фурнитура и профили');
+	if (kind === 'furn') ok(/Петля накладная/.test(text) && /Профиль-ручка Gola L/.test(text) && /по 3 м/.test(text) && !/ЛДСП/.test(text), name + ': фурнитура и профили');
 	if (kind === 'furn') { const hg = R3.rows.find(x => /Петля/.test(x.label)); ok(hg.mk === 20 && text.replace(/\s+/g, ' ').indexOf(E.num(hg.price) + ' р./шт') >= 0 && text.replace(/\s+/g, ' ').indexOf(E.money(Math.round(hg.val * hg.price)).replace(/\u00A0/g, ' ') + ' р.') >= 0, name + ': цены закупочные, без наценки', [hg.price, hg.priceOut]); }
 	console.log('   ' + name.padEnd(20), 'листов', pages);
 }
 // длинная смета режется на листы без потерь
 const stB = load('est.bmk'), plB = E.newList('б');
-for (let i = 0; i < 70; i++) E.addOwnRow(stB.work.est, 'Дополнительная работа номер ' + (i + 1) + (i % 9 ? '' : ' с очень длинным названием, которое не помещается в одну строку документа и переносится на вторую'), 'sum', 100 + i);
+for (let i = 0; i < 70; i++) E.addOwnRow(stB.work.est, 'Дополнительная работа номер ' + (i + 1) + (i % 9 ? '' : ' с очень длинным названием, которое не помещается в одну строку документа. В смете должно быть видно полное название, включая контрольное окончание'), 'sum', 100 + i);
 const dB = O.estHtml(build(stB, plB), stB, { kind: 'client' });
 fs.writeFileSync(outDir + '/длинная.html', dB.html);
 cp.execFileSync('/opt/pw-browsers/chromium', ['--headless', '--no-sandbox', '--disable-gpu', '--no-pdf-header-footer', '--print-to-pdf=' + outDir + '/длинная.pdf', 'file://' + outDir + '/длинная.html'], { stdio: 'ignore' });
 const pB = Number(/Pages:\s+(\d+)/.exec(cp.execSync('pdfinfo "' + outDir + '/длинная.pdf"').toString())[1]), tB = cp.execSync('pdftotext -layout "' + outDir + '/длинная.pdf" -').toString(), flatB = tB.replace(/\s+/g, ' ');
-ok(pB === dB.pages && pB >= 2 && (tB.match(/Дополнительная работа номер/g) || []).length === 70 && Array.from({ length: 70 }, (_, k) => k + 100).every(sum => flatB.indexOf(sum + ' р.') >= 0), 'длинная смета: листов ' + pB + ', все 70 строк и их суммы на месте, перенос названия не считается потерей', [pB, dB.pages]);
+ok(pB === dB.pages && pB >= 2 && (tB.match(/Дополнительная работа номер/g) || []).length === 70 &&
+	(flatB.match(/контрольное окончание/g) || []).length === 8 && Array.from({ length: 70 }, (_, k) => k + 100).every(sum => flatB.indexOf(sum + ' р.') >= 0),
+	'длинная смета: листов ' + pB + ', все 70 строк, суммы и окончания длинных названий на месте', [pB, dB.pages]);
 // Excel
-const x = O.estXlsx(R3, st, { kind: 'full' });
+const x = O.estXlsx(R3, st, { kind: 'full', theme: 'light' });
 fs.writeFileSync(outDir + '/полная.xlsx', Buffer.from(x));
 const sheet = cp.execSync('unzip -p "' + outDir + '/полная.xlsx" xl/worksheets/sheet1.xml').toString(), sst = cp.execSync('unzip -p "' + outDir + '/полная.xlsx" xl/sharedStrings.xml').toString();
 ok(/Петля накладная/.test(sst) && !/Не учтено в смете/.test(sst) && sheet.indexOf('<v>' + R3.grand + '</v>') >= 0, 'Excel: строки и итог числом');
 ok(/>Артикул</.test(sst) && /ZM-ECHC09BEO/.test(sst), 'Excel: столбец «Артикул»');
+const xStyles = cp.execSync('unzip -p "' + outDir + '/полная.xlsx" xl/styles.xml').toString();
+ok(!/horizontal="(?:right|center)"/.test(xStyles) && /horizontal="left" vertical="top" indent="1"/.test(xStyles) && /<f>/.test(sheet), 'Excel: левая ось колонок с отступом, суммы остаются формулами');
 fs.writeFileSync(outDir + '/заказ материала.xlsx', Buffer.from(O.estXlsx(R3, st, { kind: 'mat' })));
 // ---- заказные фасады (полуфабрикаты из профиля и стекла) ----
 {

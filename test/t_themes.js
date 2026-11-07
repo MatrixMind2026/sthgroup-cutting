@@ -2,8 +2,8 @@
 const assert = require('assert'), fs = require('fs');
 for (const f of ['geom', 'cut', 'project', 'sth_themes']) require('../web/core/' + f + '.js');
 const expected = [
-  ['sth-workshop', 'Светлая мастерская', 'light'],
-  ['sth', 'STHGroup', 'dark']
+  ['sth-workshop', 'Светлая', 'light'],
+  ['sth', 'Темная', 'dark']
 ];
 const removed = ['sth-nordic', 'sth-graphite', 'sth-est-light', 'sth-est-graphite', 'sth-est-total'];
 assert.deepStrictEqual(BM.THEMES.map(x => x.id), expected.map(x => x[0]));

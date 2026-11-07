@@ -45,3 +45,7 @@ html[data-sth-style="glass"] :is(#dPages,#kPages,#aPages){background:transparent
 
 /* STHGroup: в светлой теме подписи левой полосы тёмные (стеклянный стиль) */
 html[data-sth-style="glass"][data-theme="light"] #rail button:not(.on){color:var(--text)!important}
+/* STHGroup 2.6.2: выбор материала — стеклянная панель внутри окна, по сетке рабочей области (размещение — ui/sth_embed.js) */
+html[data-sth-style="glass"] #mbOverlay.sthPanel{border:1px solid var(--sg-edge);border-radius:18px;overflow:hidden;background:var(--sg-glass);box-shadow:var(--sg-shadow);backdrop-filter:var(--sg-blur);-webkit-backdrop-filter:var(--sg-blur)}
+html[data-sth-style="glass"] #mbOverlay.sthPanel .mbOvBar{background:transparent;border-bottom:1px solid var(--sg-edge);padding:10px 16px;gap:10px;color:var(--text)}
+html[data-sth-style="glass"] #mbOverlay.sthPanel iframe{background:transparent}

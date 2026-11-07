@@ -216,9 +216,7 @@
 		var url = 'matbase.html?t=' + encodeURIComponent(new URLSearchParams(location.search).get('t') || '') + (K.path ? '&file=' + encodeURIComponent(K.path) : '') +
 			'&pick=' + key + '&name=' + encodeURIComponent(name || '') + '&q=' + encodeURIComponent(name || '') + (w.art ? '&art=' + encodeURIComponent(w.art) : '') +
 			(cur ? '&linked=1&cur=' + encodeURIComponent(cur.id) : (w.mb ? '&cur=' + encodeURIComponent(w.mb.id) : ''));
-		var win = null;
-		if (!document.body.classList.contains('tablet')) { try { win = window.open(url, 'sthpick', 'width=1400,height=900'); } catch (e) { win = null; } }
-		if (win) { try { win.focus(); } catch (e2) { } } else K.overlay(url);
+		K.overlay(url); /* STHGroup: выбор материала — панелью внутри окна программы, без отдельного окна */
 	}
 	/* для окна «Поставщик» (ui/sth_sup.js): материал строки по связи, запись связи, выбор в окне базы */
 	window.STH.linkOf = linkOf;

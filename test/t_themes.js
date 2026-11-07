@@ -19,4 +19,13 @@ const css = fs.readFileSync(__dirname + '/../web/sth_v2.css', 'utf8');
 expected.filter(x => x[0] !== 'sth').forEach(x => assert.ok(css.includes('html[data-skin="' + x[0] + '"]')));
 const html = fs.readFileSync(__dirname + '/../web/index.html', 'utf8');
 assert.ok(html.indexOf('core/project.js') < html.indexOf('core/sth_themes.js') && html.indexOf('core/sth_themes.js') < html.indexOf('ui/dialogs.js') && html.indexOf('core/sth_themes.js') < html.indexOf('ui/app.js'));
-console.log('проверок 9 | ошибок нет: каталог тем, стили, загрузка до окна и настроек');
+// 2.6.2: страница базы знает те же темы и цвета, что и окно программы; выбор материала — панелью внутри окна
+const mb = fs.readFileSync(__dirname + '/../web/matbase.html', 'utf8');
+assert.ok(mb.includes('href="sth_v2.css"') && mb.indexOf('href="sth_v2.css"') < mb.indexOf('href="sth_glass.css"'));
+assert.ok(mb.indexOf('core/project.js') < mb.indexOf('core/sth_themes.js') && mb.indexOf('core/sth_themes.js') < mb.indexOf('ui/matbase_ui.js'));
+for (const f of ['sth.js', 'sth_replace.js']) {
+  const s = fs.readFileSync(__dirname + '/../web/ui/' + f, 'utf8');
+  assert.ok(!/window\.open\(url, 'sth(pick|replace)'/.test(s), f + ': выбор материала не должен открывать отдельное окно');
+}
+assert.ok(fs.readFileSync(__dirname + '/../web/ui/sth_embed.js', 'utf8').includes('function placeOverlay'));
+console.log('проверок 13 | ошибок нет: каталог тем, стили, загрузка до окна и настроек');

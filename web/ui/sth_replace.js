@@ -87,9 +87,7 @@
 		var cur = w.sthReplace && b.mats[w.sthReplace.mat] ? b.mats[w.sthReplace.mat] : (STH.linkOf ? STH.linkOf(w) : null);
 		var url = 'matbase.html?t=' + encodeURIComponent(new URLSearchParams(location.search).get('t') || '') + (K.path ? '&file=' + encodeURIComponent(K.path) : '') +
 			'&pick=' + key + '&name=' + encodeURIComponent(name || '') + '&q=' + encodeURIComponent(name || '') + (w.art0 ? '&art=' + encodeURIComponent(w.art0) : '') + (cur ? '&cur=' + encodeURIComponent(cur.id) : '');
-		var win = null;
-		if (!document.body.classList.contains('tablet')) { try { win = window.open(url, 'sthreplace', 'width=1400,height=900'); } catch (e) { win = null; } }
-		if (win) { try { win.focus(); } catch (e2) { } } else K.overlay(url);
+		K.overlay(url); /* STHGroup: выбор материала — панелью внутри окна программы, без отдельного окна */
 	}
 	STH.pickMaterial = pick;
 	async function ask(w, m, count) {

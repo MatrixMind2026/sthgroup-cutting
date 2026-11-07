@@ -69,5 +69,39 @@
 	/* ------------------------------ разделы -------------------------------- */
 	X.show = function (sec) { if (sec === 'mbase') showBase(); else if (sec === 'crm') showCrm().catch(U.error); };
 	X.leave = function (was) { if (was === 'mbase') leaveBase(); };
+
+	/* STHGroup 2.6.2: выбор материала из сметы — стеклянная панель в рабочей области, ровно по сетке окна:
+	   сверху и снизу — вровень с полосой разделов, слева — по краю содержимого раздела, справа — по краю рабочей области.
+	   Полоса разделов и шапка остаются видны; на планшете панель, как раньше, на весь экран. */
+	function placeOverlay() {
+		var o = $('mbOverlay'), main = $('main'), rail = $('rail');
+		if (!o || o.hidden || !main) return;
+		if (document.body.classList.contains('tablet')) { o.style.top = o.style.left = o.style.right = o.style.bottom = ''; return; }
+		var m = main.getBoundingClientRect(), left = rail ? rail.getBoundingClientRect().right : m.left;
+		var edges = Array.prototype.filter.call(main.children, function (c) {
+			if (c === rail || c.hidden) return false;
+			var r = c.getBoundingClientRect(); return r.width > 0 && r.height > 0;
+		}).map(function (c) { return c.getBoundingClientRect().left; }).sort(function (a, b) { return a - b; });
+		if (edges.length && edges[0] > left) left = edges[0];
+		o.style.top = Math.round(m.top) + 'px';
+		o.style.left = Math.round(left) + 'px';
+		o.style.right = Math.max(0, Math.round(window.innerWidth - m.right)) + 'px';
+		o.style.bottom = Math.max(0, Math.round(window.innerHeight - m.bottom)) + 'px';
+	}
+	X.placeOverlay = placeOverlay;
+	if (K && K.overlay) {
+		var overlay0 = K.overlay;
+		K.overlay = function (url) {
+			var r = overlay0.apply(this, arguments), o = $('mbOverlay');
+			if (o) {
+				o.classList.add('sthPanel');
+				var t = o.querySelector('.mbOvBar b');
+				if (t) t.textContent = /[?&]pick=/.test(url) ? 'Выбор материала для строки сметы' : 'База материалов и комплектующих';
+				placeOverlay();
+			}
+			return r;
+		};
+		window.addEventListener('resize', placeOverlay);
+	}
 	/* Esc в разделе базы не должен ничего закрывать; прежний оверлей базы остаётся для выбора материала из сметы */
 })();

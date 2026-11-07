@@ -41,7 +41,7 @@
 			return '<div class="todayItem"><div class="grow"><b>' + esc(o.no) + '</b><div class="mute sm">' + esc(c ? c.name : 'Без клиента') + ' · ' + esc(O.statusName(o.status, book)) + '</div></div><span>' + money(q.total) + '</span><button data-torder="' + esc(o.id) + '">Открыть</button></div>';
 		}).join('') || '<div class="todayEmpty">Активных заказов нет.<br><button class="primary" data-tact="new">Создать первый заказ</button></div>';
 		var notes = X.notes.slice(0, 6).map(function (n) { return '<div class="todayItem"><div class="grow"><b>' + esc(n.title) + '</b><div class="mute sm">' + esc(n.text) + '</div></div><time>' + new Date(n.at).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' }) + '</time></div>'; }).join('') || '<div class="todayEmpty">Сообщений пока нет.</div>';
-		host.innerHTML = '<div class="todayHead"><div><h2>Сегодня</h2><div class="mute">' + new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' }) + '</div></div><div class="grow"></div><button data-tact="open">Открыть модель…</button><button class="primary" data-tact="new">+ Новый заказ</button></div>' +
+		host.innerHTML = '<div class="todayHead"><div><h2>Сегодня</h2><div class="mute">' + new Date().toLocaleDateString('ru-RU', { day: 'numeric', month: 'long', weekday: 'long' }) + '</div></div><div class="grow"></div><button data-tact="clients">Найти клиента</button><button class="primary" data-tact="new">+ Новый заказ</button></div>' +
 			'<div class="todayGrid">' + metric('Активные заказы', summary.active, 'расчёт, согласование и работа') + metric('В работе', summary.work, 'заказы на производстве') + metric('Готовы', summary.ready, 'можно отгружать') + metric('Долг', money(summary.debt), 'по заказам с оплатами') + metric('Из CRM', summary.crm, 'карточек принято') + '</div>' +
 			'<div class="todayCols"><section class="todayBlock"><h3>Что требует внимания</h3>' + orderRows + '<div class="soRow"><button data-tact="board">Все заказы карточками</button><button data-tact="stock">Склад</button></div></section>' +
 			'<section class="todayBlock"><h3>Последние уведомления</h3>' + notes + '<div class="soRow"><button data-tact="notices">Все уведомления</button><button data-tact="crm">Проверить CRM</button></div></section></div>';
@@ -58,6 +58,7 @@
 		var b = e.target.closest('[data-tact]'); if (!b) return;
 		var a = b.dataset.tact;
 		if (a === 'new' && window.STHO && STHO.book) { STHO.cur = O.addOrder(STHO.book, {}).id; STHO.tab = 'items'; STHO.view = 'list'; STHO.save(); go('orders'); STHO.render(); }
+		else if (a === 'clients') go('clients');
 		else if (a === 'open') A.openDialog();
 		else if (a === 'board') { if (window.STHO) STHO.view = 'board'; go('orders'); }
 		else if (a === 'stock') go('stock');

@@ -1369,3 +1369,6 @@ body[data-sec="mbase"] #welcome, body[data-sec="crm"] #welcome, body[data-sec="m
 .sthBrw .brView { height: 66vh; display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; background: #fff; }
 .sthBrw .brView webview, .sthBrw .brView iframe { flex: 1; border: 0; width: 100%; height: 100%; }
 .sthBrw .brHint { margin-top: 6px; }
+
+/* STHGroup: меню «Файл», «Документы» и т. п. открываются поверх всего окна (шапка со стеклом иначе оказывалась под панелями) */
+#top { position: relative; z-index: 45; }

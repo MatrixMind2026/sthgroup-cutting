@@ -452,6 +452,14 @@
 		if (!fresh && window.Dlg.paramsDiffer()) U.toast('Раскрой в этом проекте сделан с другими настройками, чем ваши.', { actions: [{ label: 'Показать', run: function () { window.Dlg.settings('cut'); } }] });
 		return true;
 	};
+	/* STHGroup: «Сохранить» — сразу записать проект туда, откуда он открыт (без окна выбора файла) */
+	A.saveNow = async function () {
+		if (!S.doc) return;
+		if (!S.path) return A.saveAs();
+		clearTimeout(S.saveTimer);
+		await writeNow(false);
+		if (!S.saveErr && !S.conflict) { S.dirty = false; A.renderTabs(); A.renderStatus(); U.toast('Проект сохранён: ' + U.baseOf(S.path)); }
+	};
 	A.saveAs = async function () {
 		if (!S.doc) return;
 		var p = await U.pick({ kind: 'save', title: 'Сохранить проект как', dir: U.dirOf(S.path), name: U.baseOf(S.path), filters: [{ name: 'Проект STHGroup', ext: ['bmk'] }] });
@@ -540,7 +548,7 @@
 		};
 	}
 	/* Проекта нет: интерфейс открыт целиком, но кнопки, которым нужен проект, не нажимаются. */
-	var NEED_PROJECT = ['bSaveAs', 'bToDisk', 'bMats', 'iSets', 'sQuality', 'bNest', 'bPdf', 'bXlsx', 'bDxf', 'bLists'];
+	var NEED_PROJECT = ['bSave', 'bSaveAs', 'bToDisk', 'bMats', 'iSets', 'sQuality', 'bNest', 'bPdf', 'bXlsx', 'bDxf', 'bLists'];
 	function noProject(on) {
 		document.body.classList.toggle('noproj', !!on);
 		NEED_PROJECT.forEach(function (id) { var e = $(id); if (e) { e.disabled = !!on; if (on) e.dataset.why = e.title || ''; e.title = on ? 'Сначала откройте проект' : (e.dataset.why || e.title); } });
@@ -606,6 +614,7 @@
 		$('ptabs').addEventListener('auxclick', function (e) { var t = e.target.closest('.ptab'); if (t && e.button === 1) A.closeTab(Number(t.dataset.i)); });
 		$('wSettings').onclick = function () { window.Dlg.settings(); };
 		$('bOpen').onclick = A.openDialog;
+		$('bSave').onclick = A.saveNow;
 		$('bSaveAs').onclick = A.saveAs;
 		/* планшет: проект — на Яндекс Диск («Поделиться»), сначала дописать правки */
 		$('bToDisk').onclick = function () { if (!S.path) return; A.save(true); setTimeout(function () { U.api.open(S.path).catch(U.error); }, 400); };
@@ -638,6 +647,7 @@
 			if (ctrl && (k === 'z' || k === 'я') && !e.shiftKey) { if (typing) return; e.preventDefault(); A.undo(); }
 			else if (ctrl && (k === 'y' || k === 'н' || ((k === 'z' || k === 'я') && e.shiftKey))) { if (typing) return; e.preventDefault(); A.redo(); }
 			else if (ctrl && (k === 'o' || k === 'щ')) { e.preventDefault(); A.openDialog(); }
+			else if (ctrl && !e.shiftKey && (k === 's' || k === 'ы')) { e.preventDefault(); A.saveNow(); }
 			else if (ctrl && (k === 'f' || k === 'а')) { e.preventDefault(); var sf = $(S.section === 'model' ? 'mSearch' : 'iSearch'); sf.focus(); sf.select(); }
 			else if (ctrl && (k === 'p' || k === 'з')) { e.preventDefault(); if (S.st && S.section !== 'model') { if (S.section === 'drill') window.Dlg.drillPdf(); else if (S.section === 'detail') window.Dlg.detailPdf(); else if (S.section === 'asm') window.Dlg.asmPdf(); else if (S.section === 'est') window.Dlg.estDoc('', 'pdf'); else window.Dlg.pdf(); } }
 			else if (typing) return;

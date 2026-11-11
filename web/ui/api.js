@@ -188,11 +188,21 @@
 				if (e.button !== 0) return;
 				e.preventDefault(); e.stopPropagation();
 				var r = el.getBoundingClientRect(), x0 = e.clientX, y0 = e.clientY, w0 = r.width, h0 = r.height;
+				/* окно стоит по центру — без поправки оно растёт в обе стороны. Держим на месте противоположный край */
+				var pos = getComputedStyle(el).position, canShift = pos === 'relative' || pos === 'absolute';
+				var l0 = parseFloat(el.style.left) || 0, t0 = parseFloat(el.style.top) || 0;
 				el.classList.add('drag');
 				function mv(ev) {
 					var dw = ed.indexOf('r') >= 0 ? ev.clientX - x0 : (ed.indexOf('l') >= 0 ? x0 - ev.clientX : 0), dh = ed.indexOf('b') >= 0 ? ev.clientY - y0 : 0;
 					if (dw) el.style.width = Math.max(minW, Math.min(window.innerWidth * 0.98, w0 + dw)) + 'px';
 					if (dh) { el.style.height = Math.max(minH, Math.min(window.innerHeight * 0.96, h0 + dh)) + 'px'; el.style.maxHeight = 'none'; }
+					if (canShift) {
+						var nr = el.getBoundingClientRect(), sx = 0, sy = 0;
+						if (ed.indexOf('r') >= 0) sx = r.left - nr.left; else if (ed.indexOf('l') >= 0) sx = r.right - nr.right;
+						if (dh) sy = r.top - nr.top;
+						if (Math.abs(sx) >= 0.5) { l0 += sx; el.style.left = l0 + 'px'; }
+						if (Math.abs(sy) >= 0.5) { t0 += sy; el.style.top = t0 + 'px'; }
+					}
 					if (o.onSize) o.onSize();
 				}
 				function up() {
@@ -209,6 +219,7 @@
 		head.addEventListener('mousedown', function (e) {
 			if (e.button !== 0 || e.target.closest('button')) return;
 			e.preventDefault();
+			dx = parseFloat(m.style.left) || 0; dy = parseFloat(m.style.top) || 0; // окно могли сдвинуть, растягивая за край
 			var x0 = e.clientX - dx, y0 = e.clientY - dy, r = m.getBoundingClientRect(), bx = r.left - dx, by = r.top - dy;
 			m.classList.add('drag');
 			function move(ev) {

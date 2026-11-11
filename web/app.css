@@ -1372,3 +1372,23 @@ body[data-sec="mbase"] #welcome, body[data-sec="crm"] #welcome, body[data-sec="m
 
 /* STHGroup: меню «Файл», «Документы» и т. п. открываются поверх всего окна (шапка со стеклом иначе оказывалась под панелями) */
 #top { position: relative; z-index: 45; }
+
+/* ---- окна внутри программы (11.11.2026): страница на месте рабочей области и полоска с вопросом ---- */
+#modals .back.page, #modals .back.bar { position: fixed; top: var(--pg-top, 0px); left: var(--pg-left, 0px); right: 0; bottom: var(--pg-bottom, 0px); z-index: 50; display: block; background: transparent; }
+#modals .back.page > .modal { position: absolute; inset: 0; left: 0 !important; top: 0 !important; width: auto !important; height: auto !important; max-width: none; max-height: none; min-width: 0; border: 0; border-radius: 0; box-shadow: none; background: var(--bg, var(--panel)); }
+#modals .back.page > .modal > h2 { cursor: default; border-radius: 0; gap: 10px; padding: 9px 16px; font-size: 16px; }
+#modals .back.page > .modal > h2 .bk { margin: 0 !important; font-size: 13px; padding: 5px 10px; border: 1px solid var(--line); border-radius: var(--r, 6px); background: var(--panel); color: var(--text); }
+#modals .back.page > .modal > h2 .bk:hover { background: var(--panel2); }
+#modals .back.page > .modal > .body { width: 100%; max-width: var(--pgw, none); box-sizing: border-box; }
+#modals .back.page > .modal > .foot { border-top: 1px solid var(--line2); background: var(--panel); }
+#modals .back.page > .modal.pvFull { position: absolute; }
+#modals .back.bar { background: rgba(20, 30, 40, .06); }
+#modals .back.bar > .modal { position: relative; left: 0 !important; top: 0 !important; width: auto !important; max-width: none; min-width: 0; max-height: none; flex-direction: row; align-items: center; flex-wrap: wrap; gap: 6px 14px; border: 0; border-bottom: 2px solid var(--accent); border-radius: 0; box-shadow: 0 4px 14px rgba(20, 30, 40, .14); padding: 10px 16px; }
+#modals .back.bar > .modal > .body { padding: 0; flex: 1 1 320px; min-width: 0; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; overflow: visible; }
+#modals .back.bar > .modal > .body .bt { white-space: nowrap; }
+#modals .back.bar > .modal > .body .bx p { margin: 0; }
+#modals .back.bar > .modal > .foot { padding: 0; border: 0; }
+#modals .back.page > .modal { animation: none; }
+#modals .back.page { animation: fadeIn .14s ease-out; }
+#modals .back.bar > .modal { animation: barIn .16s ease-out; }
+@keyframes barIn { from { transform: translateY(-100%); } to { transform: none; } }

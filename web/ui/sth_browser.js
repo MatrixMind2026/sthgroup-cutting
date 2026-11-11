@@ -25,8 +25,8 @@
 			body: '<div class="brBar"><button id="brBack" title="Назад">‹</button><button id="brFwd" title="Вперёд">›</button><button id="brReload" title="Обновить">⟳</button>' +
 				'<input type="text" id="brAddr" value="' + esc(start) + '" placeholder="Адрес сайта или что искать" spellcheck="false"><button id="brGo">Перейти</button></div>' +
 				'<div class="brView">' + (isApp ? '<webview src="' + esc(start) + '" partition="persist:shops" useragent="' + esc(UA) + '" allowpopups></webview>' : '<iframe src="' + esc(start) + '" title="Браузер"></iframe>') + '</div>' +
-				'<div class="mute sm brHint">Откройте карточку нужного товара (не список товаров) и нажмите «Взять эту ссылку». Вход на сайт магазина запоминается.</div>',
-			buttons: [{ label: 'Отмена', value: null }, { label: 'Взять эту ссылку', primary: true, run: function () {
+				'<div class="mute sm brHint">' + (o.login ? 'Войдите на сайте магазина (логин и пароль вводятся прямо на сайте). Вход запоминается — «Заполнить по ссылке» будет брать цены под ним.' : 'Откройте карточку нужного товара (не список товаров) и нажмите «Взять эту ссылку». Вход на сайт магазина запоминается.') + '</div>',
+			buttons: o.login ? [{ label: 'Готово — я вошёл', primary: true, value: null }] : [{ label: 'Отмена', value: null }, { label: 'Взять эту ссылку', primary: true, run: function () {
 				var u = cur();
 				if (!/^https?:\/\//i.test(u || '')) { U.toast('Страница ещё не открылась.'); return false; }
 				if (u.indexOf(B.SEARCH) === 0) { U.toast('Это страница поиска — откройте карточку товара.'); return false; }

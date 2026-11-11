@@ -10,7 +10,7 @@ let srv,browser;
  try{browser=await chromium.launch({channel:'msedge',headless:true})}catch(_){browser=await chromium.launch({headless:true})}
  const page=await browser.newPage({viewport:{width:1600,height:1000},reducedMotion:'reduce'});const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(srv.url+'&splash=0');await page.waitForFunction(()=>window.UI&&UI.modal&&document.getElementById('modals'));
- await page.evaluate(()=>{try{localStorage.clear()}catch(e){}UI.modal({title:'Проверка размера',width:600,body:'<p>Текст</p>'})});
+ await page.evaluate(()=>{try{localStorage.clear()}catch(e){}UI.floatModals=true;UI.modal({title:'Проверка размера',width:600,body:'<p>Текст</p>'})});
  const m=page.locator('#modals .modal').last();await m.waitFor();await page.waitForTimeout(250);
  const box=()=>m.evaluate(el=>{const r=el.getBoundingClientRect();return{l:r.left,r:r.right,t:r.top,b:r.bottom}});
  async function drag(sel,dx,dy){const h=await m.locator(sel).boundingBox();const x=h.x+h.width/2,y=h.y+h.height/2;await page.mouse.move(x,y);await page.mouse.down();await page.mouse.move(x+dx/2,y+dy/2);await page.mouse.move(x+dx,y+dy);await page.mouse.up();}

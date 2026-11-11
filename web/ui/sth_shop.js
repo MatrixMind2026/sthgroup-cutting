@@ -19,6 +19,14 @@
 	T.login = async function (url) {
 		url = normUrl(url);
 		if (!url) { U.toast('Сначала впишите ссылку на товар — откроется сайт этого магазина.'); return; }
+		/* 11.11.2026: вход — во встроенном браузере программы (тот же профиль магазинов), не отдельным окном Windows */
+		var BR = window.STHBrowser || (window.parent !== window && window.parent.STHBrowser); // база материалов открыта фреймом внутри программы
+		if (BR) {
+			var o = new URL(url).origin + '/';
+			await BR.open({ url: o, login: true, title: 'Вход на сайт: ' + host(url) });
+			U.toast('Готово. «Заполнить по ссылке» берёт цены под вашим входом.');
+			return;
+		}
 		U.toast('Войдите на сайте в открывшемся окне и закройте его.', { ms: 8000 });
 		try { await post('/api/shop/login', { url: url }); U.toast('Окно сайта закрыто. Теперь «Заполнить по ссылке» берёт цены под вашим входом.'); } catch (e) { U.error(e); }
 	};

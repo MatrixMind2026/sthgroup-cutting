@@ -307,6 +307,7 @@ function start(opt) {
       if (!hooks.updCheck) return json(res, 200, { status: 'skip' });
       try { json(res, 200, await hooks.updCheck()); } catch (e) { json(res, 200, { status: 'error', message: String((e && e.message) || e) }); }
     },
+    'POST /api/upd/install': function (req, res) { json(res, 200, { ok: !!(hooks.updInstall && hooks.updInstall()) }); }, // STHGroup: перезапуск со скачанным обновлением
     'GET /api/tester/state': function (req, res) { json(res, 200, { edition: 'sth', ack: true, name: '', pings: false }); },
     'POST /api/tester/sec': function (req, res) { json(res, 200, { ok: true }); },
     'POST /api/tester/hello': function (req, res) { json(res, 200, { name: '' }); },

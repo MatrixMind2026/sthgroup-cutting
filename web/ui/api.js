@@ -241,8 +241,96 @@
 			m.classList.remove('nudge'); void m.offsetWidth; m.classList.add('nudge');
 		});
 	}
-	/* o: { title, body (html), buttons: [{ label, primary, value, keep }], width, onOpen(el, close) } → обещание со значением кнопки */
+	/* o: { title, body (html), buttons: [{ label, primary, value, keep }], width, onOpen(el, close) } → обещание со значением кнопки
+	   Решение автора 11.11.2026: окна — часть программы. Окно открывается страницей на месте рабочей области
+	   (полоса разделов слева остаётся видна, «← Назад» и Esc закрывают); короткий вопрос без полей ввода —
+	   полоской вверху рабочей области. Прежние плавающие окна — только при U.floatModals = true. */
+	function isBar(o) {
+		if (o.page) return false;
+		if (o.bar) return true;
+		if (o.onOpen || o.cls) return false;   // окно дозаполняется после открытия или своё оформление — страница
+		var b = String(o.body || '');
+		return !/<(input|select|textarea|table|canvas|img|svg|iframe|webview|button|ul|ol|label)\b/i.test(b) && b.replace(/<[^>]*>/g, '').length < 400 && (o.buttons || []).length <= 3;
+	}
+	function placeHost() {           // страницы и полоски занимают рабочую область: справа от полосы разделов, под шапкой
+		var host = U.$('modals'), main = document.getElementById('main'), rail = document.getElementById('rail');
+		if (!host || !main) return;
+		var r = main.getBoundingClientRect(), left = r.left;
+		if (rail && rail.offsetWidth && !rail.hidden) left = rail.getBoundingClientRect().right;
+		host.style.setProperty('--pg-top', Math.round(r.top) + 'px');
+		host.style.setProperty('--pg-left', Math.round(left) + 'px');
+		host.style.setProperty('--pg-bottom', Math.max(0, Math.round(window.innerHeight - r.bottom)) + 'px');
+	}
+	var pageWired = false;
+	function wirePages() {
+		if (pageWired) return; pageWired = true;
+		window.addEventListener('resize', placeHost);
+		if (window.ResizeObserver && document.getElementById('main')) new ResizeObserver(placeHost).observe(document.getElementById('main'));
+		/* переход в другой раздел закрывает открытые страницы (как «Назад») */
+		var rail = document.getElementById('rail');
+		if (rail) rail.addEventListener('click', function (e) {
+			if (!e.target.closest('button')) return;
+			U.$('modals').querySelectorAll('.back.page:not(.out), .back.bar:not(.out)').forEach(function (b) { if (b._close) b._close(undefined); });
+		}, true);
+	}
 	U.modal = function (o) {
+		if (U.floatModals) return floatModal(o);
+		return new Promise(function (resolve) {
+			wirePages(); placeHost();
+			var bar = isBar(o);
+			var back = document.createElement('div');
+			back.className = 'back ' + (bar ? 'bar' : 'page');
+			var m = document.createElement('div');
+			m.className = 'modal' + (o.cls ? ' ' + o.cls : '');
+			if (!bar && o.width) m.style.setProperty('--pgw', Math.max(o.width, 560) + 'px');
+			m.innerHTML = bar
+				? '<div class="body">' + (o.title ? '<b class="bt">' + esc(o.title) + '</b>' : '') + '<div class="bx">' + (o.body || '') + '</div></div><div class="foot"><div class="left"></div></div>'
+				: '<h2><button class="bk x" title="Назад (Esc)">← Назад</button><span>' + esc(o.title || '') + '</span></h2><div class="body">' + (o.body || '') + '</div><div class="foot"><div class="left"></div></div>';
+			back.appendChild(m);
+			function close(v) {
+				if (back._closed) return; back._closed = true;
+				document.removeEventListener('keydown', onKey, true);
+				if (U.animOn()) { back.classList.add('out'); setTimeout(function () { back.remove(); }, 160); } else back.remove();
+				resolve(v);
+			}
+			back._close = close;
+			function onKey(e) {
+				var live = U.$('modals').querySelectorAll('.back:not(.out)');
+				if (back !== live[live.length - 1]) return;
+				if (e.key === 'Escape') { e.stopPropagation(); close(undefined); }
+				else if (e.key === 'Enter' && !/TEXTAREA|BUTTON|SELECT/.test(e.target.tagName) && !e.target.hasAttribute('data-own-enter') && primary) { e.preventDefault(); primary.click(); }
+			}
+			var foot = m.querySelector('.foot'), primary = null;
+			(o.buttons || [{ label: bar ? 'Понятно' : 'Закрыть', value: undefined }]).forEach(function (b) {
+				var el = document.createElement('button');
+				el.textContent = b.label;
+				if (b.primary) { el.className = 'primary'; primary = el; }
+				if (b.id) el.dataset.id = b.id;
+				el.onclick = async function () {
+					var v = b.value;
+					if (b.run) { try { v = await b.run(m, close); } catch (e) { U.error(e); return; } if (v === false) return; }
+					if (!b.keep) close(v);
+				};
+				(b.left ? foot.querySelector('.left') : foot).appendChild(el);
+			});
+			if (!bar) {
+				m.querySelector('.bk').onclick = function () { close(undefined); };
+			}
+			/* щелчок по программе мимо полоски — полоска коротко «отзывается»: ждёт ответа */
+			back.addEventListener('mousedown', function (e) {
+				if (e.target !== back) return;
+				e.preventDefault();
+				m.classList.remove('nudge'); void m.offsetWidth; m.classList.add('nudge');
+			});
+			document.addEventListener('keydown', onKey, true);
+			U.$('modals').appendChild(back);
+			if (o.onOpen) o.onOpen(m, close);
+			var f = m.querySelector('[autofocus]') || primary;
+			if (f) f.focus();
+		});
+	};
+	/* прежнее плавающее окно (U.floatModals) */
+	function floatModal(o) {
 		return new Promise(function (resolve) {
 			var back = document.createElement('div');
 			back.className = 'back';
@@ -284,13 +372,14 @@
 			var f = m.querySelector('[autofocus]') || primary;
 			if (f) f.focus();
 		});
-	};
+	}
 	U.confirm = function (title, text, yes, no) {
 		return U.modal({ title: title, body: '<p>' + esc(text).replace(/\n/g, '<br>') + '</p>', width: 460, buttons: [{ label: no || 'Отмена', value: false }, { label: yes || 'Да', value: true, primary: true }] });
 	};
 
 	/* --------------------- выбор файла или папки ------------------------------ */
 	/* Сначала системное окно Windows; если его нет — встроенное. Возвращает путь или null. */
+	U.forceBuiltinDialogs = true;   // 11.11.2026: выбор файла и папки — своим окном внутри программы, не окном Windows
 	U.pick = async function (o) {
 		var r = null;
 		if (!U.forceBuiltinDialogs) { try { r = await U.api.dialog(o); } catch (e) { r = { unsupported: true }; } }

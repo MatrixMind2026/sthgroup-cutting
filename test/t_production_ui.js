@@ -21,7 +21,7 @@ const errors = [];
  const next = JSON.parse(JSON.stringify(model)); next.model.parts[0].mat = 'ЛДСП Другой декор';
  const nextFile = path.join(dataDir, 'incoming', 'Тест.bmk'); fs.mkdirSync(path.dirname(nextFile));
  require(path.join(repo, 'server')).zipWrite(nextFile, [{ name: 'project.json', data: Buffer.from(JSON.stringify(next)) }, { name: 'attachment.bin', data: Buffer.from('preserved-model-payload') }]);
- await page.goto(srv.url + '&splash=0');
+ await page.goto(srv.url + '&splash=0'); await page.evaluate(() => { window.UI.forceBuiltinDialogs = false; }); // здесь подменено системное окно сохранения PDF
  await page.waitForFunction(() => window.App && App.S.boot && window.STHO && BM.sthProduction);
  const orderId = await page.evaluate(async ({ file, dataDir }) => {
   const U = UI, O = BM.sth, P = BM.project, F = BM.sthProduction, MB = BM.mb, K = BM.stock, X = STHO;

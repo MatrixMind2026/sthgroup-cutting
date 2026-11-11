@@ -137,6 +137,8 @@ const hooks = {
   },
   // принудительная проверка: кнопка «Проверить обновления» — GitHub и папка (checkBoth). Новая версия качается сама,
   // по готовности показывается окно «Доступна новая версия» из setupAutoUpdate.
+  // «Перезапустить сейчас» в полоске о скачанном обновлении
+  updInstall: function () { if (!app.isPackaged || upd.status !== 'downloaded') return false; const { autoUpdater } = require('electron-updater'); setTimeout(function () { autoUpdater.quitAndInstall(); }, 300); return true; },
   updCheck: async function () {
     if (!app.isPackaged) return { status: 'dev', current: app.getVersion() };
     if (updChecking) return { status: 'checking', current: app.getVersion() };
@@ -250,9 +252,7 @@ function setupAutoUpdate() {
     autoUpdater.on('update-not-available', function () { upd.status = 'none'; upd.checked = Date.now(); upd.problem = ''; });
     autoUpdater.on('update-downloaded', function (info) {
       upd.status = 'downloaded'; upd.latest = (info && info.version) || upd.latest; upd.checked = Date.now();
-      const r = dialog.showMessageBoxSync({ type: 'info', buttons: ['Перезапустить сейчас', 'Позже'], defaultId: 0,
-        title: APP_NAME, message: 'Доступна новая версия ' + info.version, detail: 'Обновление скачано. Установится при перезапуске.' });
-      if (r === 0) autoUpdater.quitAndInstall();
+      // 11.11.2026: вопрос «Перезапустить сейчас / Позже» — полоской внутри программы (ui/sth_upd_bar.js), не окном Windows
     });
     autoUpdater.on('error', function (e) { upd.status = 'error'; upd.problem = updErrText(e); }); // нет сети или выпуска — молча, запись видна в настройках
     // проверка при запуске — молча; выключается в настройках: «Обновления» → «проверять обновления при запуске»

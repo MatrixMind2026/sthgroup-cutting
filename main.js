@@ -1,6 +1,6 @@
 /* STHGroup — оболочка Electron вокруг окна (копия окна BazisReborn в папке web).
    Окно общается с программой по локальному адресу /api/* (server.js) — так же, как с программой BazisReborn.
-   Обновления — как раньше: GitHub Releases этого репозитория через electron-updater.
+   Обновления — GitHub Releases этого репозитория и папка на диске (sth_folder_update.js), берётся самая новая версия.
    Принудительная проверка — кнопка «Проверить обновления» в настройках: окно зовёт /api/upd/check,
    сервер передаёт вызов сюда (hooks.updCheck), а проверяет и качает electron-updater. */
 'use strict';
@@ -11,6 +11,7 @@ const server = require('./server');
 const backupRoutes = require('./sth_backup'); // STHGroup 2.0
 const crmRoutes = require('./sth_crm'); // STHGroup 2.0
 const windowState = require('./sth_window_state'); // STHGroup: положение, размер и состояние окна
+const folderUpd = require('./sth_folder_update'); // STHGroup 11.11.2026: обновления и из папки на диске
 
 const APP_NAME = 'STHGroup';
 let win = null, srv = null;
@@ -29,6 +30,32 @@ function updErrText(e) {
   if (/\b404\b/.test(m)) return 'Сервер обновлений ответил: выпусков не найдено.';
   if (/\b(401|403)\b/.test(m)) return 'Сервер обновлений отказал в доступе.';
   return m.slice(0, 300);
+}
+
+// Проверка обновлений: GitHub и папка на диске, берётся самая новая версия, она же качается.
+// Возвращает { status: 'available' | 'none', version, source: 'github' | 'folder' }; ошибка — если не ответил ни один источник.
+let feedIsFolder = false;
+async function checkBoth() {
+  const { autoUpdater } = require('electron-updater');
+  const cur = app.getVersion();
+  const dir = folderUpd.folderDir(app.getPath('userData'));
+  const fv = folderUpd.folderVersion(dir);
+  autoUpdater.autoDownload = false; // качаем сами — после выбора источника
+  if (feedIsFolder) { const pub = require('./package.json').build.publish[0]; autoUpdater.setFeedURL(pub); feedIsFolder = false; }
+  let gv = null, gErr = null;
+  try { const r = await autoUpdater.checkForUpdates(); gv = (r && r.updateInfo && r.updateInfo.version) || null; } catch (e) { gErr = e; }
+  const src = folderUpd.pick(cur, gv, fv);
+  if (!src) {
+    if (gErr && !fv) throw gErr; // ни GitHub, ни папки
+    return { status: 'none', current: cur };
+  }
+  if (src === 'folder') {
+    autoUpdater.setFeedURL({ provider: 'generic', url: await folderUpd.serve(dir) });
+    feedIsFolder = true;
+    await autoUpdater.checkForUpdates();
+  }
+  autoUpdater.downloadUpdate().catch(function (e) { upd.status = 'error'; upd.problem = updErrText(e); });
+  return { status: 'available', current: cur, version: src === 'folder' ? fv : gv, source: src };
 }
 
 // файл проекта из командной строки (скрипт выгрузки STHGroup открывает программу с файлом .bmk)
@@ -106,34 +133,20 @@ const hooks = {
   toFront: function () { if (win) { if (win.isMinimized()) win.restore(); win.focus(); } },
   // состояние обновлений для вкладки «Обновления» в настройках
   updState: function () {
-    return { current: app.getVersion(), edition: 'sth', hasKey: app.isPackaged, keySrc: '', problem: upd.problem, repo: updRepo(), checked: upd.checked, seen: upd.latest, publisher: null, status: upd.status, packaged: app.isPackaged };
+    return { current: app.getVersion(), edition: 'sth', hasKey: app.isPackaged, keySrc: '', problem: upd.problem, repo: updRepo(), checked: upd.checked, seen: upd.latest, publisher: null, status: upd.status, packaged: app.isPackaged, folder: folderUpd.folderDir(app.getPath('userData')) };
   },
-  // принудительная проверка: кнопка «Проверить обновления». Новая версия качается сама (autoDownload),
+  // принудительная проверка: кнопка «Проверить обновления» — GitHub и папка (checkBoth). Новая версия качается сама,
   // по готовности показывается окно «Доступна новая версия» из setupAutoUpdate.
   updCheck: async function () {
     if (!app.isPackaged) return { status: 'dev', current: app.getVersion() };
     if (updChecking) return { status: 'checking', current: app.getVersion() };
     updChecking = true;
     try {
-      const { autoUpdater } = require('electron-updater');
-      return await new Promise(function (resolve) {
-        let settled = false;
-        const timer = setTimeout(function () { done({ status: 'error', current: app.getVersion(), message: 'Сервер обновлений не ответил. Проверьте интернет и попробуйте ещё раз.' }); }, 40000);
-        function done(r) {
-          if (settled) return; settled = true; clearTimeout(timer);
-          upd.checked = Date.now(); // «проверено …» на вкладке «Обновления»
-          autoUpdater.removeListener('update-available', onA); autoUpdater.removeListener('update-not-available', onN); autoUpdater.removeListener('error', onE);
-          resolve(r);
-        }
-        function onA(info) { done({ status: 'available', current: app.getVersion(), version: (info && info.version) || '' }); }
-        function onN() { done({ status: 'none', current: app.getVersion() }); }
-        function onE(e) { done({ status: 'error', current: app.getVersion(), message: updErrText(e) }); }
-        autoUpdater.on('update-available', onA);
-        autoUpdater.on('update-not-available', onN);
-        autoUpdater.on('error', onE);
-        try { autoUpdater.checkForUpdates().catch(onE); } catch (e) { onE(e); }
-      });
-    } catch (e) { return { status: 'error', current: app.getVersion(), message: updErrText(e) }; }
+      const r = await Promise.race([checkBoth(), new Promise(function (_, no) { setTimeout(function () { no(new Error('timed out')); }, 40000); })]);
+      upd.checked = Date.now(); // «проверено …» на вкладке «Обновления»
+      if (r.status === 'available') { upd.status = 'available'; upd.latest = r.version; upd.problem = ''; }
+      return r;
+    } catch (e) { upd.checked = Date.now(); return { status: 'error', current: app.getVersion(), message: updErrText(e) }; }
     finally { updChecking = false; }
   }
 };
@@ -233,7 +246,6 @@ function setupAutoUpdate() {
   if (!app.isPackaged) return;
   try {
     const { autoUpdater } = require('electron-updater');
-    autoUpdater.autoDownload = true;
     autoUpdater.on('update-available', function (info) { upd.status = 'available'; upd.latest = (info && info.version) || ''; upd.problem = ''; });
     autoUpdater.on('update-not-available', function () { upd.status = 'none'; upd.checked = Date.now(); upd.problem = ''; });
     autoUpdater.on('update-downloaded', function (info) {
@@ -246,7 +258,7 @@ function setupAutoUpdate() {
     // проверка при запуске — молча; выключается в настройках: «Обновления» → «проверять обновления при запуске»
     let on = true;
     try { const set = JSON.parse(fs.readFileSync(path.join(app.getPath('userData'), 'settings.json'), 'utf8')); if (set.updateOnline === 0) on = false; } catch (e) { /* настроек ещё нет */ }
-    if (on) autoUpdater.checkForUpdates().catch(function () {});
+    if (on) checkBoth().then(function (r) { upd.checked = Date.now(); if (r.status === 'none') { upd.status = 'none'; upd.problem = ''; } }).catch(function (e) { upd.status = 'error'; upd.problem = updErrText(e); });
   } catch (e) { /* без обновлений */ }
 }
 

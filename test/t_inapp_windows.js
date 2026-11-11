@@ -11,10 +11,10 @@ let srv,browser,native=0;
  const page=await browser.newPage({viewport:{width:1500,height:900},reducedMotion:'reduce'});const errors=[];page.on('pageerror',e=>errors.push(e.message));
  await page.goto(srv.url+'&splash=0');await page.waitForFunction(()=>window.UI&&UI.modal&&document.getElementById('rail'));
  const rect=sel=>page.evaluate(s=>{const r=document.querySelector(s).getBoundingClientRect();return{l:r.left,r:r.right,t:r.top,b:r.bottom}},sel);
- // страница: от полосы разделов до правого края, от шапки до низа рабочей области
+ // страница — стеклянная панель: зазор 10 px от полосы разделов и от правого края, от шапки до низа рабочей области
  await page.click('#bSettings');const pg=page.locator('#modals .back.page .modal');await pg.waitFor();
  const m=await rect('#modals .back.page .modal'),rail=await rect('#rail'),main=await rect('#main');
- assert.ok(Math.abs(m.l-rail.r)<2&&Math.abs(m.t-main.t)<2&&Math.abs(m.b-main.b)<2&&Math.abs(m.r-1500)<2,'страница занимает рабочую область: '+JSON.stringify(m));
+ assert.ok(Math.abs(m.l-rail.r-10)<2&&Math.abs(m.t-main.t)<2&&Math.abs(m.b-main.b)<2&&Math.abs(m.r-1490)<2,'страница занимает рабочую область: '+JSON.stringify(m));
  assert.equal(await pg.locator('h2 button').count(),1,'в шапке одна кнопка — «Назад»');
  await pg.locator('h2 .bk').click();await page.waitForFunction(()=>!document.querySelector('#modals .back:not(.out)'));
  // Esc закрывает страницу

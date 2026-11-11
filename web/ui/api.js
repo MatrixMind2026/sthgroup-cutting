@@ -282,7 +282,7 @@
 			back.className = 'back ' + (bar ? 'bar' : 'page');
 			var m = document.createElement('div');
 			m.className = 'modal' + (o.cls ? ' ' + o.cls : '');
-			if (!bar && o.width) m.style.setProperty('--pgw', Math.max(o.width, 560) + 'px');
+			if (!bar && o.width && !o.full) m.style.setProperty('--pgw', Math.max(o.width, 560) + 'px');
 			m.innerHTML = bar
 				? '<div class="body">' + (o.title ? '<b class="bt">' + esc(o.title) + '</b>' : '') + '<div class="bx">' + (o.body || '') + '</div></div><div class="foot"><div class="left"></div></div>'
 				: '<h2><button class="bk x" title="Назад (Esc)">← Назад</button><span>' + esc(o.title || '') + '</span></h2><div class="body">' + (o.body || '') + '</div><div class="foot"><div class="left"></div></div>';

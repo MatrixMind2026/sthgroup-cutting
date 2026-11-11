@@ -1029,7 +1029,7 @@
 		}
 		var before = st ? JSON.stringify(st.work) : '';
 		return U.modal({
-			title: 'Настройки', width: 920, body: '',
+			title: 'Настройки', width: 920, full: true, body: '', // на всю ширину рабочей области
 			buttons: [{ label: 'Отмена', value: false }, { label: 'Сохранить', primary: true, run: async function (m) {
 				if (m._sthCrmLoad) await m._sthCrmLoad;
 				read(m);

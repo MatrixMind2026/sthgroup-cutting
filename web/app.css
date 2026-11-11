@@ -1379,7 +1379,9 @@ body[data-sec="mbase"] #welcome, body[data-sec="crm"] #welcome, body[data-sec="m
 #modals .back.page > .modal > h2 { cursor: default; border-radius: 0; gap: 10px; padding: 9px 16px; font-size: 16px; }
 #modals .back.page > .modal > h2 .bk { margin: 0 !important; font-size: 13px; padding: 5px 10px; border: 1px solid var(--line); border-radius: var(--r, 6px); background: var(--panel); color: var(--text); }
 #modals .back.page > .modal > h2 .bk:hover { background: var(--panel2); }
-#modals .back.page > .modal > .body { width: 100%; max-width: var(--pgw, none); box-sizing: border-box; }
+#modals .back.page > .modal > .body { width: 100%; max-width: none; box-sizing: border-box; }
+/* таблицы прайса: поля тянутся по ширине столбца */
+#modals .back.page .soCat table td > input:not([type=checkbox]):not([type=radio]), #modals .back.page .soCat table td > select { width: 100% !important; box-sizing: border-box; }
 #modals .back.page > .modal > .foot { border-top: 1px solid var(--line2); background: var(--panel); }
 #modals .back.page > .modal.pvFull { position: absolute; }
 #modals .back.bar { background: rgba(20, 30, 40, .06); }

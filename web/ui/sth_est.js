@@ -331,7 +331,6 @@
 		acts.push(null); acts.push(['Расчёт и прайс', function () { }, '', true]);
 		acts.push(['Прайс: ' + Es.pl().name, function () { focusSel('#ePl'); }]);
 		acts.push(['Управление прайсами…', function () { window.Dlg.settings('eLists'); }]);
-		acts.push(['Загрузить цены из скрипта СМЕТА…', function () { Es.importScript().catch(U.error); }]);
 		[['showCuts', 'пазы'], ['showHoles', 'отверстия'], ['showFast', 'фурнитура'], ['showProf', 'профили']].forEach(function (x) {
 			var q = document.querySelector('[data-f="' + x[0] + '"]'); if (q) acts.push([(q.checked ? '✓ Считать: ' : 'Считать: ') + x[1], function () { clickSel('[data-f="' + x[0] + '"]'); }]);
 		});

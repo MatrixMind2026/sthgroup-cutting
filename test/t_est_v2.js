@@ -41,6 +41,7 @@ ok(css.includes('table-layout:fixed') && css.includes('th[data-ci="3"]') && css.
 ok(css.includes('@media(max-width:1150px)') && css.includes('@media(max-width:1100px)') && css.includes('td:has(>input.pv)>.un'), 'узкие окна: компактные поля, перенос единиц и одноколоночная панель');
 const drag = fs.readFileSync(__dirname + '/../web/ui/sth_drag.js', 'utf8');
 ok(drag.includes("c.classList.contains('sthDetailCol')"), 'скрытые технические колонки не перехватывают перетаскивание видимых заголовков');
-['Es.supEdit', 'Es.ownCard', 'Es.importScript', 'window.STH.pickMaterial', 'E.unmerge', 'window.Dlg.estDoc', 'K.writeOff'].forEach(s => ok(ui.includes(s), 'меню вызывает существующую функцию: ' + s));
+['Es.supEdit', 'Es.ownCard', 'window.STH.pickMaterial', 'E.unmerge', 'window.Dlg.estDoc', 'K.writeOff'].forEach(s => ok(ui.includes(s), 'меню вызывает существующую функцию: ' + s));
+ok(!ui.includes("Загрузить цены из скрипта СМЕТА"), 'загрузки цен из скрипта СМЕТА в меню сметы нет');
 console.log('проверок', n, '|', bad ? 'ОШИБОК: ' + bad : 'ошибок нет');
 process.exit(bad ? 1 : 0);

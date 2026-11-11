@@ -20,7 +20,7 @@
 				C.inspect(st, R, function (w) { return K.rowInfo(w); }).forEach(function (issue) {
 					issue.path = it.path; issue.item = name; result.push(issue);
 				});
-				var fresh = O.snapshot(st, R, X.book.cat, name, it.path);
+				var fresh = O.snapshot(st, R, O.activeCat(X.book), name, it.path);
 				if (!it.snap || amounts(it.snap) !== amounts(fresh)) result.push({ kind: 'snapshot', path: it.path, item: name, title: name, section: 'items', message: 'Обновите расчёт изделия на вкладке «Изделия»' });
 			} catch (e) {
 				result.push({ kind: 'unreadable', item: name, title: name, section: 'items', message: 'Не удалось проверить изделие: ' + e.message });

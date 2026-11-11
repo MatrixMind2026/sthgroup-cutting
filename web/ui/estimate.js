@@ -132,7 +132,7 @@
 		});
 		if (c.off) h += '<div class="eGrpT"><span>НЕ СЧИТАЕТСЯ</span><b>' + c.off + '</b></div><button class="eSecB nil" data-h="-">Строки «не считать»<span>' + c.off + '</span></button>';
 		var priced = R.rows.some(function (w) { return has(pl.P, w.priceId); });
-		if (!priced && !Object.keys(pl.P).length && !S().set.tipPriceOff) h += '<div class="note warn tipX"><button class="x" id="eTipX" title="Больше не показывать">✕</button><b>В прайсе «' + esc(pl.name) + '» пока нет своих цен</b>Стоят цены по умолчанию. Впишите цены в таблицу — они запомнятся по названию материала.<button class="link" id="eImport">Загрузить цены из скрипта СМЕТА…</button></div>';
+		if (!priced && !Object.keys(pl.P).length && !S().set.tipPriceOff) h += '<div class="note warn tipX"><button class="x" id="eTipX" title="Больше не показывать">✕</button><b>В прайсе «' + esc(pl.name) + '» пока нет своих цен</b>Стоят цены по умолчанию. Впишите цены в таблицу — они запомнятся по названию материала.</div>';
 		if (R.res.old) h += '<div class="note warn"><b>Проект выгружен прежним скриптом</b>Фурнитуры, профилей и погонных материалов в нём нет. Выгрузите модель заново скриптом STHGroup_Export.</div>';
 		$('eSecs').innerHTML = h;
 	}

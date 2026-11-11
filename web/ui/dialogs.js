@@ -282,11 +282,17 @@
 			if (!facList.some(function (x) { return x.toLowerCase() === t.toLowerCase(); })) facList.push(t);
 			v.value = '';
 		}
+		/* STHGroup: «Прайсы» — только свои прайсы заказа (работы, фасады, услуги, скидки, условия). Хранятся в книге заказов,
+		   отмеченный получают новые заказы; заказ остаётся на своём прайсе. Изменения записываются сразу. */
 		function tabELists() {
-			return '<div class="eset"><p class="mute">Прайс — свой набор цен и правил строк: единицы, «не считать», «справочно», наценка, строки «Прочее». Прайсы не зависят друг от друга и лежат на этом компьютере, в файл проекта цены не пишутся. Отмеченный прайс получает открытый проект.</p><div id="plList">' +
-				ps.lists.map(function (x, i) { return '<div class="plrow' + (x.name === plName ? ' on' : '') + '" data-i="' + i + '"><label class="chk"><input type="radio" name="plCur"' + chk(x.name === plName) + '></label><b>' + esc(x.name) + '</b><span>своих цен: ' + Object.keys(x.P).length + '</span><button data-a="ren">Переименовать</button><button data-a="copy">Копия…</button><button data-a="del"' + (ps.lists.length < 2 ? ' disabled' : '') + '>Удалить</button></div>'; }).join('') +
-				'</div><div class="btns" style="margin-top:10px"><button id="plImport" class="primary">Загрузить цены из скрипта СМЕТА…</button><button id="plSave">Сохранить прайс в файл…</button><button id="plLoad">Загрузить прайс из файла…</button></div>' +
-				'<p class="mute" style="margin-top:10px">Скрипт «СМЕТА» хранит цены в файле «цены распила.txt». Из него берутся цены по материалам, единицы строк, «не считать», «справочно» и длины хлыстов профиля.</p></div>';
+			var X = window.STHO, b = X && X.book, O = BM.sth;
+			if (!b) { if (X && !X._plLoading) { X._plLoading = 1; X.load().then(function () { X._plLoading = 0; if (cur === 'eLists' && lastM) show(lastM); }); } return '<div class="eset"><p class="mute">Загрузка прайсов…</p></div>'; }
+			var act = O.activePrice(b), used = {};
+			b.orders.forEach(function (o) { if (!o.cat && o.priceId) used[o.priceId] = (used[o.priceId] || 0) + 1; });
+			return '<div class="eset"><p class="mute">Ваши прайсы: работа за лист, мелкие детали, услуги, доп. работы и фасады, скидки и условия. Отмеченный прайс получают новые заказы, уже созданный заказ остаётся на своём. Прайсы лежат в файле заказов — общие для всех компьютеров с этой папкой.</p><div id="plList">' +
+				O.prices(b).map(function (x) { var on = act && x.id === act.id; return '<div class="plrow' + (on ? ' on' : '') + '" data-id="' + esc(x.id) + '"><label class="chk"><input type="radio" name="plCur"' + chk(on) + '></label><b>' + esc(x.name) + '</b><span>заказов: ' + (used[x.id] || 0) + '</span><button data-a="open" class="primary">Открыть</button><button data-a="ren">Переименовать</button><button data-a="copy">Копия…</button><button data-a="del"' + (O.prices(b).length < 2 ? ' disabled' : '') + '>Удалить</button></div>'; }).join('') +
+				'</div><div class="btns" style="margin-top:10px"><button id="plNew" class="primary">+ Новый прайс…</button><button id="plSave">Сохранить прайс в файл…</button><button id="plLoad">Загрузить прайс из файла…</button></div>' +
+				'<p class="mute" style="margin-top:10px">«Открыть» — настройка цен прайса. Компания, папка заказов и нумерация — общие для всех прайсов, они в том же окне.</p></div>';
 		}
 		function tabEDef() {
 			var pl = curPl();
@@ -674,7 +680,9 @@
 				set.texMap = { none: Math.round(num(g('tN').value, -99, 99, 0)), horiz: Math.round(num(g('tH').value, -99, 99, 1)), vert: Math.round(num(g('tV').value, -99, 99, 2)) };
 			}
 		}
+		var lastM = null;
 		function show(m) {
+			lastM = m;
 			var body = m.querySelector('.body'), sec = secOf(cur), tabs = sec.tabs, t = tabs.filter(function (x) { return x[0] === cur; })[0];
 			last[sec.id] = cur;
 			body.innerHTML = '<div class="sset"><nav class="snav">' +
@@ -707,48 +715,42 @@
 				g('facList').onclick = function (e) { if (!e.target.classList.contains('fdel')) return; facList.splice(Number(e.target.closest('[data-i]').dataset.i), 1); read(m); show(m); };
 			}
 			if (g('ePlSel')) g('ePlSel').onchange = function () { read(m); plName = this.value; show(m); };
-			if (cur === 'eLists') {
+			if (cur === 'eLists' && window.STHO && window.STHO.book) {
+				var SX = window.STHO, SO = BM.sth, sb = SX.book;
+				var saveB = function () { SX.save(true); if (SX.render) SX.render(); show(m); };
 				g('plList').onclick = async function (e) {
 					var row = e.target.closest('.plrow'); if (!row) return;
-					var pl = ps.lists[Number(row.dataset.i)], a = e.target.closest('button') ? e.target.closest('button').dataset.a : '';
-					if (!a) { plName = pl.name; show(m); return; }
-					if (a === 'ren') {
-						var r1 = await askName('Переименовать прайс', pl.name);
-						if (!r1 || r1.name === pl.name) return;
-						if (E.listBy(ps, r1.name)) { U.toast('Прайс с таким названием уже есть.'); return; }
-						if (plName === pl.name) plName = r1.name;
-						pl.name = r1.name; psTouched = true; show(m);
-					} else if (a === 'copy') {
+					var pl = SO.priceById(sb, row.dataset.id), a = e.target.closest('button') ? e.target.closest('button').dataset.a : '';
+					if (!pl) return;
+					if (!a) { if (e.target.closest('input[type=radio]') || e.target.closest('b,span,label')) { sb.cat.priceId = pl.id; saveB(); } return; }
+					if (a === 'open') { await SX.catalog(pl.id); show(m); return; }
+					if (a === 'ren') { var r1 = await askName('Переименовать прайс', pl.name); if (!r1 || r1.name === pl.name) return; pl.name = r1.name; saveB(); }
+					else if (a === 'copy') {
 						var r2 = await askName('Новый прайс — копия «' + pl.name + '»', pl.name + ' — копия', '<label>Изменить цены на, %</label><div><input type="text" id="aPct" value="0" style="width:74px;text-align:right"> <span class="mute">например 10 или −5; 0 — без изменений</span></div>');
 						if (!r2) return;
-						if (E.listBy(ps, r2.name)) { U.toast('Прайс с таким названием уже есть.'); return; }
-						ps.lists.push(E.copyList(pl, r2.name, r2.pct)); plName = r2.name; psTouched = true; show(m);
+						var np = SO.addPrice(sb, r2.name, pl.cat); SO.scalePrice(np.cat, r2.pct); saveB();
 					} else if (a === 'del') {
-						if (ps.lists.length < 2) return;
-						if (!(await U.confirm('Удалить прайс', 'Прайс «' + pl.name + '» будет удалён вместе с ценами: ' + Object.keys(pl.P).length + '. Проекты, которые на него ссылались, возьмут первый прайс из списка.', 'Удалить'))) return;
-						ps.lists.splice(ps.lists.indexOf(pl), 1);
-						if (plName === pl.name) plName = ps.lists[0].name;
-						psTouched = true; show(m);
+						if (SO.prices(sb).length < 2) return;
+						if (!(await U.confirm('Удалить прайс', 'Прайс «' + pl.name + '» будет удалён. Заказы, которые на нём посчитаны, сохранят его цены у себя.', 'Удалить'))) return;
+						SO.removePrice(sb, pl.id); saveB();
 					}
 				};
-				g('plImport').onclick = async function () {
-					var done = await Es.importScript({ store: ps, cfg: ec, pl: curPl() });
-					if (done) { plName = done; psTouched = true; show(m); }
+				g('plNew').onclick = async function () {
+					var r0 = await askName('Новый прайс', 'Новый прайс', '<div class="hint">Новый прайс создаётся с ценами прайса STHGroup по умолчанию — дальше «Открыть» и поправить.</div>');
+					if (!r0) return; var np0 = SO.addPrice(sb, r0.name); saveB(); await SX.catalog(np0.id); show(m);
 				};
 				g('plSave').onclick = async function () {
-					var pl = curPl(), pth = await U.pick({ kind: 'save', title: 'Сохранить прайс', dir: S.boot.docs, name: 'Прайс ' + pl.name + '.json', filters: [{ name: 'Прайс STHGroup', ext: ['json'] }] });
+					var pl = SO.activePrice(sb), pth = await U.pick({ kind: 'save', title: 'Сохранить прайс', dir: S.boot.docs, name: 'Прайс ' + pl.name + '.json', filters: [{ name: 'Прайс STHGroup', ext: ['json'] }] });
 					if (!pth) return;
-					try { await U.api.write(pth, JSON.stringify({ format: 'bazisreborn-prices', list: pl }, null, 1)); U.toast('Прайс сохранён: ' + U.baseOf(pth)); } catch (e2) { U.error(e2); }
+					try { await U.api.write(pth, JSON.stringify({ format: 'sthgroup-price', name: pl.name, cat: pl.cat }, null, 1)); U.toast('Прайс сохранён: ' + U.baseOf(pth)); } catch (e2) { U.error(e2); }
 				};
 				g('plLoad').onclick = async function () {
 					var pth = await U.pick({ kind: 'open', title: 'Загрузить прайс', dir: S.boot.docs, filters: [{ name: 'Прайс STHGroup', ext: ['json'] }] });
 					if (!pth) return;
 					try {
 						var o = JSON.parse(await U.api.readText(pth));
-						if (!o || o.format !== 'bazisreborn-prices' || !o.list || typeof o.list.P !== 'object') throw new Error('Это не файл прайса STHGroup.');
-						var nl = E.fixList(o.list), nm0 = nl.name, q = 2;
-						while (E.listBy(ps, nl.name)) nl.name = nm0 + ' (' + (q++) + ')';
-						ps.lists.push(nl); plName = nl.name; psTouched = true; show(m);
+						if (!o || o.format !== 'sthgroup-price' || !o.cat || typeof o.cat !== 'object') throw new Error('Это не файл прайса заказа STHGroup.');
+						var nl = SO.addPrice(sb, o.name || U.stemOf(pth), o.cat); saveB();
 						U.toast('Прайс загружен: «' + nl.name + '».');
 					} catch (e3) { U.error(e3); }
 				};

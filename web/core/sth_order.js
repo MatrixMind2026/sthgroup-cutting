@@ -177,7 +177,42 @@
 	O.PRICE_KEYS = ['sheetWorks', 'groups', 'urgentPct', 'urgentDays', 'urgentText', 'small', 'services', 'discounts', 'complexPct', 'complexText', 'markup', 'markupText', 'advance', 'terms'];
 	O.FROZEN_STATUSES = ['shipped', 'closed'];
 	/* справочник для расчёта заказа: у замороженного заказа — свои цены, остальное (компания и т.п.) — общее */
-	O.catFor = function (b, o) { return o && o.cat && typeof o.cat === 'object' ? Object.assign({}, b.cat, o.cat) : b.cat; };
+	/* STHGroup: свои прайсы заказа — b.prices [{id, name, cat: {ценовые ключи}}], текущий — b.cat.priceId (его берут новые заказы).
+	   Заказ помнит свой прайс (o.priceId); у замороженного заказа — свои прежние цены (o.cat). */
+	O.pick = function (cat) { var r = {}; O.PRICE_KEYS.forEach(function (k) { if (cat && cat[k] !== undefined) r[k] = JSON.parse(JSON.stringify(cat[k])); }); return r; };
+	O.prices = function (b) { return b && Array.isArray(b.prices) ? b.prices : []; };
+	O.priceById = function (b, id) { var l = O.prices(b); for (var i = 0; i < l.length; i++) if (l[i].id === id) return l[i]; return null; };
+	O.activePrice = function (b) { return O.priceById(b, b && b.cat && b.cat.priceId) || O.prices(b)[0] || null; };
+	/* объект, в котором лежат цены заказа (правка цены мелких деталей из заказа пишется сюда) */
+	O.priceHolder = function (b, o) {
+		if (o && o.cat && typeof o.cat === 'object') return o.cat;
+		var pl = (o && O.priceById(b, o.priceId)) || O.activePrice(b);
+		return pl ? pl.cat : b.cat;
+	};
+	O.catFor = function (b, o) { var h = O.priceHolder(b, o); return h === b.cat ? b.cat : Object.assign({}, b.cat, h); };
+	O.activeCat = function (b) { return O.catFor(b, null); };
+	O.addPrice = function (b, name, cat) {
+		var d = O.defCatalog(), c = O.pick(cat || d); O.PRICE_KEYS.forEach(function (k) { if (c[k] === undefined) c[k] = JSON.parse(JSON.stringify(d[k])); });
+		var pl = { id: O.id('p'), name: String(name || 'Прайс').trim().slice(0, 60) || 'Прайс', cat: c }; b.prices.push(pl); return pl;
+	};
+	/* изменить все цены прайса на pct % (проценты услуг и скидок не трогаются), округление до рубля */
+	O.scalePrice = function (cat, pct) {
+		var k = 1 + num(pct) / 100; if (k === 1) return cat;
+		function f(v) { return Math.round(num(v) * k); }
+		(cat.sheetWorks || []).forEach(function (r) { r.price = f(r.price); });
+		(cat.services || []).forEach(function (r) { if (r.unit !== 'pct') r.price = f(r.price); });
+		(cat.groups || []).forEach(function (g) { (g.rows || []).forEach(function (r) { r.price = f(r.price); }); });
+		if (cat.small) { cat.small.edge = f(cat.small.edge); cat.small.drill = f(cat.small.drill); }
+		return cat;
+	};
+	/* удалить прайс: заказы на нём сохраняют его цены у себя; последний прайс не удаляется */
+	O.removePrice = function (b, id) {
+		var l = O.prices(b), pl = O.priceById(b, id); if (!pl || l.length < 2) return false;
+		b.orders.forEach(function (o) { if (!o.cat && o.priceId === id) { o.cat = JSON.parse(JSON.stringify(pl.cat)); o.priceName = pl.name; } });
+		b.prices = l.filter(function (x) { return x !== pl; });
+		if (b.cat.priceId === id) b.cat.priceId = b.prices[0].id;
+		return true;
+	};
 	/* прайс STHGroup 11.11.2026: справочник заменяется целиком; отгруженные и закрытые заказы сохраняют прежние цены */
 	O.applyPrice3 = function (b) {
 		var d = O.defCatalog(), old = JSON.parse(JSON.stringify(b.cat)), frozen = {};
@@ -188,10 +223,11 @@
 		b.cat.v2 = 1; b.cat.v3 = 1;
 		return b;
 	};
-	O.empty = function () { var c = O.defCatalog(); c.v2 = 1; c.v3 = 1; return { format: O.FORMAT, v: 1, next: 1, clients: [], orders: [], cat: c }; };
+	O.empty = function () { var c = O.defCatalog(); c.v2 = 1; c.v3 = 1; c.priceId = 'sth'; return { format: O.FORMAT, v: 1, next: 1, clients: [], orders: [], cat: c, prices: [{ id: 'sth', name: 'STHGroup', cat: O.pick(c) }] }; };
 	O.fix = function (b) {
 		var e = O.empty(), k;
 		if (!b || typeof b !== 'object' || b.format !== O.FORMAT) b = e;
+		var hadPrices = Array.isArray(b.prices);
 		for (k in e) if (b[k] === undefined || b[k] === null || typeof b[k] !== typeof e[k]) b[k] = e[k];
 		/* книга до прайса 11.11.2026 (в т.ч. с образцами FOXY): справочник цен заменяется прайсом STHGroup — до заполнения пропусков,
 		   чтобы закрытые заказы сохранили именно свои прежние цены */
@@ -203,6 +239,12 @@
 		if (!Array.isArray(b.cat.services)) b.cat.services = d.services;
 		if (!Array.isArray(b.cat.groups)) b.cat.groups = d.groups;
 		if (!Array.isArray(b.cat.discounts)) b.cat.discounts = d.discounts;
+		/* книга до своих прайсов: текущий справочник становится прайсом «STHGroup», заказы остаются на нём */
+		if (!hadPrices) { b.prices = [{ id: 'sth', name: 'STHGroup', cat: O.pick(b.cat) }]; b.cat.priceId = 'sth'; b.orders.forEach(function (o) { if (o && !o.cat && !o.priceId) o.priceId = 'sth'; }); }
+		b.prices = b.prices.filter(function (x) { return x && typeof x === 'object' && x.id; });
+		if (!b.prices.length) b.prices = [{ id: 'sth', name: 'STHGroup', cat: O.pick(d) }];
+		b.prices.forEach(function (pl) { if (!pl.cat || typeof pl.cat !== 'object') pl.cat = {}; O.PRICE_KEYS.forEach(function (k) { if (pl.cat[k] === undefined) pl.cat[k] = JSON.parse(JSON.stringify(d[k])); }); if (!pl.name) pl.name = 'Прайс'; });
+		if (!O.priceById(b, b.cat.priceId)) b.cat.priceId = b.prices[0].id;
 		b.orders.forEach(function (o) { O.fixOrder(b, o); });
 		return b;
 	};
@@ -244,6 +286,7 @@
 	O.dirName = function (b, o) { var c = O.client(b, o.clientId); return (String(o.no || 'Заказ') + (c ? ' ' + c.name : '')).replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80).replace(/[. ]+$/, '') || 'Заказ'; };
 	O.addOrder = function (b, o) {
 		var x = O.fixOrder(b, { id: O.id('o'), no: o.no || O.nextNo(b), date: O.today(), clientId: o.clientId || '', status: 'calc', note: o.note || '', items: [], payments: [], svc: {}, terms: {} });
+		var ap = O.activePrice(b); if (ap) x.priceId = ap.id;
 		b.orders.unshift(x);
 		return x;
 	};
@@ -415,7 +458,7 @@
 	/* прайс-лист для клиента: разделы справочника (работа за лист, услуги, доп. работы и фасады), надбавка/скидка в %, скрытые строки;
 	   название «ЛДСП 8–16 мм: распил, кромка» без примечания → название «ЛДСП 8–16 мм», примечание «распил / кромка» */
 	O.priceList = function (b, opt) {
-		opt = opt || {}; var cat = b.cat, k = 1 + num(opt.pct) / 100, hide = opt.hide || {};
+		opt = opt || {}; var cat = opt.priceId ? O.catFor(b, { priceId: opt.priceId }) : O.activeCat(b), k = 1 + num(opt.pct) / 100, hide = opt.hide || {};
 		function pr(v) { return Math.round(num(v) * k); }
 		function split(name, note) { name = String(name || ''); if (note) return [name, note]; var i = name.indexOf(':'); return i > 0 ? [name.slice(0, i).trim(), name.slice(i + 1).trim().replace(/\s*,\s*/g, ' / ')] : [name, '']; }
 		function unitOf(u) { var x = (O.UNITS.filter(function (z) { return z[0] === u; })[0] || ['', u || ''])[1]; return String(x).replace(/^за /, ''); }

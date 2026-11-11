@@ -90,6 +90,19 @@ ok('прайс для клиента: разделы справочника, п�
   assert.ok(nb2.cat.v3 && qc.blocks[0].lines[0].price === 1000 && qc.discounts.length === 1 && qc.discounts[0].pct === 2 && qo.blocks[0].lines[0].price === 5250 && !o2.cat);
   assert.ok(O.fix(JSON.parse(JSON.stringify(nb2))).orders.find(x => x.status === 'closed').cat.sheetWorks[0].price === 1000);
   ok('новый прайс у всех; закрытые и отгруженные заказы сохраняют свои прежние цены'); }
+
+// свои прайсы: старая книга получает прайс «STHGroup», новый заказ берёт отмеченный прайс, старый остаётся на своём
+{ const ob = JSON.parse(JSON.stringify(O.empty())); delete ob.prices; delete ob.cat.priceId; const o1 = O.addOrder(ob, {});
+  O.putItem(o1, '/x/p.bmk', { title: 'p', parts: 1, smallEdge: 1, smallDrill: 0, mat: 0, fit: 0, at: '', sheets: [{ name: 'ЛДСП', th: 16, n: 2, work: 'full' }] });
+  const pb = O.fix(ob), p1 = pb.orders[0]; assert.ok(pb.prices.length === 1 && pb.prices[0].name === 'STHGroup' && p1.priceId === 'sth' && pb.cat.priceId === 'sth');
+  const cp = O.addPrice(pb, 'Дорогой', O.activePrice(pb).cat); O.scalePrice(cp.cat, 10); pb.cat.priceId = cp.id;
+  assert.strictEqual(cp.cat.sheetWorks.find(w => w.id === 'full').price, 5775); assert.strictEqual(cp.cat.services.find(x => x.id === 'cashless').price, 7);
+  const p2 = O.addOrder(pb, {}); O.putItem(p2, '/x/q.bmk', JSON.parse(JSON.stringify(p1.items[0].snap)));
+  assert.ok(p2.priceId === cp.id && O.calc(pb, p2).blocks[0].lines[0].price === 5775 && O.calc(pb, p1).blocks[0].lines[0].price === 5250);
+  O.priceHolder(pb, p2).small.edge = 500; assert.ok(O.calc(pb, p2).blocks[1].lines[0].price === 500 && O.calc(pb, p1).blocks[1].lines[0].price === 420);
+  assert.ok(O.removePrice(pb, cp.id) && pb.cat.priceId === 'sth' && p2.cat && O.calc(pb, p2).blocks[0].lines[0].price === 5775 && !O.removePrice(pb, 'sth'));
+  const again = O.fix(JSON.parse(JSON.stringify(pb))); assert.ok(again.prices.length === 1 && again.orders.find(x => x.id === p2.id).cat.sheetWorks.find(w => w.id === 'full').price === 5775);
+  ok('свои прайсы: «STHGroup» из старой книги, новый заказ — по отмеченному, копия +10%, удаление прайса не меняет цены заказов'); }
 require('../web/core/sth_workspace.js');
 // STHGroup: дата новой заявки фиксирована, чтобы порядок внимания не зависел от дня запуска теста.
 { const wb = O.empty(), a = O.addOrder(wb, {}), w = O.addOrder(wb, {}), r = O.addOrder(wb, {}); O.moveStatus(w, 'work', '2026-11-04T11:00:00.000Z'); O.moveStatus(r, 'ready', '2026-11-04T12:00:00.000Z'); a.source = 'crm'; a.date = '2026-11-04'; a.statusAt = '2026-11-04T09:00:00.000Z'; const ts = BM.sthWorkspace.summary(wb); assert.ok(ts.total === 3 && ts.active === 2 && ts.work === 1 && ts.ready === 1 && ts.crm === 1 && ts.attention[0] === w); assert.strictEqual(BM.sthWorkspace.summary(null).total, 0); ok('экран «Сегодня»: активные, работа, готовые, CRM и порядок внимания без DOM'); }

@@ -11,12 +11,12 @@ assert.throws(()=>SK.inventoryPlan(b,[{mat:mat.id,actual:''}]),/количест
 MB.cancelDoc(b,doc.id);assert.equal(MB.balance(b,mat.id),12);
 const saved=SK.inventoryPlan(b,[{mat:mat.id,actual:11}]);SK.move(b,'in',mat.id,1,{});assert.throws(()=>SK.applyInventory(b,saved),/изменились/);
 const snap=SK.csvSnapshot(b,'2026-11-07');assert.ok(snap.materials.startsWith('\ufeff'));assert.ok(snap.materials.includes('"\'='+mat.name.slice(1).replace(/"/g,'""')+'"'));assert.ok(snap.materials.includes('"13";"5";"8"'));assert.ok(snap.offcuts.includes('ID остатка'));
-const book=O.empty(),work=book.cat.sheetWorks.find(r=>r.id==='f_ldsp16');assert.ok(O.isSamplePrice(work));
+const book=O.empty();assert.ok(!book.cat.sheetWorks.some(r=>O.isSamplePrice(r)),'прайс STHGroup — не образец');const work=book.cat.sheetWorks[0];Object.assign(work,{sampleSource:'Начальный прайс',samplePrice:work.price,priceVerified:false});assert.ok(O.isSamplePrice(work));
 const old=JSON.parse(JSON.stringify(book));delete old.cat.sheetWorks[0].sampleSource;delete old.cat.sheetWorks[0].samplePrice;delete old.cat.sheetWorks[0].priceVerified;
-const migrated=O.fix(old);assert.ok(O.isSamplePrice(migrated.cat.sheetWorks[0]));
+const migrated=O.fix(old);assert.equal(migrated.cat.sheetWorks[0].price,work.price);
 const personal=JSON.parse(JSON.stringify(book));const custom=personal.cat.sheetWorks[0];delete custom.sampleSource;custom.price=1234;O.fix(personal);assert.equal(custom.price,1234);assert.equal(O.isSamplePrice(custom),false);
 Object.assign(work,O.priceMeta(work,work.price,true));assert.equal(O.isSamplePrice(work),false);assert.equal(O.isSamplePrice(O.fix(JSON.parse(JSON.stringify(book))).cat.sheetWorks[0]),false);
-const quoteBook=O.empty(),order=O.addOrder(quoteBook,{}),quote=O.calc(quoteBook,order);assert.ok(quote.samplePrices.length>0);assert.ok(quote.warn.some(w=>w.includes('цены-образцы')));
+const quoteBook=O.empty();quoteBook.cat.services.forEach(r=>Object.assign(r,{sampleSource:'Начальный прайс',samplePrice:r.price,priceVerified:false}));const order=O.addOrder(quoteBook,{}),quote=O.calc(quoteBook,order);assert.ok(quote.samplePrices.length>0);assert.ok(quote.warn.some(w=>w.includes('цены-образцы')));
 const service=quoteBook.cat.services.find(r=>r.on&&r.unit==='order');order.svc[service.id]={price:service.price};assert.equal(O.calc(quoteBook,order).blocks.flatMap(b=>b.lines).find(l=>l.key===service.id).samplePrice,false);
 const plain={kind:'fastener',val:2,price:0};assert.equal(E.noPrice(plain),true);
 for(const flag of ['info','sthSplit','sthInKit','off'])assert.equal(E.noPrice({...plain,[flag]:true}),false,flag);

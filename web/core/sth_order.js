@@ -67,7 +67,7 @@
 		if (i < 0) return { ok: false, reason: 'empty' };
 		b.cat.stages.splice(i, 1); return { ok: true };
 	};
-	O.UNITS = [['order', 'за заказ'], ['sheet', 'за лист'], ['item', 'за изделие'], ['part', 'за деталь'], ['pct', '% от суммы']];
+	O.UNITS = [['order', 'за заказ'], ['sheet', 'за лист'], ['item', 'за изделие'], ['part', 'за деталь'], ['pct', '% от суммы'], ['pcs', 'за шт.'], ['pack', 'за пачку'], ['m2', 'за м²']];
 	O.LOADS = [['low', 'низкая'], ['mid', 'средняя'], ['high', 'высокая']];
 
 	function num(v, d) { if (typeof v === 'string') v = v.replace(/\s/g, '').replace(',', '.'); v = Number(v); return isFinite(v) ? v : (d === undefined ? 0 : d); }
@@ -78,84 +78,131 @@
 	O.num = num; O.r2 = r2;
 
 	/* ------------------------------ книга ------------------------------------ */
+	/* Справочник по умолчанию — прайс STHGroup (11.11.2026, по листу расчёта автора). Название «работа: материал» —
+	   в прайсе для клиента делится на название и примечание. */
+	function row(id, name, price, unit, note) { return { id: id, name: name, price: price, unit: unit, note: note || '' }; }
+	function svc(id, name, unit, price, on, note) { return { id: id, name: name, unit: unit, price: price, on: on ? 1 : 0, note: note || '' }; }
 	O.defCatalog = function () {
 		return {
-			sheetWorks: O.foxyWorks().concat([
-				{ id: 'full', name: 'Распил, кромкооблицовка и присадка', price: 5250, match: '' }
-			]),
-			groups: O.foxyGroups(),
-			urgentPct: 30, urgentDays: 3, urgentText: 'Срочный заказ',
+			sheetWorks: [
+				{ id: 'agt', name: 'Распил, кромкооблицовка и присадка: МДФ, AGT, Evosoft, Eterno', price: 5040, match: 'agt, evosoft, eterno' },
+				{ id: 'hdf', name: 'Распил: ХДФ', price: 1050, match: 'хдф, двп, hdf, оргалит' },
+				{ id: 'full', name: 'Распил, кромкооблицовка и присадка: ЛДСП/МДФ', price: 5250, match: '' }
+			],
+			groups: [
+				{ id: 'sheet2', title: 'Обработка листового материала — отдельно', note: 'количество вписывается в заказе', rows: [
+					row('nodrill', 'Распил, кромкооблицовка без присадки: ЛДСП, AGT, Evosoft, Eterno', 3300, 'за лист'),
+					row('wall3050', 'Распил стеновых панелей: 3050×10 мм', 420, 'за деталь'),
+					row('wall4100', 'Распил стеновых панелей: 4100×10 мм', 420, 'за деталь'),
+					row('top3050', 'Распил ДСП столешниц: 3050×38 мм', 1050, 'за деталь'),
+					row('top4100', 'Распил ДСП столешниц: 4100×38 мм', 1575, 'за деталь')] },
+				{ id: 'dop', title: 'Доп. обработка деталей', note: '', rows: [
+					row('glue', 'Склейка и кромкооблицовка: детали 32 мм', 420, 'за деталь'),
+					row('euro', 'Еврозапил, фрезеровка и подгонка: ДСП столешницы 38 мм', 2625, 'за деталь'),
+					row('topedge', 'Кромление столешниц/фартуков без прифуговки: столешницы 38 мм, фартуки 6–10 мм', 158, 'м.п.'),
+					row('curve', 'Кромление криволинейное: ЛДСП', 420, 'за элемент'),
+					row('edgemix', 'Наценка за разнотолщинные кромки: кратно листам', 300, 'за лист'),
+					row('drill1', 'Присадка отдельно: привозные фасады', 100, 'за деталь'),
+					row('edge1', 'Кромление отдельно: привозные детали', 45, 'м.п.'),
+					row('angle', 'Торцевой спил под угол: от 1° до 45°', 315, 'за проход'),
+					row('gola', 'Торцевой паз: под забивную ручку GOLA', 420, 'за проход'),
+					row('hand', 'Ручная доводка кромки: AGT, Fenix и т.п. пластики', 210, 'за деталь'),
+					row('clean', 'Протирка деталей: чистка деталей от грязи', 45, 'за деталь'),
+					row('mirror', 'Наклейка зеркал: на любую поверхность', 1050, 'за деталь'),
+					row('prof', 'Вклейка профилей: светодиодных или торцевых', 100, 'шт'),
+					row('long', 'Нарезка длинномеров: различные профили', 210, 'за один размер')] },
+				{ id: 'fac', title: 'Фасады', note: 'покраска — минимум 1 м²', rows: [
+					row('sample', 'Образец покраски: 200×200 мм по каталогам RAL и NCS', 2500, 'шт'),
+					row('mdfcut', 'Распил и присадка: МДФ/фанера под шпон/эмаль', 600, 'м²'),
+					row('hpl', 'Облицовка пласти и кромкооблицовка: оклейка HPL пластиком, 2 стороны', 2310, 'м²'),
+					row('hmill', 'Фрезеровка ручки: интегрированной в МДФ', 315, 'шт'),
+					row('radius', 'Радиусные элементы: изготовление и окраска радиуса', 30000, 'шт'),
+					row('upfac', 'Разработка УП для фасадов: индивидуальная фрезеровка', 2000, 'за программу'),
+					row('round', 'Обгонка по торцам МДФ: R1, R2, R3', 84, 'м.п.'),
+					row('mill', 'Фрезеровка МДФ: стандартная/индивидуальная, min 1 м²', 3675, 'м²'),
+					row('vmulti', 'Шпонирование и присадка: мультишпон с учётом МДФ', 11900, 'м²'),
+					row('vnat', 'Шпонирование и присадка: натуральный шпон без МДФ', 12650, 'м²'),
+					row('vhand', 'Шпонирование интегрированной ручки: натуральный и мультишпон', 3000, 'шт'),
+					row('vedge', 'Кромление шпоном с прифуговкой: натуральный и мультишпон', 120, 'м.п.'),
+					row('lak', 'Покрытие матовым лаком: шпонированных деталей', 4400, 'м²'),
+					row('phand', 'Покраска ручки: интегрированной в МДФ', 1580, 'шт'),
+					row('pelem', 'Покраска элемента: мебельные ручки, цоколи и т.п.', 1650, 'шт'),
+					row('p1mill', 'Покраска одной стороны: фрезерованный МДФ, матовая эмаль, min 1 м²', 15550, 'м²'),
+					row('p2mill', 'Покраска двух сторон: фрезерованный МДФ, матовая эмаль, min 1 м²', 17950, 'м²'),
+					row('p1mat', 'Покраска одной стороны: гладкий МДФ, матовая эмаль, min 1 м²', 6400, 'м²'),
+					row('p2mat', 'Покраска двух сторон: гладкий МДФ, матовая эмаль, min 1 м²', 8900, 'м²'),
+					row('p1gl', 'Покраска одной стороны: гладкий МДФ, глянцевая эмаль, min 1 м²', 16000, 'м²'),
+					row('p2gl', 'Покраска двух сторон: гладкий МДФ, глянцевая эмаль, min 1 м²', 19000, 'м²')] }
+			],
+			urgentPct: 30, urgentDays: 3, urgentText: 'Срочное изготовление',
 			small: { limit: 60, edge: 420, drill: 420 },
 			services: [
-				{ id: 'up', name: 'Разработка УП и адаптация модели под производство', unit: 'item', price: 2200, on: 1 },
-				{ id: 'pack', name: 'Упаковка деталей в стрейч', unit: 'sheet', price: 525, on: 1 },
-				{ id: 'supply', name: 'Закупка и обеспечение фурнитурой (услуга снабжения)', unit: 'order', price: 2500, on: 1 },
-				{ id: 'kit', name: 'Комплектация фурнитурой к изделию (фасовка поизделно)', unit: 'order', price: 1000, on: 1 },
-				{ id: 'unload', name: 'Разгрузка материала', unit: 'sheet', price: 150, on: 0 },
-				{ id: 'cashless', name: 'Безналичная форма оплаты (с НДС)', unit: 'pct', price: 7, on: 0 }
+				svc('up', 'Разработка УП и адаптация моделей под производство', 'item', 2200, 1),
+				svc('conv', 'Конвертирование пиратской модели Базис-Мебельщика', 'item', 400, 0),
+				svc('facpvc', 'Стоимость фасадов ПВХ, алюминий (уточняется при заказе)', 'order', 0, 0),
+				svc('asm', 'Сборка мелких изделий на производстве (уточняется при заказе)', 'order', 0, 0),
+				svc('konm2', 'Конструкторская разработка, за м² (с коэффициентом сложности)', 'm2', 0, 0),
+				svc('kon', 'Конструкторская разработка (с коэффициентом сложности)', 'item', 0, 0),
+				svc('pack', 'Упаковка деталей в стрейч', 'sheet', 525, 1),
+				svc('corner', 'Укрепление упаковок уголками, по 8 шт на пачку', 'pack', 135, 0),
+				svc('carton', 'Дополнительная упаковка в картон, кратно одной пачке', 'pack', 0, 0),
+				svc('mirrorpack', 'Упаковка деталей с зеркалом', 'pcs', 525, 0),
+				svc('supply', 'Закупка и обеспечение фурнитурой (услуга снабжения)', 'order', 2500, 1),
+				svc('kit', 'Комплектация фурнитурой к изделию (фасовка поизделно)', 'item', 1000, 1),
+				svc('unload', 'Разгрузка материала', 'sheet', 150, 0),
+				svc('design', 'Разработка дизайнера', 'order', 0, 0),
+				svc('storage', 'Платное хранение прошлого заказа', 'order', 500, 0),
+				svc('cashless', 'Безналичная форма оплаты (с НДС)', 'pct', 7, 0)
 			],
-			complexPct: 4, complexText: 'Скидка при заказе услуг распила, фасадов и комплектации',
+			/* скидки — % от услуг, галочками в заказе; «complex» — прежняя скидка за комплекс (галочка o.complex) */
+			discounts: [
+				{ id: 'sheets11', name: 'Выгода на распил, за заказ от 11 листов', pct: 5, on: 0, minSheets: 11 },
+				{ id: 'corpfac', name: 'Экономия при заказе распила корпуса и фасадов', pct: 3, on: 0 },
+				{ id: 'complex', name: 'Экономия при заказе услуг распила, фасадов и комплектации', pct: 4, on: 1 },
+				{ id: 'promo', name: 'Акционное предложение', pct: 10, on: 0 },
+				{ id: 'store20', name: 'Бесплатное хранение распила до 20 дней или до выпуска фасадов', pct: 0, on: 0, freeDays: 20 }
+			],
+			complexPct: 4, complexText: 'Экономия при заказе услуг распила, фасадов и комплектации',
 			markup: 15, markupText: 'мы добавляем 15% к оптовому прайсу поставщика',
 			advance: { serv: 70, mat: 100 },
 			terms: {
-				load: 'mid', days: 10, freeDays: 2, storage: 500, title: 'Важно знать',
-				text: 'Для начала выполнения работ потребуются модель из Базис-Мебельщика и аванс: {аванс}.\nНа момент расчёта загрузка нашего производства: {загрузка}. Изготовление займёт до {срок} раб. дней.\nПогрузочные работы готовых деталей в транспорт производятся силами заказчика.\nХранение платное: после оповещения о готовности, начиная с {день} дня, каждые сутки хранения стоят {хранение} ₽.'
+				load: 'high', days: 15, freeDays: 2, storage: 500, title: 'Важно знать',
+				text: 'Для начала выполнения работ потребуются модель из Базис-Мебельщика и аванс: от {аванс}.\nНа момент расчёта загрузка нашего производства: {загрузка}. Изготовление займёт до {срок} раб. дней.\nОбращаем ваше внимание, что погрузочные работы готовых деталей в транспорт производятся вашими силами.\nХранение платное: после оповещения о готовности, начиная с {день} дня, каждые сутки хранения стоят {хранение} ₽.'
 			},
 			company: { name: 'STHGroup', phone: '', email: '', address: '', inn: '', bank: '', executor: '', site: '' },
 			prefix: 'STH-', kpDays: 14
 		};
 	};
-	/* образец цен другой фабрики (FOXY): цена за лист по материалу и толщине, доп. работы за штуку, фасады и фрезеровка за м². Цены — заменить на свои. */
-	O.foxyWorks = function () {
-		return [
-			{ id: 'f_ldsp16', name: 'ЛДСП 8–16 мм: распил, кромка, присадка', price: 5500, match: 'лдсп', thMin: 8, thMax: 16 },
-			{ id: 'f_ldsp25', name: 'ЛДСП 25 мм: распил, кромка, присадка', price: 7500, match: 'лдсп', thMin: 17, thMax: 40 },
-			{ id: 'f_veneer', name: 'Шпон 17–25 мм: кромка, присадка, распил', price: 8500, match: 'шпон' },
-			{ id: 'f_mdf19', name: 'МДФ 8–19 мм: распил, присадка', price: 1500, match: 'мдф, mdf', thMin: 8, thMax: 19 },
-			{ id: 'f_mdf25', name: 'МДФ 22–25 мм: распил, присадка', price: 2500, match: 'мдф, mdf', thMin: 20, thMax: 40 },
-			{ id: 'f_hdf', name: 'ХДФ: распил, вырезы', price: 800, match: 'хдф, двп, hdf, оргалит' }
-		];
+	/* ключи справочника, которые относятся к ценам: их заменяет новый прайс и их «замораживают» закрытые заказы */
+	O.PRICE_KEYS = ['sheetWorks', 'groups', 'urgentPct', 'urgentDays', 'urgentText', 'small', 'services', 'discounts', 'complexPct', 'complexText', 'markup', 'markupText', 'advance', 'terms'];
+	O.FROZEN_STATUSES = ['shipped', 'closed'];
+	/* справочник для расчёта заказа: у замороженного заказа — свои цены, остальное (компания и т.п.) — общее */
+	O.catFor = function (b, o) { return o && o.cat && typeof o.cat === 'object' ? Object.assign({}, b.cat, o.cat) : b.cat; };
+	/* прайс STHGroup 11.11.2026: справочник заменяется целиком; отгруженные и закрытые заказы сохраняют прежние цены */
+	O.applyPrice3 = function (b) {
+		var d = O.defCatalog(), old = JSON.parse(JSON.stringify(b.cat)), frozen = {};
+		O.PRICE_KEYS.forEach(function (k) { if (old[k] !== undefined) frozen[k] = old[k]; });
+		if (!Array.isArray(frozen.discounts)) frozen.discounts = null;   // прежняя одна скидка «за комплекс», не новый список
+		(b.orders || []).forEach(function (o) { if (o && !o.cat && O.FROZEN_STATUSES.indexOf(o.status) >= 0) o.cat = JSON.parse(JSON.stringify(frozen)); });
+		O.PRICE_KEYS.forEach(function (k) { b.cat[k] = d[k]; });
+		b.cat.v2 = 1; b.cat.v3 = 1;
+		return b;
 	};
-	function row(id, name, price, unit, note) { return { id: id, name: name, price: price, unit: unit, note: note || '' }; }
-	O.foxyGroups = function () {
-		return [
-			{ id: 'dop', title: 'Дополнительные работы', note: '', rows: [
-				row('d_pack', 'Упаковка с картонными уголками', 500, 'за лист'), row('d_euro', 'Еврозапил', 10000, 'шт'),
-				row('d_h1', 'Интегрированная ручка до 1000 мм', 2000, 'шт'), row('d_h2', 'Интегрированная ручка после 1000 мм', 3000, 'шт'),
-				row('d_45a', 'Спил 0–45° детали до 500 мм', 250, 'шт'), row('d_45b', 'Спил 0–45° детали после 500 мм', 500, 'шт'),
-				row('d_g1', 'Склейка деталей до 0,5 м²', 1500, 'шт'), row('d_g2', 'Склейка деталей от 0,5 до 1 м²', 3500, 'шт'), row('d_g3', 'Склейка деталей после 1 м²', 5000, 'шт'),
-				row('d_c1', 'Криволинейка, кромка 1 мм, до 1000 мм', 500, 'шт'), row('d_c2', 'Криволинейка, кромка 1 мм, после 1000 мм', 800, 'шт'),
-				row('d_mel', 'Меламиновая кромка', 300, 'шт'), row('d_c3', 'Криволинейка, кромка 1,5–2 мм', 1000, 'м.п.')] },
-			{ id: 'fac', title: 'Фасады МДФ с эмалью', note: 'цена за 1 м²: с материалом, эмалью, присадкой и упаковкой', rows: [
-				row('e_m16', 'Мыло 16 мм, мат', 7100, 'м²'), row('e_m19', 'Мыло 19 мм, мат', 7100, 'м²'), row('e_g16', 'Мыло 16 мм, глянец', 15400, 'м²'), row('e_g19', 'Мыло 19 мм, глянец', 15600, 'м²'),
-				row('e_1', '1 группа — простая фрезеровка без выборки, МДФ 19 мм', 10600, 'м²'), row('e_2', '2 группа — простая фрезеровка с небольшой выборкой, МДФ 19 мм', 11600, 'м²'),
-				row('e_3', '3 группа — большая выборка, волна, валики, МДФ 19 мм', 12600, 'м²'), row('e_4', '4 группа — большая выборка и сложная фрезеровка, МДФ 19 мм', 16600, 'м²'),
-				row('e_hand', 'Интегрированная ручка с покраской', 2500, 'шт'), row('e_lak', 'Лаковое покрытие', 2500, 'м²'), row('e_back', 'Эмаль на вторую (заднюю) сторону', 3000, 'м²')] },
-			{ id: 'mill', title: 'Фрезеровка без эмали', note: 'цена за 1 м²; группа — по сложности рисунка', rows: [
-				row('m_0a', 'Мыло, материал производства (мыло, интегрированная ручка)', 2500, 'м²'), row('m_0b', 'Мыло, МДФ клиента (мыло, интегрированная ручка)', 1500, 'м²'),
-				row('m_1a', 'Группа 1, материал производства — простая фрезеровка без гравера и выборки', 3600, 'м²'), row('m_1b', 'Группа 1, МДФ клиента', 2600, 'м²'),
-				row('m_2a', 'Группа 2, материал производства — выборка без гравера, волны, интеграция, рамки', 4600, 'м²'), row('m_2b', 'Группа 2, МДФ клиента', 3600, 'м²'),
-				row('m_3a', 'Группа 3, материал производства — волны, валики, лжевыборки, с гравером', 5600, 'м²'), row('m_3b', 'Группа 3, МДФ клиента', 4600, 'м²'),
-				row('m_4a', 'Группа 4, материал производства — сложные фасады по чертежу', 6600, 'м²'), row('m_4b', 'Группа 4, МДФ клиента', 5600, 'м²')] }
-		];
-	};
-	O.empty = function () { var c = O.defCatalog(); c.v2 = 1; return { format: O.FORMAT, v: 1, next: 1, clients: [], orders: [], cat: c }; };
+	O.empty = function () { var c = O.defCatalog(); c.v2 = 1; c.v3 = 1; return { format: O.FORMAT, v: 1, next: 1, clients: [], orders: [], cat: c }; };
 	O.fix = function (b) {
 		var e = O.empty(), k;
 		if (!b || typeof b !== 'object' || b.format !== O.FORMAT) b = e;
 		for (k in e) if (b[k] === undefined || b[k] === null || typeof b[k] !== typeof e[k]) b[k] = e[k];
+		/* книга до прайса 11.11.2026 (в т.ч. с образцами FOXY): справочник цен заменяется прайсом STHGroup — до заполнения пропусков,
+		   чтобы закрытые заказы сохранили именно свои прежние цены */
+		if (!b.cat.v3) O.applyPrice3(b);
 		var d = O.defCatalog();
 		for (k in d) if (b.cat[k] === undefined) b.cat[k] = d[k];
 		['small', 'advance', 'terms', 'company'].forEach(function (x) { for (var f in d[x]) if (b.cat[x][f] === undefined) b.cat[x][f] = d[x][f]; });
 		if (!Array.isArray(b.cat.sheetWorks) || !b.cat.sheetWorks.length) b.cat.sheetWorks = d.sheetWorks;
 		if (!Array.isArray(b.cat.services)) b.cat.services = d.services;
 		if (!Array.isArray(b.cat.groups)) b.cat.groups = d.groups;
-		/* книга до 0.9: добавить виды работ по толщине из образца (свои строки остаются; ХДФ — если своей нет) */
-		if (!b.cat.v2) {
-			var has = {}; b.cat.sheetWorks.forEach(function (w) { has[w.id] = 1; String(w.match || '').split(/[,;]+/).forEach(function (k) { has['k:' + low(k).trim()] = 1; }); });
-			O.foxyWorks().forEach(function (w) { if (!has[w.id] && !(w.id === 'f_hdf' && has['k:хдф'])) b.cat.sheetWorks.push(w); });
-			b.cat.v2 = 1;
-		}
+		if (!Array.isArray(b.cat.discounts)) b.cat.discounts = d.discounts;
 		b.orders.forEach(function (o) { O.fixOrder(b, o); });
 		return b;
 	};
@@ -261,7 +308,7 @@
 
 	/* ------------------------------- расчёт ---------------------------------- */
 	O.calc = function (b, o) {
-		var cat = b.cat, blocks = [], lines, i, warn = [];
+		var cat = O.catFor(b, o), blocks = [], lines, i, warn = [];
 		var items = o.items.filter(function (x) { return x.snap; });
 		o.items.forEach(function (x) { if (!x.snap) warn.push('Изделие «' + (x.title || x.path) + '» ещё не посчитано — откройте его или нажмите «Пересчитать».'); });
 		/* 1. листы по видам работ */
@@ -275,7 +322,8 @@
 		cat.sheetWorks.forEach(function (w) {
 			var x = byWork[w.id]; if (!x || !x.n) return;
 			var ov = o.svc['w:' + w.id] || {}, price = ov.price !== undefined && ov.price !== '' ? num(ov.price) : num(w.price);
-			lines.push({ key: 'w:' + w.id, name: w.name, unit: Object.keys(x.mats).join(', ') + ', за лист', price: price, qty: x.n, sum: r2(price * x.n) });
+			var qn = ov.qty !== undefined && ov.qty !== '' ? num(ov.qty) : x.n;
+			lines.push({ key: 'w:' + w.id, name: w.name, unit: Object.keys(x.mats).join(', ') + ', за лист', price: price, qty: qn, sum: r2(price * qn) });
 		});
 		blocks.push({ id: 'sheets', title: 'Обработка листового материала', lines: lines });
 		/* 2. мелкие детали */
@@ -311,8 +359,13 @@
 		var serv = 0;
 		blocks.forEach(function (bk) { bk.sum = r2(bk.lines.reduce(function (a, l) { return a + (l.sum || 0); }, 0)); serv += bk.sum; });
 		serv = r2(serv);
-		/* 4. скидка за комплекс */
-		var discount = o.complex ? r2(serv * num(cat.complexPct) / 100) : 0, servD = r2(serv - discount);
+		/* 4. скидки — % от услуг, галочками в заказе */
+		var discounts = O.discountsFor(cat, o).map(function (d) { d.sum = d.on && num(d.pct) ? r2(serv * num(d.pct) / 100) : 0; return d; });
+		discounts.forEach(function (d) {
+			if (d.minSheets && d.on && totalSheets < d.minSheets) warn.push('Отмечена «' + d.name + '», а листов в заказе ' + totalSheets + '.');
+			if (d.minSheets && !d.on && totalSheets >= d.minSheets) warn.push('В заказе ' + totalSheets + ' листов — можно отметить «' + d.name + '» ' + d.pct + '%.');
+		});
+		var discount = r2(discounts.reduce(function (a, d) { return a + d.sum; }, 0)), servD = r2(serv - discount);
 		/* 5. материалы */
 		var k = 1 + num(o.markup !== undefined && o.markup !== '' ? o.markup : cat.markup) / 100;
 		var matLines = [
@@ -332,16 +385,30 @@
 		var sheetsList = {};
 		items.forEach(function (x) { x.snap.sheets.forEach(function (sh) { var key = sh.name + '|' + sh.th; (sheetsList[key] = sheetsList[key] || { name: sh.name, th: sh.th, n: 0 }).n += sh.n; }); });
 		return {
-			blocks: blocks, matLines: matLines, serv: serv, discount: discount, servD: servD, urgent: urgent, pctSum: r2(pctSum), servAll: servAll, mats: mats, total: total,
+			blocks: blocks, matLines: matLines, serv: serv, discount: discount, discounts: discounts, cat: cat, servD: servD, urgent: urgent, pctSum: r2(pctSum), servAll: servAll, mats: mats, total: total,
 			advance: Math.min(adv, total), rest: r2(total - Math.min(adv, total)), paid: paid, debt: r2(total - paid),
 			sheets: totalSheets, parts: totalParts, smallEdge: sEdge, smallDrill: sDrill, matList: Object.keys(sheetsList).map(function (k2) { return sheetsList[k2]; }), warn: warn
 		};
 	};
+	/* скидки заказа: список справочника (у старого справочника — одна «за комплекс»), отметки заказа */
+	O.discountsFor = function (cat, o) {
+		var list = Array.isArray(cat.discounts) ? cat.discounts : [{ id: 'complex', name: cat.complexText || 'Скидка за комплекс', pct: cat.complexPct, on: 1 }];
+		return list.map(function (d) {
+			var on = d.id === 'complex' ? !!o.complex : (o.disc && o.disc[d.id] !== undefined ? !!o.disc[d.id] : !!d.on);
+			return { id: d.id, name: d.name, pct: num(d.pct), on: on, minSheets: num(d.minSheets), freeDays: num(d.freeDays), sum: 0 };
+		});
+	};
+	O.setDiscount = function (o, id, on) {
+		if (id === 'complex') { o.complex = on ? 1 : 0; return; }
+		if (!o.disc || typeof o.disc !== 'object') o.disc = {};
+		o.disc[id] = on ? 1 : 0;
+	};
 	/* текст условий с подстановкой */
 	O.termsText = function (b, o, q) {
-		var t = Object.assign({}, b.cat.terms, o.terms || {}); if (o.urgent) t.days = num(b.cat.urgentDays, 3);
+		var cat = O.catFor(b, o), t = Object.assign({}, cat.terms, o.terms || {}); if (o.urgent) t.days = num(cat.urgentDays, 3);
+		O.discountsFor(cat, o).forEach(function (d) { if (d.on && d.freeDays > num(t.freeDays)) t.freeDays = d.freeDays; });
 		var ld = (O.LOADS.filter(function (x) { return x[0] === t.load; })[0] || ['', 'средняя'])[1];
-		var adv = b.cat.advance.serv + '% за услуги и ' + b.cat.advance.mat + '% за материалы при приобретении через нас';
+		var adv = cat.advance.serv + '% за услуги и ' + cat.advance.mat + '% за материалы при приобретении через нас';
 		return String(t.text || '').replace(/\{аванс\}/g, adv).replace(/\{загрузка\}/g, ld).replace(/\{срок\}/g, t.days).replace(/\{день\}/g, (num(t.freeDays) + 1) + '-го').replace(/\{хранение\}/g, t.storage)
 			.split(/\n+/).filter(function (s) { return s.trim(); });
 	};
@@ -359,7 +426,7 @@
 		secs.forEach(function (x) { x.all = x.rows.length; x.rows = x.rows.filter(function (r) { return !hide[r.key] && r.price > 0; }); x.off = !!hide['sec:' + x.id]; });
 		var t = cat.terms, terms = [];
 		terms.push('Стандартный срок — до ' + t.days + ' раб. дней.' + (cat.urgentPct ? ' Срочный заказ за ' + (cat.urgentDays || 3) + ' дн. — +' + cat.urgentPct + '% к стоимости услуг.' : ''));
-		if (num(cat.complexPct)) terms.push(String(cat.complexText || 'Скидка за комплекс') + ' — ' + cat.complexPct + '% от услуг.');
+		O.discountsFor(cat, { complex: 1 }).forEach(function (d) { if (d.pct) terms.push(d.name + ' — скидка ' + d.pct + '% от услуг.'); else terms.push(d.name + '.'); });
 		terms.push('Материал можно привезти свой или купить через нас: ' + String(cat.markupText || ('+' + cat.markup + '% к оптовому прайсу поставщика')) + '.');
 		terms.push('Для запуска — аванс ' + cat.advance.serv + '% за услуги и ' + cat.advance.mat + '% за материалы.');
 		cat.services.filter(function (x) { return x.unit === 'pct' && num(x.price); }).forEach(function (x) { terms.push(x.name + ' — +' + x.price + '% к сумме.'); });

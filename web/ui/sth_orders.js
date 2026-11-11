@@ -211,12 +211,12 @@
 			'<button id="soPadv">Аванс ' + money(q.advance) + '</button><button id="soPrest">Остаток ' + money(Math.max(0, q.debt)) + '</button></div>';
 	}
 	function sideHtml(o, q) {
-		var t = Object.assign({}, X.book.cat.terms, o.terms || {}), cat = X.book.cat;
+		var cat = q.cat || X.book.cat, t = Object.assign({}, cat.terms, o.terms || {});
 		return '<div class="mute">Итого по заказу</div><div class="soTot">' + money(q.total) + ' ₽</div>' +
 			'<details class="sgSide"><summary>Расчёт и скидки</summary>' + /* STHGroup: параметры не перегружают итог */
 			'<div class="soR"><span>Услуги</span><span>' + money(q.serv) + '</span></div>' +
-			'<label class="soR ac"><span><input type="checkbox" id="soCx"' + (o.complex ? ' checked' : '') + '> Скидка за комплекс ' + cat.complexPct + '%</span><span>−' + money(q.discount) + '</span></label>' +
-			'<label class="soR ac"><span><input type="checkbox" id="soUrg"' + (o.urgent ? ' checked' : '') + '> Срочно +' + cat.urgentPct + '%, ' + cat.urgentDays + ' дн.</span><span style="white-space:nowrap">' + (q.urgent ? '+' + money(q.urgent) : '') + '</span></label>' +
+			(q.discounts || []).map(function (d) { return '<label class="soR ac"><span><input type="checkbox" data-disc="' + esc(d.id) + '"' + (d.on ? ' checked' : '') + '> ' + esc(d.name) + (d.pct ? ' ' + d.pct + '%' : '') + '</span><span style="white-space:nowrap">' + (d.sum ? '−' + money(d.sum) : '') + '</span></label>'; }).join('') +
+			'<label class="soR ac"><span><input type="checkbox" id="soUrg"' + (o.urgent ? ' checked' : '') + '> Срочно +' + q.cat.urgentPct + '%, ' + q.cat.urgentDays + ' дн.</span><span style="white-space:nowrap">' + (q.urgent ? '+' + money(q.urgent) : '') + '</span></label>' +
 			(q.pctSum ? '<div class="soR"><span>Проценты (безнал)</span><span>' + money(q.pctSum) + '</span></div>' : '') +
 			'<div class="soR"><span>Материалы</span><span>' + money(q.mats) + '</span></div></details>' +
 			'<div class="soPay"><div class="soR"><span>Аванс</span><b>' + money(q.advance) + ' ₽</b></div><div class="mute sm">' + cat.advance.serv + '% услуг + ' + cat.advance.mat + '% материалов</div>' +
@@ -372,7 +372,7 @@
 		if (t.id === 'soCl') { if (t.value === '__new') { newClient().then(function (nc) { if (nc) o.clientId = nc.id; changed(); }); return; } o.clientId = t.value; changed(); return; }
 		var simple = { soNo: 'no', soDate: 'date', soStat: 'status', soNote: 'note' };
 		if (simple[t.id]) { o[simple[t.id]] = t.value; changed(); return; }
-		if (t.id === 'soCx') { o.complex = t.checked ? 1 : 0; changed(); return; }
+		if (t.dataset && t.dataset.disc) { O.setDiscount(o, t.dataset.disc, t.checked); changed(); return; }
 		if (t.id === 'soUrg') { o.urgent = t.checked ? 1 : 0; changed(); return; }
 		if (t.id === 'soMk') { o.markup = t.value.trim() === '' ? '' : O.num(t.value); changed(); return; }
 		var tk = { soLoad: 'load', soDays: 'days', soFree: 'freeDays', soStor: 'storage' };
@@ -407,13 +407,16 @@
 			}).join('') + '<datalist id="ctUnits"><option value="шт"><option value="м²"><option value="м.п."><option value="за лист"><option value="за заказ"></datalist><button id="ctGadd">+ Раздел</button>' +
 				'<p class="mute">Разделы появляются в расчёте заказа: количество (шт, м², м.п.) вписывается в заказе, в КП попадают только строки с количеством.</p>';
 		}
+		/* STHGroup: скидки — % от услуг, галочками в заказе; «По умолчанию» — отмечена в новом заказе */
+		function disc() { return '<table class="grid" id="ctD"><thead><tr><th>Скидка (строка в КП)</th><th>% от услуг</th><th>По умолчанию</th><th>Подсказка от листов</th><th></th></tr></thead><tbody>' + (c.discounts || []).map(function (d, i) { return '<tr data-id="' + esc(d.id || '') + '"><td><input class="cn" value="' + esc(d.name) + '" style="width:420px"></td><td><input class="cdp" value="' + esc(d.pct) + '" style="width:70px"></td><td><input type="checkbox" class="co"' + (d.on ? ' checked' : '') + '> отмечена</td><td><input class="cds" value="' + esc(d.minSheets || '') + '" style="width:70px"></td><td><button class="icon" data-drm="' + i + '">✕</button></td></tr>'; }).join('') + '</tbody></table><button id="ctDadd">+ Скидка</button><p class="mute">Скидки считаются от стоимости услуг и отмечаются галочками в заказе. «Подсказка от листов» — заказ напомнит про скидку, если листов столько или больше.</p>'; }
+		function readDisc(m) { var od = c.discounts || []; c.discounts = []; m.querySelectorAll('#ctD tbody tr').forEach(function (tr) { var d0 = od.filter(function (x) { return x.id === tr.getAttribute('data-id'); })[0] || {}; c.discounts.push(Object.assign({}, d0, { id: d0.id || O.id('d'), name: tr.querySelector('.cn').value.trim() || 'Скидка', pct: O.num(tr.querySelector('.cdp').value), on: tr.querySelector('.co').checked ? 1 : 0, minSheets: O.num(tr.querySelector('.cds').value) })); }); var cx = c.discounts.filter(function (x) { return x.id === 'complex'; })[0]; if (cx) { c.complexPct = cx.pct; c.complexText = cx.name; } }
 		function svc() { return '<table class="grid" id="ctS"><thead><tr><th></th><th>Услуга</th><th>Единица</th><th>Цена (для % — процент)</th><th>По умолчанию</th><th>Примечание для прайса</th><th></th></tr></thead><tbody>' + c.services.map(function (s, i) { return '<tr data-i="' + i + '" data-id="' + esc(s.id || '') + '" data-dg="s"><td>' + window.STHDrag.handle() + '</td><td><input class="cn" value="' + esc(s.name) + '" style="width:380px"></td><td><select class="cu">' + opt(O.UNITS, s.unit) + '</select></td><td><input class="cp" value="' + esc(s.price) + '" style="width:90px">' + sample(s) + '</td><td><input type="checkbox" class="co"' + (s.on ? ' checked' : '') + '> включена</td><td><input class="cnt" value="' + esc(s.note || '') + '" style="width:170px"></td><td><button class="icon" data-srm="' + i + '">✕</button></td></tr>'; }).join('') + '</tbody></table><button id="ctSadd">+ Услуга</button>'; }
 		var body = '<div class="tabs">' + tabs.map(function (t, i) { return '<button data-ct="' + t[0] + '"' + (i ? '' : ' class="on"') + '>' + t[1] + '</button>'; }).join('') + '</div>' +
 			'<div class="pg" data-cp="works">' + works() + '</div>' +
 			'<div class="pg" data-cp="small" hidden><div class="row">' + inp('ctLim', 'Деталь мелкая, если длина или ширина меньше, мм', c.small.limit, 340) + '</div><div class="row">' + inp('ctSe', 'Кромление мелкой детали, ₽ за деталь', c.small.edge, 280) + inp('ctSd', 'Присадка мелкой детали, ₽ за деталь', c.small.drill, 280) + '</div></div>' +
 			'<div class="pg" data-cp="svc" hidden>' + svc() + '</div>' +
 			'<div class="pg" data-cp="grp" hidden>' + grp() + '</div>' +
-			'<div class="pg" data-cp="money" hidden><div class="row">' + inp('ctCx', 'Скидка за комплекс, % от услуг', c.complexPct, 230) + inp('ctCxT', 'Текст скидки в КП', c.complexText, 460) + '</div><div class="row">' + inp('ctMk', 'Наценка на материалы и фурнитуру, %', c.markup, 260) + inp('ctMkT', 'Пояснение в КП', c.markupText, 430) + '</div><div class="row">' + inp('ctAs', 'Аванс: % от услуг', c.advance.serv, 200) + inp('ctAm', 'Аванс: % от материалов', c.advance.mat, 200) + '</div><div class="row">' + inp('ctPre', 'Префикс номера заказа', c.prefix, 200) + inp('ctNext', 'Следующий номер', b.next, 200) + inp('ctKpD', 'КП действительно, дней', c.kpDays || '', 180) + '</div><div class="row">' + inp('ctUt', 'Срочный заказ — текст', c.urgentText, 230) + inp('ctUp', 'Срочно: +% к услугам', c.urgentPct, 180) + inp('ctUd', 'Срочно: срок, раб. дней', c.urgentDays, 180) + '</div></div>' +
+			'<div class="pg" data-cp="money" hidden><div id="ctDw">' + disc() + '</div><div class="row">' + inp('ctMk', 'Наценка на материалы и фурнитуру, %', c.markup, 260) + inp('ctMkT', 'Пояснение в КП', c.markupText, 430) + '</div><div class="row">' + inp('ctAs', 'Аванс: % от услуг', c.advance.serv, 200) + inp('ctAm', 'Аванс: % от материалов', c.advance.mat, 200) + '</div><div class="row">' + inp('ctPre', 'Префикс номера заказа', c.prefix, 200) + inp('ctNext', 'Следующий номер', b.next, 200) + inp('ctKpD', 'КП действительно, дней', c.kpDays || '', 180) + '</div><div class="row">' + inp('ctUt', 'Срочный заказ — текст', c.urgentText, 230) + inp('ctUp', 'Срочно: +% к услугам', c.urgentPct, 180) + inp('ctUd', 'Срочно: срок, раб. дней', c.urgentDays, 180) + '</div></div>' +
 			'<div class="pg" data-cp="terms" hidden><div class="row"><label class="fl" style="width:200px">Загрузка по умолчанию<select id="ctLd">' + opt(O.LOADS, c.terms.load) + '</select></label>' + inp('ctDays', 'Срок, раб. дней', c.terms.days, 150) + inp('ctFree', 'Бесплатное хранение, дней', c.terms.freeDays, 200) + inp('ctSt', 'Хранение дальше, ₽/сут', c.terms.storage, 180) + '</div>' + inp('ctTi', 'Заголовок раздела в КП и счёте', c.terms.title || 'Важно знать', 300) + '<label class="fl">Текст раздела — каждый пункт с новой строки; подстановки {аванс} {загрузка} {срок} {день} {хранение}<textarea id="ctTx" rows="6">' + esc(c.terms.text) + '</textarea></label></div>' +
 			'<div class="pg" data-cp="firm" hidden><div class="row">' + inp('cfN', 'Название', c.company.name, 300) + inp('cfP', 'Телефон', c.company.phone, 200) + inp('cfE', 'Почта', c.company.email, 220) + '</div><div class="row">' + inp('cfA', 'Адрес', c.company.address, 520) + inp('cfS', 'Сайт', c.company.site, 200) + '</div><div class="row">' + inp('cfI', 'ИНН / КПП / ОГРН', c.company.inn, 520) + inp('cfX', 'Исполнитель (ФИО)', c.company.executor, 200) + '</div><label class="fl">Реквизиты для оплаты (в счёте)<textarea id="cfB" rows="3">' + esc(c.company.bank) + '</textarea></label></div>' +
 			'<div class="pg" data-cp="dir" hidden><p>Заказы, клиенты и этот справочник — один файл «' + esc(O.FILE) + '» в папке. Папка может быть общей (Яндекс Диск, сетевая) — тогда заказы одни на несколько компьютеров.</p><div class="pathrow"><input type="text" id="ctDir" value="' + esc(folder) + '" style="width:600px"><button id="ctDirPick">Выбрать…</button></div><p class="mute">По умолчанию — папка базы материалов.</p></div>';
@@ -433,7 +436,7 @@
 				var g = function (id) { return m.querySelector('#' + id).value; };
 				readTables(m);
 				c.small = { limit: O.num(g('ctLim'), 60), edge: O.num(g('ctSe')), drill: O.num(g('ctSd')) };
-				c.complexPct = O.num(g('ctCx')); c.complexText = g('ctCxT'); c.markup = O.num(g('ctMk')); c.markupText = g('ctMkT'); c.advance = { serv: O.num(g('ctAs'), 70), mat: O.num(g('ctAm'), 100) }; c.prefix = g('ctPre');
+				readDisc(m); c.markup = O.num(g('ctMk')); c.markupText = g('ctMkT'); c.advance = { serv: O.num(g('ctAs'), 70), mat: O.num(g('ctAm'), 100) }; c.prefix = g('ctPre');
 				c.kpDays = O.num(g('ctKpD')); c.urgentText = g('ctUt').trim() || 'Срочный заказ'; c.urgentPct = O.num(g('ctUp'), 30); c.urgentDays = O.num(g('ctUd'), 3);
 				c.terms = { load: g('ctLd'), days: O.num(g('ctDays'), 10), freeDays: O.num(g('ctFree'), 2), storage: O.num(g('ctSt'), 500), text: g('ctTx'), title: String(g('ctTi') || '').trim() || 'Важно знать' };
 				c.company = { name: g('cfN'), phone: g('cfP'), email: g('cfE'), address: g('cfA'), site: g('cfS'), inn: g('cfI'), executor: g('cfX'), bank: g('cfB') };
@@ -456,6 +459,8 @@
 					var t = e.target, d;
 					if (t.closest('.sthPriceConfirm')) { var cell = t.closest('td'); cell.querySelector('.cp').dataset.verified = '1'; cell.querySelectorAll('.sthSampleBadge,.sthPriceConfirm').forEach(function (n) { n.remove(); }); return; }
 					if ((d = t.closest('[data-ct]'))) { m.querySelectorAll('[data-ct]').forEach(function (x) { x.classList.toggle('on', x === d); }); m.querySelectorAll('[data-cp]').forEach(function (p) { p.hidden = p.dataset.cp !== d.dataset.ct; }); return; }
+					if (t.id === 'ctDadd') { readDisc(m); c.discounts.push({ id: O.id('d'), name: 'Новая скидка', pct: 0, on: 0 }); m.querySelector('#ctDw').innerHTML = disc(); return; }
+					if ((d = t.closest('[data-drm]'))) { readDisc(m); c.discounts.splice(Number(d.dataset.drm), 1); m.querySelector('#ctDw').innerHTML = disc(); return; }
 					if (t.id === 'ctWadd') { readTables(m); c.sheetWorks.push({ id: O.id('w'), name: 'Новый вид работы', price: 0, match: '' }); b.cat.sheetWorks = b.cat.sheetWorks.concat([c.sheetWorks[c.sheetWorks.length - 1]]); m.querySelector('[data-cp=works]').innerHTML = works(); return; }
 					if (t.id === 'ctSadd') { readTables(m); c.services.push({ id: O.id('s'), name: 'Новая услуга', unit: 'order', price: 0, on: 0 }); b.cat.services = b.cat.services.concat([c.services[c.services.length - 1]]); m.querySelector('[data-cp=svc]').innerHTML = svc(); return; }
 					var redrawG = function () { m.querySelector('[data-cp=grp]').innerHTML = grp(); };
@@ -483,7 +488,7 @@
 	async function logo() { return await window.Preview.logo() || '<b style="font-size:22px">STHGroup</b>'; }
 	/* STHGroup: КП и счёт в двух темах Liquid Glass. */
 	X.docHtml = function (o, q, kind, logoSvg, theme) {
-		var b = X.book, cat = b.cat, co = cat.company, cl = O.client(b, o.clientId), m = O.money, inv = kind === 'inv';
+		var b = X.book, cat = q.cat || b.cat, co = b.cat.company, cl = O.client(b, o.clientId), m = O.money, inv = kind === 'inv';
 		var t = Object.assign({}, cat.terms, o.terms || {}), days = o.urgent ? (cat.urgentDays || 3) : t.days;
 		var css = BM.out.docThemeCSS(theme) +
 			'@page{size:A4;margin:9mm 10mm 11mm}*{box-sizing:border-box}html{background:var(--doc-surface);background-repeat:no-repeat;background-attachment:fixed;background-size:100% 100%}body{margin:0;font:11.5px/1.4 "Segoe UI",Arial,sans-serif;color:var(--doc-text)}' +
@@ -520,7 +525,7 @@
 			return '<!doctype html><html><head><meta charset="utf-8"><style>' + css + '</style></head><body>' + head +
 				'<table class="it"><colgroup><col style="width:28px"><col><col style="width:58px"><col style="width:52px"><col style="width:76px"><col style="width:84px"></colgroup><thead><tr><th>№</th><th>Наименование</th><th>Ед.</th><th class="n">Кол-во</th><th class="n">Цена, ₽</th><th class="n">Сумма, ₽</th></tr></thead><tbody>' +
 				all.map(function (l, i) { return '<tr><td>' + (i + 1) + '</td>' + rows([l]).slice(4); }).join('') +
-				(q.discount ? '<tr><td></td><td class="dc">' + esc(cat.complexText) + ' (' + cat.complexPct + '% от услуг)</td><td></td><td></td><td></td><td class="n dc">−' + m(q.discount) + '</td></tr>' : '') +
+				(q.discounts || []).filter(function (d) { return d.sum; }).map(function (d) { return '<tr><td></td><td class="dc">' + esc(d.name) + ' (' + d.pct + '% от услуг)</td><td></td><td></td><td></td><td class="n dc">−' + m(d.sum) + '</td></tr>'; }).join('') +
 				(q.urgent ? '<tr><td></td><td>' + esc(cat.urgentText || 'Срочный заказ') + ' (+' + cat.urgentPct + '% к услугам)</td><td></td><td></td><td></td><td class="n">' + m(q.urgent) + '</td></tr>' : '') + '</tbody></table>' +
 				'<div class="tot"><div><span>Итого</span><b>' + m(q.total) + ' ₽</b></div><div><span>Оплачено</span><span>' + m(q.paid) + ' ₽</span></div><div class="big"><span>К оплате</span><span>' + m(debt) + ' ₽</span></div><div class="w">' + esc(O.words(debt)) + '</div>' +
 				(q.paid < q.advance ? '<div class="mu"><span>Аванс для запуска</span><span>' + m(q.advance) + ' ₽</span></div>' : '') + '</div>' + sign + '</body></html>';
@@ -535,7 +540,7 @@
 		if (ml.length) body += '<h3>Материалы и фурнитура<span>' + m(q.mats) + ' ₽</span></h3><table class="it">' + cols + '<thead><tr><th></th><th></th><th class="n">Кол-во</th><th class="n">Цена, ₽</th><th class="n">Сумма, ₽</th></tr></thead><tbody>' + rows(ml) + '</tbody></table><div class="mu" style="font-size:10px;margin-top:3px">Материал можно привезти свой или купить через нас: ' + esc(cat.markupText) + '.</div>';
 		if (q.matList.length) body += '<h3>Материалы в заказе</h3><table class="it"><colgroup><col><col style="width:58px"><col style="width:52px"></colgroup><tbody>' + q.matList.map(function (x) { return '<tr><td>' + esc(x.name) + '</td><td class="mu">' + esc(x.th ? P.dim(x.th) + ' мм' : '') + '</td><td class="n">' + x.n + ' л</td></tr>'; }).join('') + '</tbody></table>';
 		var side = '<div class="side"><div class="mu">Итого по заказу</div><div class="tt">' + m(q.total) + ' ₽</div><div class="sideDetail"><div><div class="r"><span>Услуги</span><span>' + m(q.serv) + '</span></div>' +
-			(q.discount ? '<div class="r dc"><span>' + esc(cat.complexText) + ' ' + cat.complexPct + '%</span><span>−' + m(q.discount) + '</span></div>' : '') +
+			(q.discounts || []).filter(function (d) { return d.sum; }).map(function (d) { return '<div class="r dc"><span>' + esc(d.name) + ' ' + d.pct + '%</span><span>−' + m(d.sum) + '</span></div>'; }).join('') +
 			(q.urgent ? '<div class="r"><span>' + esc(cat.urgentText || 'Срочный заказ') + ' +' + cat.urgentPct + '%</span><span>' + m(q.urgent) + '</span></div>' : '') +
 			(q.pctSum ? '<div class="r"><span>Безналичная оплата</span><span>' + m(q.pctSum) + '</span></div>' : '') +
 			'<div class="r"><span>Материалы и фурнитура</span><span>' + m(q.mats) + '</span></div><div class="w">' + esc(O.words(q.total)) + '</div></div>' +

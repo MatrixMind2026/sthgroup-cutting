@@ -6,7 +6,8 @@
 	var defaults = O.defCatalog;
 	O.defCatalog = function () {
 		var cat = defaults();
-		rows(cat).forEach(function (r) { r.sampleSource = /^f_|^d_|^e_|^m_/.test(r.id) ? 'FOXY' : 'Начальный прайс'; r.samplePrice = r.price; r.priceVerified = false; });
+		/* с 11.11.2026 начальный справочник — прайс STHGroup (цены автора), образцом не считается; отметку «образец» ставит только строка с sample */
+		rows(cat).forEach(function (r) { r.sampleSource = r.sample ? String(r.sample) : ''; r.samplePrice = r.price; r.priceVerified = !r.sample; delete r.sample; });
 		return cat;
 	};
 	O.isSamplePrice = function (r) { return !!(r && r.sampleSource && !r.priceVerified && Number(r.price) === Number(r.samplePrice)); };

@@ -84,3 +84,27 @@ html[data-sth-style="glass"] #orders .soBh{background:color-mix(in srgb,var(--te
 /* Непрозрачная подложка остаётся рабочим резервом без поддержки размытия. */
 @supports not (backdrop-filter:blur(1px)){html[data-sth-style="glass"]{--sg-glass:var(--panel);--sg-data:var(--panel)}}
 @media print{html[data-sth-style="glass"] #app{padding:0}html[data-sth-style="glass"] *{backdrop-filter:none!important;box-shadow:none!important}}
+
+/* STHGroup 11.11.2026: окна-страницы — стеклянная панель, как полоса разделов; строки таблиц — стеклянные плашки, как в смете. */
+html[data-sth-style="glass"] #modals .back.page{background:transparent}
+html[data-sth-style="glass"] #modals .back.page>.modal{inset:0 10px 0 10px;left:10px!important;right:10px!important;border:1px solid var(--sg-edge);border-radius:24px;background:var(--sg-glass);box-shadow:var(--sg-shadow);backdrop-filter:var(--sg-blur);-webkit-backdrop-filter:var(--sg-blur);overflow:hidden}
+html[data-sth-style="glass"] #modals .back.page>.modal>h2{background:transparent;border-bottom:1px solid var(--line2);padding:14px 20px}
+html[data-sth-style="glass"] #modals .back.page>.modal>.body{padding:16px 20px}
+html[data-sth-style="glass"] #modals .back.page>.modal>.foot{background:transparent;border-top:1px solid var(--line2);padding:12px 20px}
+html[data-sth-style="glass"] #modals .back.page table.grid{border-collapse:separate;border-spacing:0 6px;background:transparent}
+html[data-sth-style="glass"] #modals .back.page table.grid th{background:transparent;border:0;position:static}
+html[data-sth-style="glass"] #modals .back.page table.grid>tbody>tr>td{
+ background:color-mix(in srgb,var(--panel) 16%,transparent);
+ border-top:1px solid color-mix(in srgb,var(--text) 16%,transparent);
+ border-bottom:1px solid color-mix(in srgb,var(--text) 9%,transparent);
+ box-shadow:inset 0 1px 0 #ffffff09,inset 0 -1px 0 #ffffff04;
+ backdrop-filter:blur(18px) saturate(130%);-webkit-backdrop-filter:blur(18px) saturate(130%);
+ padding-top:8px;padding-bottom:8px}
+html[data-sth-style="glass"] #modals .back.page table.grid>tbody>tr>td:first-child{border-left:1px solid color-mix(in srgb,var(--text) 16%,transparent);border-radius:13px 0 0 13px}
+html[data-sth-style="glass"] #modals .back.page table.grid>tbody>tr>td:last-child{border-right:1px solid color-mix(in srgb,var(--text) 16%,transparent);border-radius:0 13px 13px 0}
+html[data-sth-style="glass"] #modals .back.page table.grid>tbody>tr>td:only-child{border-radius:13px}
+html[data-sth-style="glass"] #modals .back.page table.grid>tbody>tr:hover>td{background:color-mix(in srgb,var(--text) 5%,transparent)}
+html[data-sth-style="glass"] #modals .back.page table.grid th{white-space:normal;line-height:1.25;vertical-align:bottom}
+html[data-sth-style="glass"] #modals .back.page .soCat :is(#ctW,#ctS,.ctGt,#ctD) th:last-child{width:52px}
+html[data-sth-style="glass"] #modals .back.page table.grid th{overflow-wrap:normal;word-break:normal;hyphens:none}
+html[data-sth-style="glass"] #modals .back.page .soCat #ctW th:nth-child(5),html[data-sth-style="glass"] #modals .back.page .soCat #ctW th:nth-child(6){width:76px}
